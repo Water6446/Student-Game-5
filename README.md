@@ -19,8 +19,9 @@ The project is built in confirmable stages:
 1. **Schema + RLS + RPCs + game math (with tests + a security self-test).** ✅ done
 2. **Host create/lobby + student join (anon auth, join code, QR).** ✅ done
 3. **Round loop with Realtime: submit → lock → reveal → next.** ✅ done
-4. Leaderboard + chart + history (host) and student wealth/rank view. — _next_
-5. End summary + counterfactual + CSV export.
+4. **Leaderboard + chart + history (host) and student wealth/rank view.** ✅ done
+   _(plus: host can tune market odds mid-game and see per-student allocations at lock)_
+5. **End summary + counterfactual + CSV export.** ✅ done
 
 ---
 

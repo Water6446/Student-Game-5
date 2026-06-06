@@ -37,16 +37,13 @@ export function StudentRound({
   async function submit() {
     setBusy(true);
     setError(null);
-    const safe = Math.round((me.current_wealth - risky) * 100) / 100;
-    const { error } = await supabase.from("allocations").upsert(
-      {
-        round_id: round.id,
-        player_id: me.id,
-        risky_amount: Math.round(risky * 100) / 100,
-        safe_amount: safe,
-      },
-      { onConflict: "round_id,player_id" },
-    );
+    // All writes go through a SECURITY DEFINER RPC. The server validates the
+    // round is open, that this is our own player, clamps 0 <= risky <= wealth,
+    // and derives safe = wealth - risky. Students have no direct write grant.
+    const { error } = await supabase.rpc("submit_allocation", {
+      p_round_id: round.id,
+      p_risky_amount: Math.round(risky * 100) / 100,
+    });
     setBusy(false);
     if (error) setError(error.message);
   }
@@ -113,6 +110,10 @@ function Shell({
   round: RoundRow;
   session: SessionRow;
 }) {
+  const showOdds =
+    session.config.show_odds_to_students && session.config.market_mode === "auto";
+  const goodPct = Math.round((session.config.good_prob ?? 0.6) * 100);
+
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-8">
       <div className="mb-4 flex items-center justify-between text-sm text-slate-400">
@@ -121,6 +122,16 @@ function Shell({
         </span>
         <span className="font-mono text-lg font-bold text-emerald-400">{money(wealth)}</span>
       </div>
+      {showOdds ? (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-2 text-sm">
+          <span className="text-slate-400">This round&apos;s market odds</span>
+          <span className="font-mono">
+            <span className="font-semibold text-emerald-400">{goodPct}% good ▲</span>
+            <span className="text-slate-600"> · </span>
+            <span className="font-semibold text-rose-400">{100 - goodPct}% bad ▼</span>
+          </span>
+        </div>
+      ) : null}
       <Card className="space-y-5">{children}</Card>
     </main>
   );

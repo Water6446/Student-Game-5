@@ -2,12 +2,18 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
 import type { MarketOutcome } from "@/lib/game/types";
 import { usePlayers } from "@/components/use-players";
 import { useRound } from "@/components/use-round";
 import { useRoundAllocations } from "@/components/use-round-allocations";
+import { useSessionHistory } from "@/components/use-session-history";
+import { MarketOddsControl } from "@/components/host/MarketOddsControl";
+import { AllocationsBreakdown } from "@/components/host/AllocationsBreakdown";
+import { WealthChart } from "@/components/host/WealthChart";
+import { SessionHistoryTable } from "@/components/host/SessionHistoryTable";
 import { money } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 
@@ -18,13 +24,31 @@ export function HostRoundControl({
   supabase: SupabaseClient;
   session: SessionRow;
 }) {
+  const router = useRouter();
   const players = usePlayers(supabase, session.id);
   const round = useRound(supabase, session.id, session.current_round);
   const allocs = useRoundAllocations(supabase, round?.id ?? null);
+  const history = useSessionHistory(supabase, session.id);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pick, setPick] = useState<MarketOutcome | null>(null);
+
+  async function deleteSession() {
+    const ok = window.confirm(
+      `Delete session ${session.join_code}? This permanently removes all players, rounds and allocations. This cannot be undone.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.rpc("delete_session", { p_session_id: session.id });
+    if (error) {
+      setBusy(false);
+      setError(error.message);
+      return;
+    }
+    router.push("/host");
+  }
 
   const isManual = session.config.market_mode === "manual";
   const isLastRound = session.current_round >= session.config.num_rounds;
@@ -74,7 +98,17 @@ export function HostRoundControl({
             <span className="text-slate-500">/ {session.config.num_rounds}</span>
           </h1>
         </div>
-        <StatusBadge status={status} />
+        <div className="flex items-center gap-3">
+          <StatusBadge status={status} />
+          <button
+            type="button"
+            onClick={deleteSession}
+            disabled={busy}
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+          >
+            Delete
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -92,11 +126,14 @@ export function HostRoundControl({
               <Button onClick={lock} disabled={busy} className="w-full text-lg">
                 Lock allocations
               </Button>
+              {!isManual ? <MarketOddsControl supabase={supabase} session={session} /> : null}
             </>
           )}
 
           {status === "locked" && (
             <>
+              <AllocationsBreakdown players={players} allocations={allocs} />
+              {!isManual ? <MarketOddsControl supabase={supabase} session={session} /> : null}
               {isManual ? (
                 <div className="space-y-3">
                   <p className="text-center text-sm text-slate-400">Set this round&apos;s market:</p>
@@ -151,8 +188,8 @@ export function HostRoundControl({
 
           {error ? <Banner kind="error">{error}</Banner> : null}
 
-          {/* per-player submission ticks while open/locked */}
-          {status !== "revealed" && (
+          {/* per-player submission ticks while the round is open */}
+          {status === "open" && (
             <ul className="grid grid-cols-2 gap-1 text-sm">
               {players.map((p) => (
                 <li
@@ -188,11 +225,25 @@ export function HostRoundControl({
               </li>
             ))}
           </ol>
-          <p className="mt-4 text-xs text-slate-600">
-            Wealth-over-rounds chart and per-round history arrive in Stage 4.
-          </p>
         </Card>
       </div>
+
+      {/* Wealth over rounds */}
+      <Card className="mt-6">
+        <h2 className="mb-3 text-xl font-semibold">Wealth over rounds</h2>
+        <WealthChart
+          players={players}
+          rounds={history.rounds}
+          allocations={history.allocations}
+          startingWealth={session.config.starting_wealth}
+        />
+      </Card>
+
+      {/* Per-round history */}
+      <Card className="mt-6">
+        <h2 className="mb-3 text-xl font-semibold">Round history</h2>
+        <SessionHistoryTable rounds={history.rounds} allocations={history.allocations} />
+      </Card>
     </main>
   );
 }

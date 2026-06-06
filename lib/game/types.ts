@@ -16,6 +16,8 @@ export interface SessionConfig {
   market_mode: MarketMode;
   market_scope: MarketScope;
   show_full_leaderboard_to_students: boolean;
+  /** when true, students see the current good/bad market odds each round (auto mode) */
+  show_odds_to_students: boolean;
   allow_late_join: boolean;
 }
 
@@ -27,5 +29,6 @@ export const DEFAULT_CONFIG: SessionConfig = {
   market_mode: "auto",
   market_scope: "shared",
   show_full_leaderboard_to_students: true,
+  show_odds_to_students: true,
   allow_late_join: false,
 };

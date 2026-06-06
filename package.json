@@ -9,7 +9,11 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "security-check": "tsx scripts/security-check.ts"
+    "security-check": "tsx scripts/security-check.ts",
+    "db:link": "supabase link --project-ref mftrhnwnvidxjdzenmip",
+    "db:push": "supabase db push",
+    "db:diff": "supabase db diff --linked",
+    "db:status": "supabase migration list --linked"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -27,6 +31,7 @@
     "autoprefixer": "^10.4.20",
     "dotenv": "^16.4.5",
     "postcss": "^8.4.47",
+    "supabase": "^2.105.0",
     "tailwindcss": "^3.4.13",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",

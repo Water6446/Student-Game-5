@@ -115,6 +115,11 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
           onChange={(v) => set("show_full_leaderboard_to_students", v)}
         />
         <Toggle
+          label="Show market odds to students"
+          checked={cfg.show_odds_to_students}
+          onChange={(v) => set("show_odds_to_students", v)}
+        />
+        <Toggle
           label="Allow late join (after start)"
           checked={cfg.allow_late_join}
           onChange={(v) => set("allow_late_join", v)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
@@ -9,12 +10,29 @@ import { usePlayers } from "@/components/use-players";
 import { Banner, Button, Card } from "@/components/ui";
 
 export function HostLobby({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
+  const router = useRouter();
   const players = usePlayers(supabase, session.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const link = joinUrl(session.join_code);
+
+  async function deleteSession() {
+    const ok = window.confirm(
+      `Delete session ${session.join_code}? This permanently removes the lobby and any players who joined. This cannot be undone.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.rpc("delete_session", { p_session_id: session.id });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+      return;
+    }
+    router.push("/host");
+  }
 
   async function start() {
     setBusy(true);
@@ -99,6 +117,14 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
                 Need at least one player to start.
               </p>
             ) : null}
+            <button
+              type="button"
+              onClick={deleteSession}
+              disabled={busy}
+              className="mt-3 w-full rounded-lg py-2 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+            >
+              Delete session
+            </button>
           </div>
         </Card>
       </div>

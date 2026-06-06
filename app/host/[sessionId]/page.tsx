@@ -5,7 +5,7 @@ import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useSession } from "@/components/use-session";
 import { HostLobby } from "@/components/host/HostLobby";
 import { HostRoundControl } from "@/components/host/HostRoundControl";
-import { Card } from "@/components/ui";
+import { HostSummary } from "@/components/host/HostSummary";
 
 export default function HostSessionPage({ params }: { params: { sessionId: string } }) {
   const { supabase, loading: authLoading } = useSupabaseUser();
@@ -39,19 +39,6 @@ export default function HostSessionPage({ params }: { params: { sessionId: strin
     return <HostRoundControl supabase={supabase} session={session} />;
   }
 
-  // Finished — the full end summary + counterfactual + CSV arrive in Stage 5.
-  return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <Card className="text-center">
-        <h1 className="text-2xl font-semibold">Game finished 🏁</h1>
-        <p className="mt-2 text-slate-400">
-          {session.config.num_rounds} rounds complete. Final standings, the all-safe / all-risky /
-          50-50 counterfactual, and CSV export arrive in Stage 5.
-        </p>
-        <Link href="/host" className="mt-6 inline-block text-indigo-300 hover:text-indigo-200">
-          ← Host dashboard
-        </Link>
-      </Card>
-    </main>
-  );
+  // Finished — end summary + counterfactual + CSV export.
+  return <HostSummary supabase={supabase} session={session} />;
 }
