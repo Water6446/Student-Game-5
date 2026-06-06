@@ -51,11 +51,18 @@ export interface LeaderboardRow {
   is_me: boolean;
 }
 
-/** Base site URL for building join links / QR codes (no trailing slash). */
+/** Base site URL for building join links / QR codes / magic-link redirects. */
 export function siteUrl(): string {
+  // In the browser, ALWAYS use the real current origin so links and the
+  // magic-link redirect match wherever the app is actually served (production,
+  // a preview deployment, or localhost). This makes a stale NEXT_PUBLIC_SITE_URL
+  // (e.g. left as http://localhost:3000) harmless instead of breaking auth.
+  if (typeof window !== "undefined") return window.location.origin;
+  // Server-side / build-time only (no window): prefer the explicit env var,
+  // then Vercel's deployment URL, then localhost for dev.
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL;
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  if (typeof window !== "undefined") return window.location.origin;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
 
