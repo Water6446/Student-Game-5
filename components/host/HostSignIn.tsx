@@ -23,6 +23,19 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
     else setSent(true);
   }
 
+  // TEMP (testing): skip the email magic link entirely and sign in anonymously
+  // because Supabase's email quota is rate-limited. The magic-link flow above is
+  // left fully intact. To remove this bypass, delete this function and the
+  // "Skip email" button below, and re-tighten create_session + the /host gate.
+  async function skipEmailForTesting() {
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.auth.signInAnonymously();
+    setBusy(false);
+    if (error) setError(error.message);
+    // on success, onAuthStateChange flips the /host page to the dashboard.
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <Card>
@@ -56,6 +69,21 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
             </Button>
           </div>
         )}
+
+        {/* TEMP (testing): bypass email while the Supabase email quota is rate-limited. */}
+        <div className="mt-6 border-t border-slate-800 pt-4">
+          <Button
+            variant="secondary"
+            onClick={skipEmailForTesting}
+            disabled={busy}
+            className="w-full"
+          >
+            {busy ? "…" : "Skip email — sign in for testing"}
+          </Button>
+          <p className="mt-2 text-center text-xs text-slate-500">
+            Temporary: signs you in without email verification.
+          </p>
+        </div>
       </Card>
     </main>
   );
