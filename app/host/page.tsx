@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSupabaseUser, isAnonymous } from "@/components/use-supabase-user";
+import { useSupabaseUser } from "@/components/use-supabase-user";
 import { HostSignIn } from "@/components/host/HostSignIn";
 import { CreateSessionForm } from "@/components/host/CreateSessionForm";
 import { SessionsList } from "@/components/host/SessionsList";
@@ -16,8 +16,10 @@ export default function HostPage() {
     );
   }
 
-  // A real (verified, non-anonymous) account is required to host.
-  if (!user || isAnonymous(user)) {
+  // A real (verified, non-anonymous) account is normally required to host.
+  // TEMP (testing): anonymous "skip email" hosts are allowed through too. To
+  // restore production behavior, change this back to `!user || isAnonymous(user)`.
+  if (!user) {
     return <HostSignIn supabase={supabase} />;
   }
 
@@ -29,7 +31,9 @@ export default function HostPage() {
             ← Home
           </Link>
           <h1 className="mt-1 text-3xl font-bold">Host dashboard</h1>
-          <p className="text-sm text-slate-500">{user.email}</p>
+          <p className="text-sm text-slate-500">
+            {user.email ?? "Signed in for testing (no email)"}
+          </p>
         </div>
         <Button variant="secondary" onClick={() => supabase.auth.signOut()}>
           Sign out
