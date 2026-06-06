@@ -1,0 +1,240 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SessionRow } from "@/lib/game/db";
+import type { MarketOutcome } from "@/lib/game/types";
+import { usePlayers } from "@/components/use-players";
+import { useRound } from "@/components/use-round";
+import { useRoundAllocations } from "@/components/use-round-allocations";
+import { money } from "@/lib/game/format";
+import { Banner, Button, Card } from "@/components/ui";
+
+export function HostRoundControl({
+  supabase,
+  session,
+}: {
+  supabase: SupabaseClient;
+  session: SessionRow;
+}) {
+  const players = usePlayers(supabase, session.id);
+  const round = useRound(supabase, session.id, session.current_round);
+  const allocs = useRoundAllocations(supabase, round?.id ?? null);
+
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pick, setPick] = useState<MarketOutcome | null>(null);
+
+  const isManual = session.config.market_mode === "manual";
+  const isLastRound = session.current_round >= session.config.num_rounds;
+  const submittedIds = useMemo(() => new Set(allocs.map((a) => a.player_id)), [allocs]);
+  const standings = useMemo(
+    () => [...players].sort((a, b) => b.current_wealth - a.current_wealth),
+    [players],
+  );
+
+  async function run(fn: () => PromiseLike<{ error: { message: string } | null }>) {
+    setBusy(true);
+    setError(null);
+    const { error } = await fn();
+    setBusy(false);
+    if (error) setError(error.message);
+  }
+
+  const lock = () =>
+    run(() => supabase.rpc("lock_round", { p_session_id: session.id, p_round_number: session.current_round }));
+  const reveal = () =>
+    run(() =>
+      supabase.rpc("resolve_round", {
+        p_session_id: session.id,
+        p_round_number: session.current_round,
+        p_market_override: isManual ? pick : null,
+      }),
+    );
+  const next = () =>
+    run(async () => {
+      const res = await supabase.rpc("next_round", { p_session_id: session.id });
+      setPick(null);
+      return res;
+    });
+  const finish = () => run(() => supabase.rpc("finish_session", { p_session_id: session.id }));
+
+  const status = round?.status ?? "open";
+
+  return (
+    <main className="mx-auto max-w-5xl px-6 py-8">
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <Link href="/host" className="text-sm text-slate-500 hover:text-slate-300">
+            ← Dashboard
+          </Link>
+          <h1 className="text-3xl font-bold">
+            Round {session.current_round}{" "}
+            <span className="text-slate-500">/ {session.config.num_rounds}</span>
+          </h1>
+        </div>
+        <StatusBadge status={status} />
+      </header>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Control panel */}
+        <Card className="space-y-5">
+          {status === "open" && (
+            <>
+              <div className="text-center">
+                <div className="font-mono text-6xl font-black text-emerald-400">
+                  {submittedIds.size}
+                  <span className="text-slate-600"> / {players.length}</span>
+                </div>
+                <div className="text-sm text-slate-400">submitted</div>
+              </div>
+              <Button onClick={lock} disabled={busy} className="w-full text-lg">
+                Lock allocations
+              </Button>
+            </>
+          )}
+
+          {status === "locked" && (
+            <>
+              {isManual ? (
+                <div className="space-y-3">
+                  <p className="text-center text-sm text-slate-400">Set this round&apos;s market:</p>
+                  <div className="flex gap-3">
+                    <OutcomeButton label="GOOD ▲" active={pick === "good"} onClick={() => setPick("good")} good />
+                    <OutcomeButton label="BAD ▼" active={pick === "bad"} onClick={() => setPick("bad")} />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-slate-400">
+                  Auto market — the server will roll the outcome.
+                </p>
+              )}
+              <Button
+                onClick={reveal}
+                disabled={busy || (isManual && !pick)}
+                className="w-full text-lg"
+              >
+                Reveal results
+              </Button>
+            </>
+          )}
+
+          {status === "revealed" && (
+            <>
+              {session.config.market_scope === "independent" ? (
+                <div className="rounded-xl bg-slate-800/60 p-4 text-center text-lg text-slate-200">
+                  Independent outcomes were drawn per player.
+                </div>
+              ) : (
+                <div
+                  className={`rounded-xl p-4 text-center text-2xl font-black ${
+                    round?.market_outcome === "good"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-rose-500/20 text-rose-300"
+                  }`}
+                >
+                  Market was {round?.market_outcome === "good" ? "GOOD ▲" : "BAD ▼"}
+                </div>
+              )}
+              {isLastRound ? (
+                <Button onClick={finish} disabled={busy} variant="danger" className="w-full text-lg">
+                  Finish game
+                </Button>
+              ) : (
+                <Button onClick={next} disabled={busy} className="w-full text-lg">
+                  Next round →
+                </Button>
+              )}
+            </>
+          )}
+
+          {error ? <Banner kind="error">{error}</Banner> : null}
+
+          {/* per-player submission ticks while open/locked */}
+          {status !== "revealed" && (
+            <ul className="grid grid-cols-2 gap-1 text-sm">
+              {players.map((p) => (
+                <li
+                  key={p.id}
+                  className={`flex items-center gap-2 rounded px-2 py-1 ${
+                    submittedIds.has(p.id) ? "text-emerald-300" : "text-slate-500"
+                  }`}
+                >
+                  <span>{submittedIds.has(p.id) ? "✓" : "•"}</span>
+                  <span className="truncate">{p.display_name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        {/* Live standings */}
+        <Card>
+          <h2 className="mb-3 text-xl font-semibold">Standings</h2>
+          <ol className="space-y-1">
+            {standings.map((p, i) => (
+              <li
+                key={p.id}
+                className="flex items-center justify-between rounded-lg bg-slate-800/40 px-4 py-2"
+              >
+                <span className="text-slate-200">
+                  <span className="mr-2 font-mono text-slate-500">{i + 1}.</span>
+                  {p.display_name}
+                </span>
+                <span className="font-mono text-lg font-semibold text-emerald-300">
+                  {money(p.current_wealth)}
+                </span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-4 text-xs text-slate-600">
+            Wealth-over-rounds chart and per-round history arrive in Stage 4.
+          </p>
+        </Card>
+      </div>
+    </main>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    open: "bg-emerald-500/20 text-emerald-300",
+    locked: "bg-amber-500/20 text-amber-300",
+    revealed: "bg-sky-500/20 text-sky-300",
+  };
+  return (
+    <span className={`rounded-full px-4 py-1.5 text-sm font-semibold ${styles[status] ?? ""}`}>
+      {status}
+    </span>
+  );
+}
+
+function OutcomeButton({
+  label,
+  active,
+  onClick,
+  good,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  good?: boolean;
+}) {
+  // Static class strings (Tailwind JIT can't see interpolated class names).
+  const activeCls = good
+    ? "border-emerald-400 bg-emerald-500/30 text-emerald-200"
+    : "border-rose-400 bg-rose-500/30 text-rose-200";
+  const idleCls = "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 rounded-xl border-2 py-4 text-lg font-bold transition ${
+        active ? activeCls : idleCls
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
