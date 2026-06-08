@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { PlayerRow } from "@/lib/game/db";
 import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
+import { Instructions } from "@/components/Instructions";
 
 export function JoinForm() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export function JoinForm() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-10">
       <Card>
         <h1 className="text-2xl font-semibold">Join the game</h1>
         <p className="mt-1 text-sm text-slate-400">Enter the code your professor is showing.</p>
@@ -83,6 +84,8 @@ export function JoinForm() {
           </Button>
         </div>
       </Card>
+
+      <Instructions role="student" />
     </main>
   );
 }
