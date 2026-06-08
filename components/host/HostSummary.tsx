@@ -13,6 +13,7 @@ import {
   buildResultsCsv,
   classCounterfactual,
 } from "@/lib/game/results";
+import { edgeFraction } from "@/lib/game/counterfactual";
 import { money } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
 
@@ -33,6 +34,7 @@ export function HostSummary({
     [session, players, rounds, allocations],
   );
   const cf = useMemo(() => classCounterfactual(session, results), [session, results]);
+  const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
 
   function downloadCsv() {
     const csv = buildResultsCsv(session, results, rounds);
@@ -74,12 +76,17 @@ export function HostSummary({
           Final wealth under the actual market outcomes ({avgLabel}). Starting wealth was{" "}
           {money(cf.startWealth)}.
         </p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <StrategyCard
             label="All safe"
             desc="0% at risk every round"
             value={cf.strategy.all_safe}
             tone="slate"
+          />
+          <StrategyCard
+            label={`${edgePct}%`}
+            value={cf.strategy.edge}
+            tone="emerald"
           />
           <StrategyCard
             label="50 / 50"
@@ -152,20 +159,21 @@ function StrategyCard({
   tone,
 }: {
   label: string;
-  desc: string;
+  desc?: string;
   value: number;
-  tone: "slate" | "indigo" | "rose";
+  tone: "slate" | "emerald" | "indigo" | "rose";
 }) {
   const tones = {
     slate: "border-slate-700 bg-slate-800/40 text-slate-200",
+    emerald: "border-emerald-800 bg-emerald-950/40 text-emerald-200",
     indigo: "border-indigo-800 bg-indigo-950/40 text-indigo-200",
     rose: "border-rose-900 bg-rose-950/40 text-rose-200",
   };
   return (
-    <div className={`rounded-xl border p-4 text-center ${tones[tone]}`}>
+    <div className={`flex flex-col rounded-xl border p-4 text-center ${tones[tone]}`}>
       <div className="text-base font-semibold">{label}</div>
-      <div className="text-xs opacity-70">{desc}</div>
-      <div className="mt-2 font-mono text-2xl font-black">{money(value)}</div>
+      {desc ? <div className="text-xs opacity-70">{desc}</div> : null}
+      <div className="mt-auto pt-2 font-mono text-2xl font-black">{money(value)}</div>
     </div>
   );
 }

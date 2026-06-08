@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { strategyFinalWealth, allStrategyOutcomes } from "./counterfactual";
+import { strategyFinalWealth, allStrategyOutcomes, edgeFraction } from "./counterfactual";
 import { csvEscape, toCsv } from "./csv";
 import type { MarketOutcome } from "./types";
 
@@ -35,12 +35,30 @@ describe("strategyFinalWealth", () => {
   });
 });
 
+describe("edgeFraction", () => {
+  it("is 2·goodProb − 1, clamped to [0,1]", () => {
+    expect(edgeFraction(0.6)).toBeCloseTo(0.2, 9); // base case → 20%
+    expect(edgeFraction(0.5)).toBe(0); // no edge
+    expect(edgeFraction(0.4)).toBe(0); // negative clamps to 0
+    expect(edgeFraction(0.75)).toBeCloseTo(0.5, 9);
+    expect(edgeFraction(1)).toBe(1); // clamps to 1
+  });
+});
+
 describe("allStrategyOutcomes", () => {
-  it("bundles the three reference strategies", () => {
-    const cf = allStrategyOutcomes(100, ["good", "good"], "moderate");
+  it("bundles the four reference strategies (incl. edge)", () => {
+    const cf = allStrategyOutcomes(100, ["good", "good"], "moderate", 0.6);
     expect(cf.all_safe).toBe(100);
     expect(cf.fifty_fifty).toBeCloseTo(110.25, 6);
     expect(cf.all_risky).toBeCloseTo(121, 6);
+    // edge fraction 0.2: each good round ×(0.8 + 0.2·1.1)=1.02 → 100·1.02² = 104.04
+    expect(cf.edge).toBeCloseTo(104.04, 6);
+  });
+
+  it("edge equals all-safe when there is no edge (goodProb 0.5)", () => {
+    const cf = allStrategyOutcomes(100, ["good", "bad", "good"], "extreme", 0.5);
+    expect(cf.edge).toBe(100);
+    expect(cf.all_safe).toBe(100);
   });
 });
 

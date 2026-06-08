@@ -5,20 +5,16 @@
 import { riskyMultiplier } from "./math";
 import type { MarketOutcome, PayoffMode } from "./types";
 
-export type StrategyKey = "all_safe" | "fifty_fifty" | "all_risky";
+export type StrategyKey = "all_safe" | "edge" | "fifty_fifty" | "all_risky";
 
-export interface Strategy {
-  key: StrategyKey;
-  label: string;
-  /** risky fraction applied every round (0 = all safe, 1 = all risky) */
-  fraction: number;
+/**
+ * The "betting edge" = P(good) − P(bad) = 2·goodProb − 1, clamped to [0, 1].
+ * In the base 60/40 game this is 0.20 (bet 20% of wealth each round). Purely
+ * probability-based — it does not depend on the payoff multipliers.
+ */
+export function edgeFraction(goodProb: number): number {
+  return Math.min(1, Math.max(0, 2 * goodProb - 1));
 }
-
-export const STRATEGIES: readonly Strategy[] = [
-  { key: "all_safe", label: "All safe", fraction: 0 },
-  { key: "fifty_fifty", label: "50 / 50", fraction: 0.5 },
-  { key: "all_risky", label: "All risky", fraction: 1 },
-] as const;
 
 /**
  * Final wealth from applying a FIXED risky fraction every round under `outcomes`.
@@ -39,14 +35,19 @@ export function strategyFinalWealth(
   return w;
 }
 
-/** All three reference strategies' final wealth for the same outcome sequence. */
+/**
+ * The four reference strategies' final wealth for the same outcome sequence.
+ * The "edge" strategy bets edgeFraction(goodProb) of wealth each round.
+ */
 export function allStrategyOutcomes(
   startWealth: number,
   outcomes: MarketOutcome[],
   mode: PayoffMode,
+  goodProb: number,
 ): Record<StrategyKey, number> {
   return {
     all_safe: strategyFinalWealth(startWealth, outcomes, mode, 0),
+    edge: strategyFinalWealth(startWealth, outcomes, mode, edgeFraction(goodProb)),
     fifty_fifty: strategyFinalWealth(startWealth, outcomes, mode, 0.5),
     all_risky: strategyFinalWealth(startWealth, outcomes, mode, 1),
   };
