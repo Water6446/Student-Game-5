@@ -14,6 +14,8 @@ import { MarketOddsControl } from "@/components/host/MarketOddsControl";
 import { AllocationsBreakdown } from "@/components/host/AllocationsBreakdown";
 import { WealthChart } from "@/components/host/WealthChart";
 import { SessionHistoryTable } from "@/components/host/SessionHistoryTable";
+import { OutcomeChips } from "@/components/OutcomeChips";
+import { playerOutcomesMap } from "@/lib/game/results";
 import { money } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 
@@ -53,9 +55,16 @@ export function HostRoundControl({
   const isManual = session.config.market_mode === "manual";
   const isLastRound = session.current_round >= session.config.num_rounds;
   const submittedIds = useMemo(() => new Set(allocs.map((a) => a.player_id)), [allocs]);
+  // bots auto-play and never "submit", so they're excluded from the submission counter
+  const humanPlayers = useMemo(() => players.filter((p) => !p.is_bot), [players]);
   const standings = useMemo(
     () => [...players].sort((a, b) => b.current_wealth - a.current_wealth),
     [players],
+  );
+  // each player's market sequence, computed once (cheap to read per row)
+  const outcomesByPlayer = useMemo(
+    () => playerOutcomesMap(session, players, history.rounds, history.allocations),
+    [session, players, history.rounds, history.allocations],
   );
 
   async function run(fn: () => PromiseLike<{ error: { message: string } | null }>) {
@@ -119,7 +128,7 @@ export function HostRoundControl({
               <div className="text-center">
                 <div className="font-mono text-6xl font-black text-emerald-400">
                   {submittedIds.size}
-                  <span className="text-slate-600"> / {players.length}</span>
+                  <span className="text-slate-600"> / {humanPlayers.length}</span>
                 </div>
                 <div className="text-sm text-slate-400">submitted</div>
               </div>
@@ -132,7 +141,11 @@ export function HostRoundControl({
 
           {status === "locked" && (
             <>
-              <AllocationsBreakdown players={players} allocations={allocs} />
+              <AllocationsBreakdown
+                players={players}
+                allocations={allocs}
+                goodProb={session.config.good_prob ?? 0.6}
+              />
               {!isManual ? <MarketOddsControl supabase={supabase} session={session} /> : null}
               {isManual ? (
                 <div className="space-y-3">
@@ -188,10 +201,10 @@ export function HostRoundControl({
 
           {error ? <Banner kind="error">{error}</Banner> : null}
 
-          {/* per-player submission ticks while the round is open */}
+          {/* per-player submission ticks while the round is open (humans only) */}
           {status === "open" && (
             <ul className="grid grid-cols-2 gap-1 text-sm">
-              {players.map((p) => (
+              {humanPlayers.map((p) => (
                 <li
                   key={p.id}
                   className={`flex items-center gap-2 rounded px-2 py-1 ${
@@ -206,24 +219,31 @@ export function HostRoundControl({
           )}
         </Card>
 
-        {/* Live standings */}
+        {/* Live standings — each player's last 5 markets shown inline */}
         <Card>
-          <h2 className="mb-3 text-xl font-semibold">Standings</h2>
+          <h2 className="mb-1 text-xl font-semibold">Standings</h2>
+          <p className="mb-3 text-xs text-slate-500">Last 5 markets shown per player.</p>
           <ol className="space-y-1">
-            {standings.map((p, i) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between rounded-lg bg-slate-800/40 px-4 py-2"
-              >
-                <span className="text-slate-200">
-                  <span className="mr-2 font-mono text-slate-500">{i + 1}.</span>
-                  {p.display_name}
-                </span>
-                <span className="font-mono text-lg font-semibold text-emerald-300">
-                  {money(p.current_wealth)}
-                </span>
-              </li>
-            ))}
+            {standings.map((p, i) => {
+              const last5 = (outcomesByPlayer.get(p.id) ?? []).slice(-5);
+              return (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between rounded-lg bg-slate-800/40 px-4 py-2"
+                >
+                  <span className="text-slate-200">
+                    <span className="mr-2 font-mono text-slate-500">{i + 1}.</span>
+                    {p.display_name}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <OutcomeChips outcomes={last5} />
+                    <span className="font-mono text-lg font-semibold text-emerald-300">
+                      {money(p.current_wealth)}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         </Card>
       </div>
