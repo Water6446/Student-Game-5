@@ -16,10 +16,12 @@ export interface SessionRow {
 export interface PlayerRow {
   id: string;
   session_id: string;
-  auth_uid: string;
+  auth_uid: string | null; // null for benchmark bots
   display_name: string;
   current_wealth: number;
   is_active: boolean;
+  is_bot: boolean;
+  strategy: string | null; // 'all_safe' | 'edge' | 'fifty_fifty' | 'all_risky' for bots
   joined_at: string;
 }
 

@@ -18,6 +18,8 @@ export interface SessionConfig {
   show_full_leaderboard_to_students: boolean;
   /** when true, students see the current good/bad market odds each round (auto mode) */
   show_odds_to_students: boolean;
+  /** when true, 4 fixed-strategy benchmark "bot" players are added to the session */
+  add_benchmark_bots: boolean;
   allow_late_join: boolean;
 }
 
@@ -30,5 +32,6 @@ export const DEFAULT_CONFIG: SessionConfig = {
   market_scope: "shared",
   show_full_leaderboard_to_students: true,
   show_odds_to_students: true,
+  add_benchmark_bots: false,
   allow_late_join: false,
 };

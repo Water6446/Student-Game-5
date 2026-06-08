@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
 import { buildPlayerResults, type PlayerResult } from "@/lib/game/results";
+import { edgeFraction } from "@/lib/game/counterfactual";
 import { money, ordinal, signedMoney } from "@/lib/game/format";
 import { Card } from "@/components/ui";
 
@@ -58,6 +59,7 @@ export function StudentFinished({
   }, [supabase, session, me]);
 
   const cf = result?.counterfactual;
+  const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-8">
@@ -91,6 +93,7 @@ export function StudentFinished({
                 value={cf.all_safe}
                 actual={me.current_wealth}
               />
+              <CfRow label={`${edgePct}%`} value={cf.edge} actual={me.current_wealth} />
               <CfRow
                 label="50 / 50"
                 desc="half at risk each round"
@@ -125,7 +128,7 @@ function CfRow({
   actual,
 }: {
   label: string;
-  desc: string;
+  desc?: string;
   value: number;
   actual: number;
 }) {
@@ -134,7 +137,7 @@ function CfRow({
     <li className="flex items-center justify-between rounded-lg bg-slate-800/40 px-4 py-2">
       <span className="flex flex-col">
         <span className="text-slate-300">{label}</span>
-        <span className="text-xs text-slate-500">{desc}</span>
+        {desc ? <span className="text-xs text-slate-500">{desc}</span> : null}
       </span>
       <span className="flex items-baseline gap-2">
         <span className="font-mono text-slate-200">{money(value)}</span>

@@ -4,7 +4,7 @@
 
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
 import type { MarketOutcome, MarketScope } from "./types";
-import { allStrategyOutcomes, type StrategyKey } from "./counterfactual";
+import { allStrategyOutcomes, edgeFraction, type StrategyKey } from "./counterfactual";
 import { toCsv } from "./csv";
 
 export interface PlayerResult {
@@ -39,6 +39,7 @@ export function buildPlayerResults(
   const scope = session.config.market_scope;
   const mode = session.config.payoff_mode;
   const startWealth = session.config.starting_wealth;
+  const goodProb = session.config.good_prob ?? 0.6;
 
   const allocByKey = new Map<string, AllocationRow>();
   for (const a of allocations) allocByKey.set(`${a.round_id}:${a.player_id}`, a);
@@ -63,7 +64,7 @@ export function buildPlayerResults(
       startWealth,
       wealthByRound,
       outcomes,
-      counterfactual: allStrategyOutcomes(startWealth, outcomes, mode),
+      counterfactual: allStrategyOutcomes(startWealth, outcomes, mode, goodProb),
     };
   });
 
@@ -97,7 +98,12 @@ export function classCounterfactual(
 ): ClassCounterfactual {
   const scope = session.config.market_scope;
   const startWealth = session.config.starting_wealth;
-  const empty = { all_safe: startWealth, fifty_fifty: startWealth, all_risky: startWealth };
+  const empty = {
+    all_safe: startWealth,
+    edge: startWealth,
+    fifty_fifty: startWealth,
+    all_risky: startWealth,
+  };
 
   if (results.length === 0) {
     return { scope, strategy: empty, isAverage: false, beatAllSafe: 0, total: 0, startWealth };
@@ -111,7 +117,12 @@ export function classCounterfactual(
   } else {
     const avg = (k: StrategyKey) =>
       results.reduce((s, r) => s + r.counterfactual[k], 0) / results.length;
-    strategy = { all_safe: avg("all_safe"), fifty_fifty: avg("fifty_fifty"), all_risky: avg("all_risky") };
+    strategy = {
+      all_safe: avg("all_safe"),
+      edge: avg("edge"),
+      fifty_fifty: avg("fifty_fifty"),
+      all_risky: avg("all_risky"),
+    };
     isAverage = true;
   }
 
@@ -126,12 +137,14 @@ export function buildResultsCsv(
   rounds: RoundRow[],
 ): string {
   const revealed = revealedRounds(rounds);
+  const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
   const header: (string | number)[] = [
     "Rank",
     "Player",
     "Final wealth",
     ...revealed.map((r) => `Round ${r.round_number}`),
     "All-safe",
+    `Edge (${edgePct}%)`,
     "50/50",
     "All-risky",
   ];
@@ -143,6 +156,7 @@ export function buildResultsCsv(
       round2(res.finalWealth),
       ...res.wealthByRound.map(round2),
       round2(res.counterfactual.all_safe),
+      round2(res.counterfactual.edge),
       round2(res.counterfactual.fifty_fifty),
       round2(res.counterfactual.all_risky),
     ]);

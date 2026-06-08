@@ -7,11 +7,15 @@ import { DEFAULT_CONFIG, type SessionConfig } from "@/lib/game/types";
 import { money } from "@/lib/game/format";
 import { Button, Banner, Card, Field, Select, TextInput, Toggle } from "@/components/ui";
 
-// "Base setup": the recommended one-click default. Same shape as DEFAULT_CONFIG
-// but with the extreme 2×/0× payoff, which is the default game the professor
-// wanted. Everything else (25 rounds, $100, 60% good, auto, shared) already
-// matches DEFAULT_CONFIG. Advanced mode lets the host change any of it.
-const BASE_SETUP: SessionConfig = { ...DEFAULT_CONFIG, payoff_mode: "extreme" };
+// "Base setup": the recommended one-click default. The professor's base game is
+// the extreme 2×/0× payoff with an INDEPENDENT market outcome per student.
+// Everything else (25 rounds, $100, 60% good, auto) matches DEFAULT_CONFIG.
+// Advanced mode lets the host change any of it.
+const BASE_SETUP: SessionConfig = {
+  ...DEFAULT_CONFIG,
+  payoff_mode: "extreme",
+  market_scope: "independent",
+};
 
 export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
   const router = useRouter();
@@ -42,6 +46,19 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
       return;
     }
     const created = data as { id: string; join_code: string };
+
+    // optionally add the 4 fixed-strategy benchmark "bot" players
+    if (payload.add_benchmark_bots) {
+      const { error: botErr } = await supabase.rpc("add_benchmark_bots", {
+        p_session_id: created.id,
+      });
+      if (botErr) {
+        // non-fatal: the session exists; just surface the issue and stay put
+        setError(`Session created, but adding benchmark students failed: ${botErr.message}`);
+        setBusy(false);
+        return;
+      }
+    }
     router.push(`/host/${created.id}`);
   }
 
@@ -60,6 +77,9 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
       ? "Everyone gets the same market outcome"
       : "Each student gets an independent outcome",
   ];
+  if (cfg.add_benchmark_bots) {
+    summary.push("Plus 4 benchmark students: all-safe, edge, 50/50, all-risky");
+  }
 
   return (
     <Card>
@@ -148,6 +168,11 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
               label="Show market odds to students"
               checked={cfg.show_odds_to_students}
               onChange={(v) => set("show_odds_to_students", v)}
+            />
+            <Toggle
+              label="Add 4 benchmark students (bots)"
+              checked={cfg.add_benchmark_bots}
+              onChange={(v) => set("add_benchmark_bots", v)}
             />
             <Toggle
               label="Allow late join (after start)"
