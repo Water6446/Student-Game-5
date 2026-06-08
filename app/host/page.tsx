@@ -5,6 +5,7 @@ import { useSupabaseUser } from "@/components/use-supabase-user";
 import { HostSignIn } from "@/components/host/HostSignIn";
 import { CreateSessionForm } from "@/components/host/CreateSessionForm";
 import { SessionsList } from "@/components/host/SessionsList";
+import { Instructions } from "@/components/Instructions";
 import { Button, Card } from "@/components/ui";
 
 export default function HostPage() {
@@ -47,6 +48,8 @@ export default function HostPage() {
           <h2 className="mb-4 text-xl font-semibold">Your sessions</h2>
           <SessionsList supabase={supabase} hostId={user.id} />
         </Card>
+
+        <Instructions role="professor" />
       </div>
     </main>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
+import { Instructions } from "@/components/Instructions";
 import { siteUrl } from "@/lib/game/db";
 
 export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
@@ -37,7 +38,7 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-10">
       <Card>
         <h1 className="text-2xl font-semibold">Host sign-in</h1>
         <p className="mt-1 text-sm text-slate-400">
@@ -85,6 +86,8 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
           </p>
         </div>
       </Card>
+
+      <Instructions role="professor" />
     </main>
   );
 }
