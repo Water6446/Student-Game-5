@@ -16,8 +16,9 @@ const CONTENT: Record<Role, RoleContent> = {
     simple: [
       "Join with the code or QR your professor shares.",
       "Each round, choose how much of your money to put in the risky bet vs. keep safe.",
+      "Risky bets can double or drop to zero, depending on the market. Safe money stays the same.",
       "Submit before the round locks.",
-      "See the market result and your new wealth — then do it again next round.",
+      "See the market result and your new wealth, then do it again next round.",
     ],
     detailed: [
       "You start with $100 (unless your professor changed it). Safe money never changes in value.",
@@ -32,13 +33,13 @@ const CONTENT: Record<Role, RoleContent> = {
   professor: {
     heading: "How to run a game",
     simple: [
-      "Sign in, then click Create session — the Standard setup is one click.",
+      "Sign in, then click Create session. The Standard setup is one click.",
       "Share the join code or QR; students appear in your lobby live.",
       "Start the round → students submit → Lock → Reveal. Repeat for each round.",
       "Watch the live leaderboard and chart; Finish to see the summary and export a CSV.",
     ],
     detailed: [
-      "Standard setup = extreme payoff (×2 good / ×0 bad), 25 rounds, $100 start, 60% good-market chance, auto market (the server rolls), shared outcome for everyone.",
+      "Standard setup: extreme payoff (×2 good / ×0 bad), 25 rounds, $100 start, 60% good-market chance, auto market (the server rolls), shared outcome for everyone.",
       "Flip on Advanced to change any of it: payoff mode, rounds, starting wealth, good-market odds, manual vs. auto market, shared vs. independent outcomes, leaderboard/odds visibility, and late join.",
       "Round flow: Open (students allocate) → Lock (no more changes; you see each student's split) → Reveal (server rolls the market, or you pick it in manual mode; wealth is recomputed) → Next round.",
       "Mid-game you can adjust the good-market odds and choose whether students see them.",
