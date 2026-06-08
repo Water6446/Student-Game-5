@@ -4,7 +4,12 @@
 
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
 import type { MarketOutcome, MarketScope } from "./types";
-import { allStrategyOutcomes, edgeFraction, type StrategyKey } from "./counterfactual";
+import {
+  allStrategyOutcomes,
+  edgeFraction,
+  STRATEGY_KEYS,
+  type StrategyKey,
+} from "./counterfactual";
 import { toCsv } from "./csv";
 
 export interface PlayerResult {
@@ -27,6 +32,39 @@ export function revealedRounds(rounds: RoundRow[]): RoundRow[] {
   return rounds
     .filter((r) => r.status === "revealed")
     .sort((a, b) => a.round_number - b.round_number);
+}
+
+/** Count of GOOD outcomes in a sequence. */
+export function goodCount(outcomes: MarketOutcome[]): number {
+  return outcomes.reduce((n, o) => (o === "good" ? n + 1 : n), 0);
+}
+
+/**
+ * The ordered market outcomes each player faced across the revealed rounds,
+ * keyed by player id. Builds the allocation lookup once, so reading every
+ * player's sequence (e.g. for live standings) is cheap.
+ */
+export function playerOutcomesMap(
+  session: SessionRow,
+  players: PlayerRow[],
+  rounds: RoundRow[],
+  allocations: AllocationRow[],
+): Map<string, MarketOutcome[]> {
+  const revealed = revealedRounds(rounds);
+  const scope = session.config.market_scope;
+  const byKey = new Map(allocations.map((a) => [`${a.round_id}:${a.player_id}`, a]));
+  const result = new Map<string, MarketOutcome[]>();
+  for (const p of players) {
+    const out: MarketOutcome[] = [];
+    for (const r of revealed) {
+      const a = byKey.get(`${r.id}:${p.id}`);
+      const o: MarketOutcome | null =
+        scope === "independent" ? a?.market_outcome ?? null : r.market_outcome;
+      if (o) out.push(o);
+    }
+    result.set(p.id, out);
+  }
+  return result;
 }
 
 export function buildPlayerResults(
@@ -98,12 +136,9 @@ export function classCounterfactual(
 ): ClassCounterfactual {
   const scope = session.config.market_scope;
   const startWealth = session.config.starting_wealth;
-  const empty = {
-    all_safe: startWealth,
-    edge: startWealth,
-    fifty_fifty: startWealth,
-    all_risky: startWealth,
-  };
+  const empty = Object.fromEntries(
+    STRATEGY_KEYS.map((k) => [k, startWealth]),
+  ) as Record<StrategyKey, number>;
 
   if (results.length === 0) {
     return { scope, strategy: empty, isAverage: false, beatAllSafe: 0, total: 0, startWealth };
@@ -117,12 +152,10 @@ export function classCounterfactual(
   } else {
     const avg = (k: StrategyKey) =>
       results.reduce((s, r) => s + r.counterfactual[k], 0) / results.length;
-    strategy = {
-      all_safe: avg("all_safe"),
-      edge: avg("edge"),
-      fifty_fifty: avg("fifty_fifty"),
-      all_risky: avg("all_risky"),
-    };
+    strategy = Object.fromEntries(STRATEGY_KEYS.map((k) => [k, avg(k)])) as Record<
+      StrategyKey,
+      number
+    >;
     isAverage = true;
   }
 
