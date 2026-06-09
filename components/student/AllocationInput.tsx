@@ -23,6 +23,8 @@ export function AllocationInput({
   const [unit, setUnit] = useState<"dollar" | "percent">("dollar");
   const safe = cents(wealth - risky);
   const pct = wealth > 0 ? (risky / wealth) * 100 : 0;
+  const riskyPct = Math.round(pct);
+  const safePct = wealth > 0 ? Math.round((safe / wealth) * 100) : 0;
 
   function clamp(n: number): number {
     if (!Number.isFinite(n) || n < 0) return 0;
@@ -32,14 +34,25 @@ export function AllocationInput({
 
   return (
     <div className="space-y-4">
+      {/* Safe on the left, Risky on the right — matches the slider (drag right = riskier) */}
       <div className="flex items-stretch gap-3">
-        <div className="flex-1 rounded-xl bg-rose-500/10 p-3 text-center">
-          <div className="text-xs uppercase tracking-wide text-rose-300">Risky</div>
-          <div className="font-mono text-2xl font-bold text-rose-200">{money(risky)}</div>
-        </div>
         <div className="flex-1 rounded-xl bg-emerald-500/10 p-3 text-center">
           <div className="text-xs uppercase tracking-wide text-emerald-300">Safe</div>
-          <div className="font-mono text-2xl font-bold text-emerald-200">{money(safe)}</div>
+          <div className="font-mono text-xl font-bold leading-tight text-emerald-200 sm:text-2xl">
+            {money(safe)}
+          </div>
+          <div className="font-mono text-sm font-semibold text-emerald-300/80 sm:text-base">
+            {safePct}%
+          </div>
+        </div>
+        <div className="flex-1 rounded-xl bg-rose-500/10 p-3 text-center">
+          <div className="text-xs uppercase tracking-wide text-rose-300">Risky</div>
+          <div className="font-mono text-xl font-bold leading-tight text-rose-200 sm:text-2xl">
+            {money(risky)}
+          </div>
+          <div className="font-mono text-sm font-semibold text-rose-300/80 sm:text-base">
+            {riskyPct}%
+          </div>
         </div>
       </div>
 

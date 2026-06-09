@@ -53,7 +53,7 @@ export function HostSummary({
   );
 
   function downloadCsv() {
-    const csv = buildResultsCsv(session, results, rounds);
+    const csv = buildResultsCsv(results, rounds);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -81,6 +81,11 @@ export function HostSummary({
   // computed counterfactual
   const cardValue = (k: StrategyKey) => botByStrategy.get(k) ?? cf.strategy[k];
   const avgLabel = cf.isAverage ? "class avg" : "everyone";
+
+  // expected number of good markets (luck baseline): goodProb × rounds played
+  const goodProb = session.config.good_prob ?? 0.6;
+  const numRevealed = rounds.filter((r) => r.status === "revealed").length;
+  const expectedGood = goodProb * numRevealed;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -116,7 +121,11 @@ export function HostSummary({
             value={cardValue("all_safe")}
             tone="slate"
           />
-          <StrategyCard label={`${edgePct}%`} value={cardValue("edge")} tone="emerald" />
+          <StrategyCard 
+              label={`${edgePct}% Edge`} 
+              desc="market edge percent every round"
+              value={cardValue("edge")} 
+              tone="emerald" />
           <StrategyCard
             label="50 / 50"
             desc="half your wealth at risk every round"
@@ -166,7 +175,8 @@ export function HostSummary({
                   {open ? (
                     <div className="border-t border-slate-800 px-4 py-2">
                       <div className="mb-1 text-xs text-slate-500">
-                        {good}/{r.outcomes.length} good markets · full match:
+                        {good}/{r.outcomes.length} good markets · avg bet {money(r.avgBet)} · full
+                        match:
                       </div>
                       <OutcomeChips outcomes={r.outcomes} empty="no rounds" />
                     </div>
@@ -189,7 +199,11 @@ export function HostSummary({
         <h2 className="mb-1 text-xl font-semibold">Luck 🍀</h2>
         <p className="mb-3 text-sm text-slate-400">
           Outcomes are independent per player, so some drew better markets than others. Most good
-          markets first.
+          markets first. At {Math.round(goodProb * 100)}% odds, the expected count is{" "}
+          <span className="font-semibold text-emerald-400">
+            ~{expectedGood.toFixed(1)} of {numRevealed}
+          </span>{" "}
+          good.
         </p>
         <ol className="space-y-1">
           {luck.map((l, i) => (

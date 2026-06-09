@@ -85,6 +85,20 @@ export function HostRoundControl({
         p_market_override: isManual ? pick : null,
       }),
     );
+  // auto mode: one click locks the round and rolls the market
+  const lockAndReveal = () =>
+    run(async () => {
+      const locked = await supabase.rpc("lock_round", {
+        p_session_id: session.id,
+        p_round_number: session.current_round,
+      });
+      if (locked.error) return locked;
+      return supabase.rpc("resolve_round", {
+        p_session_id: session.id,
+        p_round_number: session.current_round,
+        p_market_override: null,
+      });
+    });
   const next = () =>
     run(async () => {
       const res = await supabase.rpc("next_round", { p_session_id: session.id });
@@ -132,15 +146,26 @@ export function HostRoundControl({
                 </div>
                 <div className="text-sm text-slate-400">submitted</div>
               </div>
-              <Button onClick={lock} disabled={busy} className="w-full text-lg">
-                Lock allocations
-              </Button>
-              {!isManual ? <MarketOddsControl supabase={supabase} session={session} /> : null}
+              {isManual ? (
+                <Button onClick={lock} disabled={busy} className="w-full text-lg">
+                  Lock allocations
+                </Button>
+              ) : (
+                <>
+                  <Button onClick={lockAndReveal} disabled={busy} className="w-full text-lg">
+                    Lock &amp; reveal
+                  </Button>
+                  <MarketOddsControl supabase={supabase} session={session} />
+                </>
+              )}
             </>
           )}
 
           {status === "locked" && (
             <>
+              <div className="text-center text-sm font-semibold text-amber-300">
+                Bets locked in 🔒 — review, then reveal
+              </div>
               <AllocationsBreakdown
                 players={players}
                 allocations={allocs}
@@ -187,6 +212,12 @@ export function HostRoundControl({
                   Market was {round?.market_outcome === "good" ? "GOOD ▲" : "BAD ▼"}
                 </div>
               )}
+              {/* what everyone bet this round (still visible after the roll) */}
+              <AllocationsBreakdown
+                players={players}
+                allocations={allocs}
+                goodProb={session.config.good_prob ?? 0.6}
+              />
               {isLastRound ? (
                 <Button onClick={finish} disabled={busy} variant="danger" className="w-full text-lg">
                   Finish game

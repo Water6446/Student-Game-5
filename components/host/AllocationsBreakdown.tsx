@@ -25,22 +25,47 @@ export function AllocationsBreakdown({
     const byPlayer = new Map(allocations.map((a) => [a.player_id, a]));
     return players
       .map((p) => {
-        const wealth = Number(p.current_wealth);
-        let risky: number | null;
-        let safe: number | null;
-        let submitted: boolean;
-        if (p.is_bot) {
-          // bot's planned bet for this round (what resolve_round will apply)
-          risky = strategyFraction(p.strategy, goodProb) * wealth;
-          safe = wealth - risky;
-          submitted = true; // auto-plays; counts as "in"
-        } else {
-          const a = byPlayer.get(p.id);
-          risky = a ? Number(a.risky_amount) : null;
-          safe = a ? Number(a.safe_amount) : null;
-          submitted = !!a;
+        const a = byPlayer.get(p.id);
+        const currentWealth = Number(p.current_wealth);
+        if (a) {
+          // an actual allocation exists (a locked human, or anyone after the
+          // round resolves) — base the % on the wealth they bet FROM (risky+safe),
+          // not their post-round current_wealth
+          const risky = Number(a.risky_amount);
+          const safe = Number(a.safe_amount);
+          return {
+            id: p.id,
+            name: p.display_name,
+            wealth: risky + safe,
+            risky,
+            safe,
+            isBot: p.is_bot,
+            submitted: true,
+          };
         }
-        return { id: p.id, name: p.display_name, wealth, risky, safe, isBot: p.is_bot, submitted };
+        if (p.is_bot) {
+          // bot's planned bet before the round resolves
+          const risky = strategyFraction(p.strategy, goodProb) * currentWealth;
+          return {
+            id: p.id,
+            name: p.display_name,
+            wealth: currentWealth,
+            risky,
+            safe: currentWealth - risky,
+            isBot: true,
+            submitted: true,
+          };
+        }
+        // human who hasn't submitted
+        return {
+          id: p.id,
+          name: p.display_name,
+          wealth: currentWealth,
+          risky: null,
+          safe: null,
+          isBot: false,
+          submitted: false,
+        };
       })
       .sort((x, y) => (y.risky ?? -1) - (x.risky ?? -1));
   }, [players, allocations, goodProb]);

@@ -4,12 +4,7 @@
 
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
 import type { MarketOutcome, MarketScope } from "./types";
-import {
-  allStrategyOutcomes,
-  edgeFraction,
-  STRATEGY_KEYS,
-  type StrategyKey,
-} from "./counterfactual";
+import { allStrategyOutcomes, STRATEGY_KEYS, type StrategyKey } from "./counterfactual";
 import { toCsv } from "./csv";
 
 export interface PlayerResult {
@@ -19,6 +14,10 @@ export interface PlayerResult {
   startWealth: number;
   /** wealth after each revealed round, parallel to revealedRounds() */
   wealthByRound: number[];
+  /** fraction of wealth put at risk each revealed round (null if no allocation) */
+  riskByRound: (number | null)[];
+  /** average dollars bet per round, ignoring rounds where the player had $0 */
+  avgBet: number;
   /** the actual outcome sequence this player faced */
   outcomes: MarketOutcome[];
   counterfactual: Record<StrategyKey, number>;
@@ -85,13 +84,29 @@ export function buildPlayerResults(
   const results: PlayerResult[] = players.map((p) => {
     const outcomes: MarketOutcome[] = [];
     const wealthByRound: number[] = [];
+    const riskByRound: (number | null)[] = [];
     let last = startWealth;
+    let betSum = 0;
+    let betRounds = 0;
     for (const r of revealed) {
       const a = allocByKey.get(`${r.id}:${p.id}`);
       // shared scope: the round's single outcome; independent: this player's own
       const outcome: MarketOutcome | null =
         scope === "independent" ? a?.market_outcome ?? null : r.market_outcome;
       if (outcome) outcomes.push(outcome);
+
+      if (a) {
+        const risky = Number(a.risky_amount);
+        const wealthThatRound = risky + Number(a.safe_amount);
+        riskByRound.push(wealthThatRound > 0 ? risky / wealthThatRound : 0);
+        if (wealthThatRound > 0) {
+          betSum += risky;
+          betRounds += 1;
+        }
+      } else {
+        riskByRound.push(null);
+      }
+
       if (a?.resulting_wealth != null) last = Number(a.resulting_wealth);
       wealthByRound.push(last);
     }
@@ -101,6 +116,8 @@ export function buildPlayerResults(
       finalWealth: Number(p.current_wealth),
       startWealth,
       wealthByRound,
+      riskByRound,
+      avgBet: betRounds > 0 ? betSum / betRounds : 0,
       outcomes,
       counterfactual: allStrategyOutcomes(startWealth, outcomes, mode, goodProb),
     };
@@ -163,41 +180,41 @@ export function classCounterfactual(
   return { scope, strategy, isAverage, beatAllSafe, total: results.length, startWealth };
 }
 
-/** Build the downloadable CSV: one row per player + a trailing round-outcome table. */
-export function buildResultsCsv(
-  session: SessionRow,
-  results: PlayerResult[],
-  rounds: RoundRow[],
-): string {
+/**
+ * Build the downloadable CSV — player data only (no counterfactual columns):
+ * rank, final wealth, good-rounds count + %, average bet, and per-round
+ * resulting wealth + risk %.
+ */
+export function buildResultsCsv(results: PlayerResult[], rounds: RoundRow[]): string {
   const revealed = revealedRounds(rounds);
-  const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
   const header: (string | number)[] = [
     "Rank",
     "Player",
     "Final wealth",
-    ...revealed.map((r) => `Round ${r.round_number}`),
-    "All-safe",
-    `Edge (${edgePct}%)`,
-    "50/50",
-    "All-risky",
+    "Good rounds",
+    "Total rounds",
+    "Good %",
+    "Avg bet",
+    ...revealed.flatMap((r) => [`R${r.round_number} $`, `R${r.round_number} risk %`]),
   ];
   const rows: (string | number)[][] = [header];
   for (const res of results) {
+    const good = goodCount(res.outcomes);
+    const total = res.outcomes.length;
+    const perRound = revealed.flatMap((_, i) => {
+      const risk = res.riskByRound[i];
+      return [round2(res.wealthByRound[i]), risk == null ? "" : Math.round(risk * 100)];
+    });
     rows.push([
       res.rank,
       res.player.display_name,
       round2(res.finalWealth),
-      ...res.wealthByRound.map(round2),
-      round2(res.counterfactual.all_safe),
-      round2(res.counterfactual.edge),
-      round2(res.counterfactual.fifty_fifty),
-      round2(res.counterfactual.all_risky),
+      good,
+      total,
+      total ? Math.round((100 * good) / total) : 0,
+      round2(res.avgBet),
+      ...perRound,
     ]);
   }
-  // blank separator, then the market outcome per round
-  rows.push([]);
-  rows.push(["Round", "Market"]);
-  for (const r of revealed) rows.push([r.round_number, r.market_outcome ?? "independent"]);
-
   return toCsv(rows);
 }
