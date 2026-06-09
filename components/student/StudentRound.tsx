@@ -7,6 +7,8 @@ import { useRoundAllocations } from "@/components/use-round-allocations";
 import { AllocationInput } from "@/components/student/AllocationInput";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
+import { Confetti } from "@/components/Confetti";
+import { ArrowUp, ArrowDown, Lock, Check } from "@/components/icons";
 
 export function StudentRound({
   supabase,
@@ -59,14 +61,14 @@ export function StudentRound({
         />
         {error ? <Banner kind="error">{error}</Banner> : null}
         <Button onClick={submit} disabled={busy} className="w-full text-lg">
-          {busy ? "Saving…" : mine ? "Update allocation" : "Submit allocation"}
+          {busy ? "Saving…" : mine ? "Update allocation" : "Lock in my bet"}
         </Button>
         {mine ? (
           <Banner kind="success">
             Submitted {money(Number(mine.risky_amount))} risky — you can still edit until it locks.
           </Banner>
         ) : (
-          <p className="text-center text-sm text-slate-500">
+          <p className="text-center text-sm text-ink-subtle">
             Choose how much to put at risk, then submit.
           </p>
         )}
@@ -77,16 +79,18 @@ export function StudentRound({
   if (round.status === "locked") {
     return (
       <Shell wealth={me.current_wealth} round={round} session={session}>
-        <div className="rounded-xl bg-slate-800/60 p-5 text-center">
-          <div className="text-lg font-semibold text-amber-300">Allocations locked 🔒</div>
-          <p className="mt-1 text-sm text-slate-400">Waiting for the reveal…</p>
+        <div className="rounded-xl border border-brand/20 bg-brand-soft/60 p-5 text-center">
+          <div className="flex items-center justify-center gap-2 text-lg font-bold text-brand-strong">
+            <Lock /> Allocations locked
+          </div>
+          <p className="mt-1 text-sm text-ink-muted">Waiting for the reveal…</p>
           {mine ? (
-            <p className="mt-3 font-mono text-slate-300">
+            <p className="mt-3 font-mono text-ink">
               You risked {money(Number(mine.risky_amount))} · safe{" "}
               {money(Number(mine.safe_amount))}
             </p>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-ink-subtle">
               You didn&apos;t submit — you&apos;ll default to all-safe.
             </p>
           )}
@@ -115,24 +119,28 @@ function Shell({
   const goodPct = Math.round((session.config.good_prob ?? 0.6) * 100);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-8">
-      <div className="mb-4 flex items-center justify-between text-sm text-slate-400">
-        <span>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-8">
+      <div className="mb-4 flex items-center justify-between">
+        <span className="rounded-full bg-paper-2 px-3 py-1 text-sm font-semibold text-ink-muted">
           Round {round.round_number} / {session.config.num_rounds}
         </span>
-        <span className="font-mono text-lg font-bold text-emerald-400">{money(wealth)}</span>
+        <span className="font-mono text-xl font-bold text-gain">{money(wealth)}</span>
       </div>
       {showOdds ? (
-        <div className="mb-4 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-2 text-sm">
-          <span className="text-slate-400">This round&apos;s market odds</span>
-          <span className="font-mono">
-            <span className="font-semibold text-emerald-400">{goodPct}% good ▲</span>
-            <span className="text-slate-600"> · </span>
-            <span className="font-semibold text-rose-400">{100 - goodPct}% bad ▼</span>
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-2 text-sm shadow-card">
+          <span className="text-ink-muted">This round&apos;s market odds</span>
+          <span className="flex items-center gap-2 font-mono font-semibold">
+            <span className="inline-flex items-center gap-0.5 text-gain">
+              <ArrowUp /> {goodPct}%
+            </span>
+            <span className="text-line-strong">·</span>
+            <span className="inline-flex items-center gap-0.5 text-loss">
+              <ArrowDown /> {100 - goodPct}%
+            </span>
           </span>
         </div>
       ) : null}
-      <Card className="space-y-5">{children}</Card>
+      <Card className="animate-pop-in space-y-5">{children}</Card>
     </main>
   );
 }
@@ -177,27 +185,33 @@ function Reveal({
   }, [supabase, session.id, session.config.show_full_leaderboard_to_students, round.id]);
 
   const good = outcome === "good";
+  // Celebrate a personal win (gained money this round).
+  const celebrate = delta > 0;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-8">
-      <div className="mb-4 text-center text-sm text-slate-400">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-8">
+      {celebrate ? <Confetti /> : null}
+      <div className="mb-4 text-center text-sm font-semibold text-ink-muted">
         Round {round.round_number} / {session.config.num_rounds}
       </div>
-      <Card className="space-y-5 text-center">
+      <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
         <div
-          className={`mx-auto w-fit rounded-full px-6 py-2 text-2xl font-black ${
-            good ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+          className={`mx-auto flex w-fit items-center gap-2 rounded-full px-6 py-2 text-2xl font-black ${
+            good ? "bg-gain-soft text-gain" : "bg-loss-soft text-loss"
           }`}
         >
-          {good ? "GOOD market ▲" : "BAD market ▼"}
+          {good ? <ArrowUp /> : <ArrowDown />}
+          {good ? "GOOD market" : "BAD market"}
         </div>
 
         <div>
-          <div className="text-sm text-slate-400">New wealth</div>
-          <div className="font-mono text-5xl font-black text-white">{money(resulting)}</div>
+          <div className="text-sm text-ink-muted">New wealth</div>
+          <div className="animate-count-pop font-mono text-5xl font-black text-ink">
+            {money(resulting)}
+          </div>
           <div
             className={`mt-1 font-mono text-xl font-bold ${
-              delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-slate-400"
+              delta > 0 ? "text-gain" : delta < 0 ? "text-loss" : "text-ink-subtle"
             }`}
           >
             {signedMoney(delta)} this round
@@ -205,8 +219,8 @@ function Reveal({
         </div>
 
         {rank ? (
-          <div className="rounded-xl bg-slate-800/60 py-3 text-lg">
-            You&apos;re <span className="font-bold text-indigo-300">{ordinal(rank.rank)}</span> of{" "}
+          <div className="rounded-xl bg-play-soft py-3 text-lg text-ink">
+            You&apos;re <span className="font-bold text-play">{ordinal(rank.rank)}</span> of{" "}
             {rank.total}
           </div>
         ) : null}
@@ -217,7 +231,9 @@ function Reveal({
               <li
                 key={r.player_id}
                 className={`flex justify-between rounded-lg px-3 py-1.5 text-sm ${
-                  r.is_me ? "bg-indigo-500/20 text-indigo-100" : "bg-slate-800/40 text-slate-300"
+                  r.is_me
+                    ? "bg-play-soft font-semibold text-ink ring-1 ring-play/30"
+                    : "bg-paper-2 text-ink-muted"
                 }`}
               >
                 <span>
@@ -230,7 +246,9 @@ function Reveal({
           </ol>
         ) : null}
 
-        <p className="animate-pulse text-sm text-slate-500">Waiting for the next round…</p>
+        <p className="flex items-center justify-center gap-2 text-sm text-ink-subtle">
+          <Check className="text-gain" /> Waiting for the next round…
+        </p>
       </Card>
     </main>
   );

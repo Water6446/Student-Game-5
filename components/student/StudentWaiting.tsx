@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlayerRow, SessionRow } from "@/lib/game/db";
 import { Banner, Button, Card, TextInput } from "@/components/ui";
 import { money } from "@/lib/game/format";
+import { Sparkle } from "@/components/icons";
 
 export function StudentWaiting({
   supabase,
@@ -31,10 +32,12 @@ export function StudentWaiting({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <Card className="text-center">
-        <div className="text-5xl">🎉</div>
-        <h1 className="mt-3 text-2xl font-semibold">You&apos;re in!</h1>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6">
+      <Card className="animate-pop-in text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-soft text-3xl text-brand">
+          <Sparkle />
+        </div>
+        <h1 className="mt-3 text-2xl font-bold text-ink">You&apos;re in!</h1>
 
         {editing ? (
           <div className="mt-4 space-y-3">
@@ -60,7 +63,7 @@ export function StudentWaiting({
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="mt-3 text-lg text-indigo-300 underline-offset-4 hover:underline"
+            className="mt-3 text-lg font-semibold text-play underline-offset-4 hover:underline"
           >
             {me.display_name} ✎
           </button>
@@ -72,17 +75,17 @@ export function StudentWaiting({
           </div>
         ) : null}
 
-        <div className="mt-6 rounded-xl bg-slate-800/60 p-4">
-          <div className="text-sm text-slate-400">Starting wealth</div>
-          <div className="font-mono text-3xl font-bold text-emerald-400">
+        <div className="mt-6 rounded-xl border border-gain/20 bg-gain-soft p-4">
+          <div className="text-sm font-medium text-gain/80">Starting wealth</div>
+          <div className="font-mono text-3xl font-bold text-gain">
             {money(me.current_wealth)}
           </div>
         </div>
 
-        <p className="mt-6 animate-pulse text-slate-400">
+        <p className="mt-6 animate-pulse-soft text-ink-muted">
           Waiting for the professor to start the game…
         </p>
-        <p className="mt-1 text-xs text-slate-600">
+        <p className="mt-1 text-xs text-ink-subtle">
           {session.config.num_rounds} rounds · {session.config.payoff_mode} payoffs
         </p>
       </Card>

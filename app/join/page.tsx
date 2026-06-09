@@ -4,7 +4,7 @@ import { JoinForm } from "@/components/JoinForm";
 export default function JoinPage() {
   return (
     <Suspense
-      fallback={<main className="flex min-h-screen items-center justify-center text-slate-500">Loading…</main>}
+      fallback={<main className="flex min-h-dvh items-center justify-center text-ink-subtle">Loading…</main>}
     >
       <JoinForm />
     </Suspense>

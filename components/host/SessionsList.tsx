@@ -6,9 +6,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
 
 const STATUS_STYLES: Record<string, string> = {
-  lobby: "bg-amber-500/20 text-amber-300",
-  active: "bg-emerald-500/20 text-emerald-300",
-  finished: "bg-slate-600/30 text-slate-400",
+  lobby: "bg-brand-soft text-brand-strong",
+  active: "bg-gain-soft text-gain",
+  finished: "bg-paper-2 text-ink-subtle",
 };
 
 export function SessionsList({ supabase, hostId }: { supabase: SupabaseClient; hostId: string }) {
@@ -41,25 +41,27 @@ export function SessionsList({ supabase, hostId }: { supabase: SupabaseClient; h
     setRows((prev) => (prev ?? []).filter((r) => r.id !== s.id));
   }
 
-  if (rows === null) return <p className="text-sm text-slate-500">Loading your sessions…</p>;
+  if (rows === null) return <p className="text-sm text-ink-subtle">Loading your sessions…</p>;
   if (rows.length === 0)
-    return <p className="text-sm text-slate-500">No sessions yet — create one above.</p>;
+    return <p className="text-sm text-ink-subtle">No sessions yet — create one above.</p>;
 
   return (
     <>
       {error ? (
-        <p className="mb-2 rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}</p>
+        <p className="mb-2 rounded-lg bg-loss-soft px-3 py-2 text-sm text-loss">{error}</p>
       ) : null}
-      <ul className="divide-y divide-slate-800">
+      <ul className="divide-y divide-line">
         {rows.map((s) => (
           <li key={s.id} className="flex items-center gap-2">
             <Link
               href={`/host/${s.id}`}
-              className="flex flex-1 items-center justify-between gap-4 px-1 py-3 hover:bg-slate-800/40"
+              className="flex flex-1 items-center justify-between gap-4 rounded-lg px-2 py-3 transition hover:bg-paper-2"
             >
               <div>
-                <span className="font-mono text-lg tracking-widest">{s.join_code}</span>
-                <span className="ml-3 text-sm text-slate-500">
+                <span className="font-mono text-lg font-bold tracking-widest text-ink">
+                  {s.join_code}
+                </span>
+                <span className="ml-3 text-sm text-ink-subtle">
                   {new Date(s.created_at).toLocaleString()}
                 </span>
               </div>
@@ -75,7 +77,7 @@ export function SessionsList({ supabase, hostId }: { supabase: SupabaseClient; h
               disabled={deletingId === s.id}
               aria-label={`Delete session ${s.join_code}`}
               title="Delete session"
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-loss transition hover:bg-loss-soft disabled:opacity-50"
             >
               {deletingId === s.id ? "Deleting…" : "Delete"}
             </button>

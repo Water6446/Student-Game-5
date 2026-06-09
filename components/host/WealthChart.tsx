@@ -13,10 +13,10 @@ import {
 import type { AllocationRow, PlayerRow, RoundRow } from "@/lib/game/db";
 import { money } from "@/lib/game/format";
 
-// A distinct, readable palette; players cycle through it.
+// A distinct, readable palette tuned for the light parchment background.
 const COLORS = [
-  "#818cf8", "#34d399", "#f472b6", "#fbbf24", "#22d3ee", "#a78bfa",
-  "#f87171", "#4ade80", "#e879f9", "#60a5fa", "#facc15", "#2dd4bf",
+  "#A16207", "#047857", "#7C3AED", "#BE123C", "#0E7490", "#B45309",
+  "#1D4ED8", "#15803D", "#9333EA", "#0891B2", "#CA8A04", "#DB2777",
 ];
 
 type ChartRow = { round: number } & Record<string, number>;
@@ -70,7 +70,7 @@ export function WealthChart({
 
   if (data.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-xl bg-slate-800/40 text-sm text-slate-500">
+      <div className="flex h-64 items-center justify-center rounded-xl border border-line bg-paper-2 text-sm text-ink-subtle">
         The wealth chart appears after the first round is revealed.
       </div>
     );
@@ -80,22 +80,22 @@ export function WealthChart({
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#E7E0D2" />
           <XAxis
             dataKey="round"
-            stroke="#64748b"
+            stroke="#78716C"
             fontSize={12}
-            label={{ value: "Round", position: "insideBottom", offset: -2, fill: "#64748b", fontSize: 12 }}
+            label={{ value: "Round", position: "insideBottom", offset: -2, fill: "#78716C", fontSize: 12 }}
           />
           <YAxis
-            stroke="#64748b"
+            stroke="#78716C"
             fontSize={12}
             width={56}
             tickFormatter={(v: number) => money(v)}
           />
           <Tooltip
-            contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12 }}
-            labelStyle={{ color: "#94a3b8" }}
+            contentStyle={{ background: "#FFFEFB", border: "1px solid #D6CCB8", borderRadius: 12 }}
+            labelStyle={{ color: "#57534E" }}
             formatter={(value: number, _name, item) => [money(value), labelFor(players, item?.dataKey as string)]}
             labelFormatter={(l) => `Round ${l}`}
           />

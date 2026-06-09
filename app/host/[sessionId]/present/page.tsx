@@ -3,11 +3,9 @@
 import Link from "next/link";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useSession } from "@/components/use-session";
-import { HostLobby } from "@/components/host/HostLobby";
-import { HostRoundControl } from "@/components/host/HostRoundControl";
-import { HostSummary } from "@/components/host/HostSummary";
+import { HostPresent } from "@/components/host/HostPresent";
 
-export default function HostSessionPage({ params }: { params: { sessionId: string } }) {
+export default function HostPresentPage({ params }: { params: { sessionId: string } }) {
   const { supabase, loading: authLoading } = useSupabaseUser();
   const { session, loading } = useSession(supabase, params.sessionId);
 
@@ -21,9 +19,6 @@ export default function HostSessionPage({ params }: { params: { sessionId: strin
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="text-2xl font-bold text-ink">Session not found</h1>
-        <p className="text-ink-muted">
-          It may not exist, or you&apos;re not signed in as its host.
-        </p>
         <Link href="/host" className="font-semibold text-brand-strong hover:text-brand">
           ← Back to host dashboard
         </Link>
@@ -31,14 +26,5 @@ export default function HostSessionPage({ params }: { params: { sessionId: strin
     );
   }
 
-  if (session.status === "lobby") {
-    return <HostLobby supabase={supabase} session={session} />;
-  }
-
-  if (session.status === "active") {
-    return <HostRoundControl supabase={supabase} session={session} />;
-  }
-
-  // Finished — end summary + counterfactual + CSV export.
-  return <HostSummary supabase={supabase} session={session} />;
+  return <HostPresent supabase={supabase} session={session} />;
 }

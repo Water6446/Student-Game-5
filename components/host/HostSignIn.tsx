@@ -38,10 +38,10 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-10">
-      <Card>
-        <h1 className="text-2xl font-semibold">Host sign-in</h1>
-        <p className="mt-1 text-sm text-slate-400">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">
+      <Card className="animate-pop-in">
+        <h1 className="text-2xl font-bold text-ink">Host sign-in</h1>
+        <p className="mt-1 text-sm text-ink-muted">
           Hosts use a real account so privileges are tied to a verified identity, not a guessable
           secret. We&apos;ll email you a magic link.
         </p>
@@ -72,7 +72,7 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
         )}
 
         {/* TEMP (testing): bypass email while the Supabase email quota is rate-limited. */}
-        <div className="mt-6 border-t border-slate-800 pt-4">
+        <div className="mt-6 border-t border-line pt-4">
           <Button
             variant="secondary"
             onClick={skipEmailForTesting}
@@ -81,7 +81,7 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
           >
             {busy ? "…" : "Skip email — sign in for testing"}
           </Button>
-          <p className="mt-2 text-center text-xs text-slate-500">
+          <p className="mt-2 text-center text-xs text-ink-subtle">
             Temporary: signs you in without email verification.
           </p>
         </div>

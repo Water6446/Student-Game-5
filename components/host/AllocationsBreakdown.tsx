@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { AllocationRow, PlayerRow } from "@/lib/game/db";
 import { strategyFraction } from "@/lib/game/counterfactual";
 import { money } from "@/lib/game/format";
+import { Bot } from "@/components/icons";
 
 /**
  * Per-student breakdown of how much each player put at risk this round. Shown to
@@ -75,49 +76,70 @@ export function AllocationsBreakdown({
   const totalRisky = rows.reduce((s, r) => s + (r.risky ?? 0), 0);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between text-sm">
-        <span className="font-medium text-slate-300">Allocations</span>
-        <span className="text-slate-500">
-          {submittedHumans}/{humans.length} submitted · {money(totalRisky)} at risk
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm font-semibold text-ink">Allocations</span>
+        <span className="text-xs text-ink-subtle">
+          {submittedHumans}/{humans.length} in · <span className="font-mono">{money(totalRisky)}</span>{" "}
+          at risk
         </span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-              <th className="px-2 py-1.5">Player</th>
-              <th className="px-2 py-1.5 text-right">Risky</th>
-              <th className="px-2 py-1.5 text-right">Safe</th>
-              <th className="px-2 py-1.5 text-right">% risked</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const pct = r.risky != null && r.wealth > 0 ? Math.round((r.risky / r.wealth) * 100) : 0;
-              return (
-                <tr key={r.id} className="border-t border-slate-800">
-                  <td className="px-2 py-1.5 text-slate-200">
-                    {r.name}
-                    {r.isBot ? (
-                      <span className="ml-2 text-xs text-sky-400">(auto)</span>
-                    ) : !r.submitted ? (
-                      <span className="ml-2 text-xs text-amber-500">(no submission → all safe)</span>
-                    ) : null}
-                  </td>
-                  <td className="px-2 py-1.5 text-right font-mono text-rose-300">
-                    {r.risky == null ? "—" : money(r.risky)}
-                  </td>
-                  <td className="px-2 py-1.5 text-right font-mono text-emerald-300">
-                    {r.safe == null ? money(r.wealth) : money(r.safe)}
-                  </td>
-                  <td className="px-2 py-1.5 text-right font-mono text-slate-400">{pct}%</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+
+      {/* Legend: teaches the red=risky / green=safe encoding once, replacing
+          per-column headers so each row can stay compact and scannable. */}
+      <div className="flex items-center gap-3 pb-1 text-[11px] text-ink-subtle">
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-loss" /> risky
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-gain" /> safe
+        </span>
+        <span className="ml-auto">% = share at risk</span>
       </div>
+
+      <ul className="divide-y divide-line">
+        {rows.map((r) => {
+          const pct = r.risky != null && r.wealth > 0 ? Math.round((r.risky / r.wealth) * 100) : 0;
+          const safeVal = r.safe == null ? r.wealth : r.safe;
+          return (
+            <li key={r.id} className="flex items-center gap-3 py-2">
+              {/* Name + status */}
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                {r.isBot ? (
+                  <Bot
+                    className="shrink-0 text-ink-subtle"
+                    role="img"
+                    aria-hidden={false}
+                    aria-label="Auto bot — plays a fixed strategy"
+                  />
+                ) : null}
+                <span className="truncate text-sm text-ink">{r.name}</span>
+                {!r.isBot && !r.submitted ? (
+                  <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-strong">
+                    no bet
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Risk meter — instant read of how aggressive each player is */}
+              <div className="flex h-2.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24">
+                <div className="bg-loss" style={{ width: `${pct}%` }} />
+                <div className="bg-gain" style={{ width: `${100 - pct}%` }} />
+              </div>
+
+              {/* Numbers: % is the hero; exact dollars sit quietly beneath */}
+              <div className="w-[88px] shrink-0 text-right">
+                <div className="font-mono text-sm font-bold text-ink">{pct}%</div>
+                <div className="font-mono text-[11px] leading-tight text-ink-subtle">
+                  <span className="text-loss/90">{r.risky == null ? "—" : money(r.risky)}</span>
+                  <span className="text-line-strong"> · </span>
+                  <span className="text-gain/90">{money(safeVal)}</span>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

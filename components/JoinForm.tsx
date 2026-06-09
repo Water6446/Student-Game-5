@@ -50,10 +50,10 @@ export function JoinForm() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-10">
-      <Card>
-        <h1 className="text-2xl font-semibold">Join the game</h1>
-        <p className="mt-1 text-sm text-slate-400">Enter the code your professor is showing.</p>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">
+      <Card className="animate-pop-in">
+        <h1 className="text-2xl font-bold text-ink">Join the game</h1>
+        <p className="mt-1 text-sm text-ink-muted">Enter the code your professor is showing.</p>
 
         <div className="mt-6 space-y-4">
           <Field label="Join code">
@@ -64,7 +64,7 @@ export function JoinForm() {
               autoCapitalize="characters"
               autoComplete="off"
               maxLength={6}
-              className="text-center font-mono text-2xl tracking-[0.4em]"
+              className="text-center font-mono text-3xl font-bold tracking-[0.4em]"
             />
           </Field>
 

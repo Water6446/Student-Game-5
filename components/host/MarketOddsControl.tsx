@@ -55,13 +55,13 @@ export function MarketOddsControl({
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+    <div className="rounded-xl border border-line bg-paper-2 p-4">
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-sm font-medium text-slate-300">Market odds (auto)</span>
-        <span className="font-mono text-sm">
-          <span className="text-emerald-400">{pct}% good</span>
-          <span className="text-slate-600"> · </span>
-          <span className="text-rose-400">{100 - pct}% bad</span>
+        <span className="text-sm font-semibold text-ink">Market odds (auto)</span>
+        <span className="font-mono text-sm font-semibold">
+          <span className="text-gain">{pct}% good</span>
+          <span className="text-line-strong"> · </span>
+          <span className="text-loss">{100 - pct}% bad</span>
         </span>
       </div>
       <input
@@ -72,7 +72,8 @@ export function MarketOddsControl({
         value={pct}
         onChange={(e) => setPct(Number(e.target.value))}
         disabled={busy}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-rose-500 to-emerald-500 disabled:opacity-50"
+        aria-label="Good-market probability"
+        className="game-slider h-2 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-loss to-gain disabled:opacity-50"
       />
       <div className="mt-3 flex items-center gap-2">
         <div className="flex gap-1">
@@ -82,7 +83,7 @@ export function MarketOddsControl({
               type="button"
               onClick={() => setPct(p)}
               disabled={busy}
-              className="rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+              className="rounded-md border border-line-strong bg-paper px-2 py-1 text-xs font-semibold text-ink-muted transition hover:border-brand hover:text-ink disabled:opacity-50"
             >
               {p}%
             </button>
@@ -92,7 +93,7 @@ export function MarketOddsControl({
           type="button"
           onClick={save}
           disabled={busy || !dirty}
-          className="ml-auto rounded-md bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-400 disabled:bg-slate-700"
+          className="ml-auto rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-strong disabled:bg-line-strong disabled:text-ink-subtle"
         >
           {busy ? "Saving…" : dirty ? "Apply odds" : "Saved"}
         </button>
@@ -103,14 +104,14 @@ export function MarketOddsControl({
         disabled={busy}
         className={`mt-3 flex w-full items-center justify-between rounded-md border px-3 py-2 text-xs font-medium transition disabled:opacity-50 ${
           showOdds
-            ? "border-emerald-800 bg-emerald-950/40 text-emerald-300"
-            : "border-slate-700 bg-slate-900 text-slate-400"
+            ? "border-gain/30 bg-gain-soft text-gain"
+            : "border-line-strong bg-paper text-ink-muted"
         }`}
       >
         <span>{showOdds ? "Students can see these odds" : "Odds hidden from students"}</span>
-        <span className="font-semibold">{showOdds ? "Hide" : "Show"}</span>
+        <span className="font-bold">{showOdds ? "Hide" : "Show"}</span>
       </button>
-      {error ? <p className="mt-2 text-xs text-rose-400">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-loss">{error}</p> : null}
     </div>
   );
 }

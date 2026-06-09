@@ -6,12 +6,17 @@ import { QRCodeSVG } from "qrcode.react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
+import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
 import { Banner, Button, Card } from "@/components/ui";
+import { Users, Monitor } from "@/components/icons";
 
 export function HostLobby({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
   const router = useRouter();
-  const players = usePlayers(supabase, session.id);
+  const allPlayers = usePlayers(supabase, session.id);
+  // Benchmark bots are added at creation; they're not "joining", so keep the
+  // lobby roster + count to real students only.
+  const players = allPlayers.filter((p) => !p.is_bot);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -61,40 +66,51 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Projectable join panel */}
         <Card className="flex flex-col items-center text-center">
-          <p className="text-lg text-slate-400">Join at</p>
-          <p className="mt-1 break-all text-2xl font-semibold text-indigo-300">{link}</p>
+          <p className="text-lg text-ink-muted">Join at</p>
+          <p className="mt-1 break-all text-2xl font-bold text-brand-strong">{link}</p>
 
-          <div className="my-6 rounded-2xl bg-white p-4">
-            <QRCodeSVG value={link} size={220} />
+          <div className="my-6 rounded-2xl border border-line bg-white p-4 shadow-card">
+            <QRCodeSVG value={link} size={220} fgColor="#1C1917" />
           </div>
 
-          <p className="text-lg text-slate-400">or enter code</p>
-          <p className="font-mono text-6xl font-black tracking-[0.3em] text-white sm:text-7xl">
+          <p className="text-lg text-ink-muted">or enter code</p>
+          <p className="font-mono text-6xl font-black tracking-[0.3em] text-ink sm:text-7xl">
             {session.join_code}
           </p>
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
             <Button variant="secondary" onClick={copyLink}>
               {copied ? "Copied!" : "Copy link"}
             </Button>
+            <Link
+              href={`/host/${session.id}/present`}
+              target="_blank"
+              className="inline-flex items-center gap-2 rounded-xl border border-line-strong bg-surface px-5 py-3 text-base font-semibold text-ink shadow-card transition hover:border-brand active:scale-[0.98]"
+              title="Open the projector view in a new tab"
+            >
+              <Monitor /> Present
+            </Link>
           </div>
         </Card>
 
         {/* Roster + controls */}
         <Card className="flex flex-col">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-2xl font-semibold">Players</h2>
-            <span className="font-mono text-3xl font-bold text-emerald-400">{players.length}</span>
+            <h2 className="text-2xl font-bold text-ink">Players</h2>
+            <span className="flex items-center gap-2 font-mono text-3xl font-bold text-gain">
+              <Users className="text-[0.8em] text-ink-subtle" />
+              {players.length}
+            </span>
           </div>
 
-          <ul className="mt-4 flex-1 space-y-2 overflow-y-auto">
+          <ul className="mt-4 max-h-[42vh] flex-1 space-y-2 overflow-y-auto pr-1">
             {players.length === 0 ? (
-              <li className="text-slate-500">Waiting for players to join…</li>
+              <li className="text-ink-subtle">Waiting for players to join…</li>
             ) : (
               players.map((p) => (
                 <li
                   key={p.id}
-                  className="rounded-lg bg-slate-800/60 px-4 py-2 text-lg text-slate-100"
+                  className="animate-pop-in rounded-lg border border-line bg-paper-2 px-4 py-2 text-lg font-medium text-ink"
                 >
                   {p.display_name}
                 </li>
@@ -113,7 +129,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               {busy ? "Starting…" : `Start game (${session.config.num_rounds} rounds)`}
             </Button>
             {players.length === 0 ? (
-              <p className="mt-2 text-center text-xs text-slate-500">
+              <p className="mt-2 text-center text-xs text-ink-subtle">
                 Need at least one player to start.
               </p>
             ) : null}
@@ -121,7 +137,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               type="button"
               onClick={deleteSession}
               disabled={busy}
-              className="mt-3 w-full rounded-lg py-2 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+              className="mt-3 w-full rounded-lg py-2 text-sm font-semibold text-loss transition hover:bg-loss-soft disabled:opacity-50"
             >
               Delete session
             </button>

@@ -5,7 +5,12 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAt
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={clsx("rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl", className)}>
+    <div
+      className={clsx(
+        "rounded-2xl border border-line bg-surface p-6 shadow-card",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -18,14 +23,17 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" }) {
   const variants = {
-    primary: "bg-indigo-500 hover:bg-indigo-400 text-white disabled:bg-slate-700",
-    secondary: "bg-slate-800 hover:bg-slate-700 text-slate-100 disabled:opacity-50",
-    danger: "bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-50",
+    primary:
+      "bg-brand text-white hover:bg-brand-strong shadow-card disabled:bg-line-strong disabled:text-ink-subtle disabled:shadow-none",
+    secondary:
+      "bg-paper-2 text-ink hover:bg-line border border-line-strong disabled:opacity-50",
+    danger: "bg-loss text-white hover:brightness-110 disabled:opacity-50",
   };
   return (
     <button
       className={clsx(
-        "inline-flex items-center justify-center rounded-xl px-5 py-3 text-base font-semibold transition disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold",
+        "transition active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100",
         variants[variant],
         className,
       )}
@@ -39,9 +47,9 @@ export function Button({
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-300">{label}</span>
+      <span className="mb-1 block text-sm font-semibold text-ink">{label}</span>
       {children}
-      {hint ? <span className="mt-1 block text-xs text-slate-500">{hint}</span> : null}
+      {hint ? <span className="mt-1 block text-xs text-ink-subtle">{hint}</span> : null}
     </label>
   );
 }
@@ -51,7 +59,8 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={clsx(
-        "w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base text-slate-100 placeholder:text-slate-600",
+        "w-full rounded-xl border border-line-strong bg-paper px-4 py-3 text-base text-ink",
+        "placeholder:text-ink-subtle transition focus:border-brand",
         props.className,
       )}
     />
@@ -63,7 +72,8 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={clsx(
-        "w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base text-slate-100",
+        "w-full rounded-xl border border-line-strong bg-paper px-4 py-3 text-base text-ink",
+        "transition focus:border-brand",
         props.className,
       )}
     />
@@ -85,18 +95,18 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+      className="flex w-full items-center justify-between rounded-xl border border-line-strong bg-paper px-4 py-3 transition hover:border-brand"
     >
-      <span className="text-sm font-medium text-slate-300">{label}</span>
+      <span className="text-sm font-medium text-ink">{label}</span>
       <span
         className={clsx(
-          "relative h-6 w-11 rounded-full transition",
-          checked ? "bg-indigo-500" : "bg-slate-700",
+          "relative h-6 w-11 rounded-full transition-colors",
+          checked ? "bg-brand" : "bg-line-strong",
         )}
       >
         <span
           className={clsx(
-            "absolute top-0.5 h-5 w-5 rounded-full bg-white transition",
+            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all",
             checked ? "left-[22px]" : "left-0.5",
           )}
         />
@@ -107,12 +117,12 @@ export function Toggle({
 
 export function Banner({ kind, children }: { kind: "error" | "info" | "success"; children: ReactNode }) {
   const styles = {
-    error: "border-rose-800 bg-rose-950/60 text-rose-200",
-    info: "border-sky-800 bg-sky-950/60 text-sky-200",
-    success: "border-emerald-800 bg-emerald-950/60 text-emerald-200",
+    error: "border-loss/30 bg-loss-soft text-loss",
+    info: "border-play/30 bg-play-soft text-play",
+    success: "border-gain/30 bg-gain-soft text-gain",
   };
   return (
-    <div className={clsx("rounded-xl border px-4 py-3 text-sm", styles[kind])} role="alert">
+    <div className={clsx("rounded-xl border px-4 py-3 text-sm font-medium", styles[kind])} role="alert">
       {children}
     </div>
   );

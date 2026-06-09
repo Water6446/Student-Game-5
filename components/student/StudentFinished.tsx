@@ -8,6 +8,8 @@ import { buildPlayerResults, type PlayerResult } from "@/lib/game/results";
 import { edgeFraction } from "@/lib/game/counterfactual";
 import { money, ordinal, signedMoney } from "@/lib/game/format";
 import { Card } from "@/components/ui";
+import { Confetti } from "@/components/Confetti";
+import { Trophy, ArrowLeft } from "@/components/icons";
 
 export function StudentFinished({
   supabase,
@@ -61,29 +63,34 @@ export function StudentFinished({
   const cf = result?.counterfactual;
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
 
-  return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-8">
-      <Card className="text-center">
-        <div className="text-5xl">🏁</div>
-        <h1 className="mt-3 text-2xl font-semibold">Game over</h1>
+  const topThree = rank ? rank.rank <= 3 : false;
 
-        <div className="mt-6 rounded-xl bg-slate-800/60 p-5">
-          <div className="text-sm text-slate-400">Final wealth</div>
-          <div className="font-mono text-4xl font-black text-emerald-400">
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-8">
+      {topThree ? <Confetti /> : null}
+      <Card className="animate-pop-in text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-soft text-3xl text-brand">
+          <Trophy />
+        </div>
+        <h1 className="mt-3 text-2xl font-bold text-ink">Game over</h1>
+
+        <div className="mt-6 rounded-xl border border-gain/20 bg-gain-soft p-5">
+          <div className="text-sm font-medium text-gain/80">Final wealth</div>
+          <div className="font-mono text-4xl font-black text-gain">
             {money(me.current_wealth)}
           </div>
         </div>
 
         {rank ? (
-          <div className="mt-4 text-lg">
-            You finished <span className="font-bold text-indigo-300">{ordinal(rank.rank)}</span> of{" "}
+          <div className="mt-4 text-lg text-ink">
+            You finished <span className="font-bold text-play">{ordinal(rank.rank)}</span> of{" "}
             {rank.total}
           </div>
         ) : null}
 
         {cf ? (
           <div className="mt-6 text-left">
-            <h2 className="mb-2 text-center text-sm font-semibold uppercase tracking-wide text-slate-400">
+            <h2 className="mb-2 text-center text-xs font-bold uppercase tracking-wide text-ink-subtle">
               How other strategies would have done
             </h2>
             <ul className="space-y-2">
@@ -107,14 +114,17 @@ export function StudentFinished({
                 actual={me.current_wealth}
               />
             </ul>
-            <p className="mt-3 text-center text-xs text-slate-500">
+            <p className="mt-3 text-center text-xs text-ink-subtle">
               Same market outcomes you faced — only your strategy changes.
             </p>
           </div>
         ) : null}
 
-        <Link href="/" className="mt-8 inline-block text-sm text-slate-500 hover:text-slate-300">
-          ← Home
+        <Link
+          href="/"
+          className="mt-8 inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
+        >
+          <ArrowLeft /> Home
         </Link>
       </Card>
     </main>
@@ -134,16 +144,16 @@ function CfRow({
 }) {
   const diff = actual - value;
   return (
-    <li className="flex items-center justify-between rounded-lg bg-slate-800/40 px-4 py-2">
+    <li className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2">
       <span className="flex flex-col">
-        <span className="text-slate-300">{label}</span>
-        {desc ? <span className="text-xs text-slate-500">{desc}</span> : null}
+        <span className="font-medium text-ink">{label}</span>
+        {desc ? <span className="text-xs text-ink-subtle">{desc}</span> : null}
       </span>
       <span className="flex items-baseline gap-2">
-        <span className="font-mono text-slate-200">{money(value)}</span>
+        <span className="font-mono text-ink">{money(value)}</span>
         <span
           className={`font-mono text-xs ${
-            diff > 0 ? "text-emerald-400" : diff < 0 ? "text-rose-400" : "text-slate-500"
+            diff > 0 ? "text-gain" : diff < 0 ? "text-loss" : "text-ink-subtle"
           }`}
           title="your actual result vs this strategy"
         >

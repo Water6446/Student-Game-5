@@ -15,6 +15,9 @@ const BASE_SETUP: SessionConfig = {
   ...DEFAULT_CONFIG,
   payoff_mode: "extreme",
   market_scope: "independent",
+  // The 4 fixed-strategy benchmark students ship on by default so every game
+  // has all-safe / edge / 50-50 / all-risky baselines to compare against.
+  add_benchmark_bots: true,
 };
 
 export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
@@ -83,8 +86,8 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <Card>
-      <h2 className="text-xl font-semibold">New session</h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <h2 className="text-xl font-bold text-ink">New session</h2>
+      <p className="mt-1 text-sm text-ink-muted">
         {advanced
           ? "Customize the simulation, then start the lobby."
           : "Start with the standard setup, or flip on Advanced to change anything."}
@@ -182,12 +185,12 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
           </div>
         </>
       ) : (
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-          <div className="text-sm font-medium text-slate-300">Standard setup</div>
-          <ul className="mt-2 space-y-1.5 text-sm text-slate-400">
+        <div className="mt-6 rounded-xl border border-brand/20 bg-brand-soft/50 p-4">
+          <div className="text-sm font-bold text-brand-strong">Standard setup</div>
+          <ul className="mt-2 space-y-1.5 text-sm text-ink-muted">
             {summary.map((line) => (
               <li key={line} className="flex gap-2">
-                <span className="text-indigo-400">•</span>
+                <span className="text-brand">•</span>
                 <span>{line}</span>
               </li>
             ))}

@@ -18,6 +18,8 @@ import { OutcomeChips } from "@/components/OutcomeChips";
 import { playerOutcomesMap } from "@/lib/game/results";
 import { money } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
+import { useShowBots } from "@/components/use-show-bots";
+import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Bot, Monitor, Sliders, ChevronDown } from "@/components/icons";
 
 export function HostRoundControl({
   supabase,
@@ -35,6 +37,9 @@ export function HostRoundControl({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pick, setPick] = useState<MarketOutcome | null>(null);
+  // Benchmark bots can be hidden mid-game so the class sees only real students
+  // in the standings, chart and allocations. Persisted + synced to the present tab.
+  const [showBots, setShowBots] = useShowBots(session.id);
 
   async function deleteSession() {
     const ok = window.confirm(
@@ -57,9 +62,15 @@ export function HostRoundControl({
   const submittedIds = useMemo(() => new Set(allocs.map((a) => a.player_id)), [allocs]);
   // bots auto-play and never "submit", so they're excluded from the submission counter
   const humanPlayers = useMemo(() => players.filter((p) => !p.is_bot), [players]);
+  const hasBots = useMemo(() => players.some((p) => p.is_bot), [players]);
+  // What the standings / chart / allocations show, honoring the show-bots toggle.
+  const visiblePlayers = useMemo(
+    () => (showBots ? players : players.filter((p) => !p.is_bot)),
+    [players, showBots],
+  );
   const standings = useMemo(
-    () => [...players].sort((a, b) => b.current_wealth - a.current_wealth),
-    [players],
+    () => [...visiblePlayers].sort((a, b) => b.current_wealth - a.current_wealth),
+    [visiblePlayers],
   );
   // each player's market sequence, computed once (cheap to read per row)
   const outcomesByPlayer = useMemo(
@@ -113,21 +124,32 @@ export function HostRoundControl({
     <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <Link href="/host" className="text-sm text-slate-500 hover:text-slate-300">
-            ← Dashboard
+          <Link
+            href="/host"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
+          >
+            <ArrowLeft /> Dashboard
           </Link>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-3xl font-black text-ink">
             Round {session.current_round}{" "}
-            <span className="text-slate-500">/ {session.config.num_rounds}</span>
+            <span className="text-ink-subtle">/ {session.config.num_rounds}</span>
           </h1>
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge status={status} />
+          <Link
+            href={`/host/${session.id}/present`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink shadow-card transition hover:border-brand"
+            title="Open the projector view in a new tab"
+          >
+            <Monitor /> Present
+          </Link>
           <button
             type="button"
             onClick={deleteSession}
             disabled={busy}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-loss transition hover:bg-loss-soft disabled:opacity-50"
           >
             Delete
           </button>
@@ -137,138 +159,167 @@ export function HostRoundControl({
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Control panel */}
         <Card className="space-y-5">
+          {/* Primary action — pinned to the top of the panel so it stays in the
+              same place across open → reveal → next. In auto mode the host can
+              click "Lock & reveal" then "Next round" without moving the cursor. */}
+          {status === "open" &&
+            (isManual ? (
+              <Button onClick={lock} disabled={busy} className="w-full text-lg">
+                Lock allocations
+              </Button>
+            ) : (
+              <Button onClick={lockAndReveal} disabled={busy} className="w-full text-lg">
+                Lock &amp; reveal
+              </Button>
+            ))}
+          {status === "locked" && (
+            <Button
+              onClick={reveal}
+              disabled={busy || (isManual && !pick)}
+              className="w-full text-lg"
+            >
+              Reveal results
+            </Button>
+          )}
+          {status === "revealed" &&
+            (isLastRound ? (
+              <Button onClick={finish} disabled={busy} variant="danger" className="w-full text-lg">
+                Finish game
+              </Button>
+            ) : (
+              <Button onClick={next} disabled={busy} className="w-full text-lg">
+                Next round <ArrowRight />
+              </Button>
+            ))}
+
+          {error ? <Banner kind="error">{error}</Banner> : null}
+
+          {/* Supporting context for each phase, below the pinned action. */}
           {status === "open" && (
             <>
               <div className="text-center">
-                <div className="font-mono text-6xl font-black text-emerald-400">
+                <div className="font-mono text-6xl font-black text-gain">
                   {submittedIds.size}
-                  <span className="text-slate-600"> / {humanPlayers.length}</span>
+                  <span className="text-line-strong"> / {humanPlayers.length}</span>
                 </div>
-                <div className="text-sm text-slate-400">submitted</div>
+                <div className="text-sm font-medium text-ink-muted">submitted</div>
               </div>
-              {isManual ? (
-                <Button onClick={lock} disabled={busy} className="w-full text-lg">
-                  Lock allocations
-                </Button>
-              ) : (
-                <>
-                  <Button onClick={lockAndReveal} disabled={busy} className="w-full text-lg">
-                    Lock &amp; reveal
-                  </Button>
-                  <MarketOddsControl supabase={supabase} session={session} />
-                </>
-              )}
+              {!isManual ? <OddsDisclosure supabase={supabase} session={session} /> : null}
+              <ul className="grid max-h-44 grid-cols-2 gap-1 overflow-y-auto text-sm">
+                {humanPlayers.map((p) => (
+                  <li
+                    key={p.id}
+                    className={`flex items-center gap-2 rounded px-2 py-1 ${
+                      submittedIds.has(p.id) ? "font-medium text-gain" : "text-ink-subtle"
+                    }`}
+                  >
+                    {submittedIds.has(p.id) ? (
+                      <Check className="shrink-0" />
+                    ) : (
+                      <span className="shrink-0 text-line-strong">•</span>
+                    )}
+                    <span className="truncate">{p.display_name}</span>
+                  </li>
+                ))}
+              </ul>
             </>
           )}
 
           {status === "locked" && (
             <>
-              <div className="text-center text-sm font-semibold text-amber-300">
-                Bets locked in 🔒 — review, then reveal
+              <div className="flex items-center justify-center gap-2 text-sm font-bold text-brand-strong">
+                <Lock /> Bets locked in — review, then reveal
               </div>
-              <AllocationsBreakdown
-                players={players}
-                allocations={allocs}
-                goodProb={session.config.good_prob ?? 0.6}
-              />
-              {!isManual ? <MarketOddsControl supabase={supabase} session={session} /> : null}
               {isManual ? (
                 <div className="space-y-3">
-                  <p className="text-center text-sm text-slate-400">Set this round&apos;s market:</p>
+                  <p className="text-center text-sm text-ink-muted">Set this round&apos;s market:</p>
                   <div className="flex gap-3">
-                    <OutcomeButton label="GOOD ▲" active={pick === "good"} onClick={() => setPick("good")} good />
-                    <OutcomeButton label="BAD ▼" active={pick === "bad"} onClick={() => setPick("bad")} />
+                    <OutcomeButton label="GOOD" active={pick === "good"} onClick={() => setPick("good")} good />
+                    <OutcomeButton label="BAD" active={pick === "bad"} onClick={() => setPick("bad")} />
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-sm text-slate-400">
+                <p className="text-center text-sm text-ink-muted">
                   Auto market — the server will roll the outcome.
                 </p>
               )}
-              <Button
-                onClick={reveal}
-                disabled={busy || (isManual && !pick)}
-                className="w-full text-lg"
-              >
-                Reveal results
-              </Button>
+              <AllocationsBreakdown
+                players={visiblePlayers}
+                allocations={allocs}
+                goodProb={session.config.good_prob ?? 0.6}
+              />
+              {!isManual ? <OddsDisclosure supabase={supabase} session={session} /> : null}
             </>
           )}
 
           {status === "revealed" && (
             <>
               {session.config.market_scope === "independent" ? (
-                <div className="rounded-xl bg-slate-800/60 p-4 text-center text-lg text-slate-200">
-                  Independent outcomes were drawn per player.
+                <div className="flex items-center gap-2 rounded-xl border border-line bg-paper-2 px-4 py-2.5 text-sm text-ink-muted">
+                  <Shuffle className="shrink-0 text-ink-subtle" />
+                  Independent market — each player drew their own outcome.
                 </div>
               ) : (
                 <div
-                  className={`rounded-xl p-4 text-center text-2xl font-black ${
+                  className={`flex items-center justify-center gap-2 rounded-xl p-4 text-center text-2xl font-black ${
                     round?.market_outcome === "good"
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-rose-500/20 text-rose-300"
+                      ? "bg-gain-soft text-gain"
+                      : "bg-loss-soft text-loss"
                   }`}
                 >
-                  Market was {round?.market_outcome === "good" ? "GOOD ▲" : "BAD ▼"}
+                  Market was {round?.market_outcome === "good" ? "GOOD" : "BAD"}
+                  {round?.market_outcome === "good" ? <ArrowUp /> : <ArrowDown />}
                 </div>
               )}
               {/* what everyone bet this round (still visible after the roll) */}
               <AllocationsBreakdown
-                players={players}
+                players={visiblePlayers}
                 allocations={allocs}
                 goodProb={session.config.good_prob ?? 0.6}
               />
-              {isLastRound ? (
-                <Button onClick={finish} disabled={busy} variant="danger" className="w-full text-lg">
-                  Finish game
-                </Button>
-              ) : (
-                <Button onClick={next} disabled={busy} className="w-full text-lg">
-                  Next round →
-                </Button>
-              )}
             </>
-          )}
-
-          {error ? <Banner kind="error">{error}</Banner> : null}
-
-          {/* per-player submission ticks while the round is open (humans only) */}
-          {status === "open" && (
-            <ul className="grid grid-cols-2 gap-1 text-sm">
-              {humanPlayers.map((p) => (
-                <li
-                  key={p.id}
-                  className={`flex items-center gap-2 rounded px-2 py-1 ${
-                    submittedIds.has(p.id) ? "text-emerald-300" : "text-slate-500"
-                  }`}
-                >
-                  <span>{submittedIds.has(p.id) ? "✓" : "•"}</span>
-                  <span className="truncate">{p.display_name}</span>
-                </li>
-              ))}
-            </ul>
           )}
         </Card>
 
         {/* Live standings — each player's last 5 markets shown inline */}
         <Card>
-          <h2 className="mb-1 text-xl font-semibold">Standings</h2>
-          <p className="mb-3 text-xs text-slate-500">Last 5 markets shown per player.</p>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h2 className="text-xl font-bold text-ink">Standings</h2>
+            {hasBots ? (
+              <button
+                type="button"
+                onClick={() => setShowBots(!showBots)}
+                aria-pressed={showBots}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  showBots
+                    ? "border-play/30 bg-play-soft text-play"
+                    : "border-line-strong bg-paper text-ink-muted hover:border-ink-subtle"
+                }`}
+                title="Toggle benchmark bots in the standings, chart and allocations"
+              >
+                <Bot />
+                {showBots ? "Bots shown" : "Bots hidden"}
+              </button>
+            ) : null}
+          </div>
+          <p className="mb-3 text-xs text-ink-subtle">
+            Last 5 markets shown per player{hasBots && !showBots ? " · bots hidden" : ""}.
+          </p>
           <ol className="space-y-1">
             {standings.map((p, i) => {
               const last5 = (outcomesByPlayer.get(p.id) ?? []).slice(-5);
               return (
                 <li
                   key={p.id}
-                  className="flex items-center justify-between rounded-lg bg-slate-800/40 px-4 py-2"
+                  className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2"
                 >
-                  <span className="text-slate-200">
-                    <span className="mr-2 font-mono text-slate-500">{i + 1}.</span>
+                  <span className="text-ink">
+                    <span className="mr-2 font-mono text-ink-subtle">{i + 1}.</span>
                     {p.display_name}
                   </span>
                   <span className="flex items-center gap-3">
                     <OutcomeChips outcomes={last5} />
-                    <span className="font-mono text-lg font-semibold text-emerald-300">
+                    <span className="font-mono text-lg font-bold text-gain">
                       {money(p.current_wealth)}
                     </span>
                   </span>
@@ -281,9 +332,9 @@ export function HostRoundControl({
 
       {/* Wealth over rounds */}
       <Card className="mt-6">
-        <h2 className="mb-3 text-xl font-semibold">Wealth over rounds</h2>
+        <h2 className="mb-3 text-xl font-bold text-ink">Wealth over rounds</h2>
         <WealthChart
-          players={players}
+          players={visiblePlayers}
           rounds={history.rounds}
           allocations={history.allocations}
           startingWealth={session.config.starting_wealth}
@@ -292,21 +343,45 @@ export function HostRoundControl({
 
       {/* Per-round history */}
       <Card className="mt-6">
-        <h2 className="mb-3 text-xl font-semibold">Round history</h2>
+        <h2 className="mb-3 text-xl font-bold text-ink">Round history</h2>
         <SessionHistoryTable rounds={history.rounds} allocations={history.allocations} />
       </Card>
     </main>
   );
 }
 
+// Mid-game odds tuning is rarely used, so it's tucked behind a disclosure to
+// keep the control panel compact.
+function OddsDisclosure({
+  supabase,
+  session,
+}: {
+  supabase: SupabaseClient;
+  session: SessionRow;
+}) {
+  return (
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-line bg-paper-2 px-4 py-2.5 text-sm font-semibold text-ink-muted transition marker:content-none hover:text-ink [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">
+          <Sliders /> Adjust market odds
+        </span>
+        <ChevronDown className="transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-2">
+        <MarketOddsControl supabase={supabase} session={session} />
+      </div>
+    </details>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    open: "bg-emerald-500/20 text-emerald-300",
-    locked: "bg-amber-500/20 text-amber-300",
-    revealed: "bg-sky-500/20 text-sky-300",
+    open: "bg-gain-soft text-gain",
+    locked: "bg-brand-soft text-brand-strong",
+    revealed: "bg-play-soft text-play",
   };
   return (
-    <span className={`rounded-full px-4 py-1.5 text-sm font-semibold ${styles[status] ?? ""}`}>
+    <span className={`rounded-full px-4 py-1.5 text-sm font-bold capitalize ${styles[status] ?? ""}`}>
       {status}
     </span>
   );
@@ -325,17 +400,18 @@ function OutcomeButton({
 }) {
   // Static class strings (Tailwind JIT can't see interpolated class names).
   const activeCls = good
-    ? "border-emerald-400 bg-emerald-500/30 text-emerald-200"
-    : "border-rose-400 bg-rose-500/30 text-rose-200";
-  const idleCls = "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600";
+    ? "border-gain bg-gain-soft text-gain"
+    : "border-loss bg-loss-soft text-loss";
+  const idleCls = "border-line-strong bg-paper text-ink-muted hover:border-ink-subtle";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-xl border-2 py-4 text-lg font-bold transition ${
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border-2 py-4 text-lg font-bold transition active:scale-[0.98] ${
         active ? activeCls : idleCls
       }`}
     >
+      {good ? <ArrowUp /> : <ArrowDown />}
       {label}
     </button>
   );

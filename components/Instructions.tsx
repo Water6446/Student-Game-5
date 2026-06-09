@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "@/components/icons";
 
 type Role = "student" | "professor";
 
@@ -56,14 +57,16 @@ export function Instructions({ role, className }: { role: Role; className?: stri
 
   return (
     <div
-      className={`rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-left ${className ?? ""}`}
+      className={`rounded-2xl border border-line bg-surface p-6 text-left shadow-card ${className ?? ""}`}
     >
-      <h2 className="text-lg font-semibold text-slate-100">{content.heading}</h2>
+      <h2 className="text-lg font-bold text-ink">{content.heading}</h2>
 
       <ul className="mt-4 space-y-2.5">
-        {content.simple.map((line) => (
-          <li key={line} className="flex gap-3 text-slate-300">
-            <span className="mt-0.5 text-indigo-400">●</span>
+        {content.simple.map((line, i) => (
+          <li key={line} className="flex gap-3 text-ink">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand-strong">
+              {i + 1}
+            </span>
             <span>{line}</span>
           </li>
         ))}
@@ -73,20 +76,21 @@ export function Instructions({ role, className }: { role: Role; className?: stri
         type="button"
         onClick={() => setShowMore((v) => !v)}
         aria-expanded={showMore}
-        className="mt-4 text-sm font-medium text-indigo-300 hover:text-indigo-200"
+        className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-strong hover:text-brand"
       >
-        {showMore ? "Show less ▲" : "Read more ▼"}
+        {showMore ? "Show less" : "Read more"}
+        <ChevronDown className={`transition-transform ${showMore ? "rotate-180" : ""}`} />
       </button>
 
       {showMore ? (
-        <div className="mt-3 border-t border-slate-800 pt-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mt-3 border-t border-line pt-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-ink-subtle">
             Detailed instructions
           </h3>
           <ul className="mt-3 space-y-2.5">
             {content.detailed.map((line) => (
-              <li key={line} className="flex gap-3 text-sm text-slate-400">
-                <span className="mt-0.5 text-slate-600">–</span>
+              <li key={line} className="flex gap-3 text-sm text-ink-muted">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-line-strong" />
                 <span>{line}</span>
               </li>
             ))}
