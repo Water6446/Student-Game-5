@@ -20,11 +20,11 @@ export default function HostSessionPage({ params }: { params: { sessionId: strin
   if (!session) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-bold text-ink">Session not found</h1>
-        <p className="text-ink-muted">
+        <h1 className="text-2xl font-black uppercase tracking-tight text-ink">Session not found</h1>
+        <p className="font-editorial italic text-ink-muted">
           It may not exist, or you&apos;re not signed in as its host.
         </p>
-        <Link href="/host" className="font-semibold text-brand-strong hover:text-brand">
+        <Link href="/host" className="font-bold text-ink underline-offset-4 hover:underline">
           ← Back to host dashboard
         </Link>
       </main>

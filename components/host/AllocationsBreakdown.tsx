@@ -34,36 +34,43 @@ export function AllocationsBreakdown({
           // not their post-round current_wealth
           const risky = Number(a.risky_amount);
           const safe = Number(a.safe_amount);
+          const wealth = risky + safe;
           return {
             id: p.id,
             name: p.display_name,
-            wealth: risky + safe,
+            wealth,
             risky,
             safe,
+            // wiped out ($0) means 0/0 — a bot still plays its fixed strategy
+            // share (all-risky stays 100%), a human has no meaningful share
+            pct: wealth > 0 ? risky / wealth : p.is_bot ? strategyFraction(p.strategy, goodProb) : null,
             isBot: p.is_bot,
             submitted: true,
           };
         }
         if (p.is_bot) {
           // bot's planned bet before the round resolves
-          const risky = strategyFraction(p.strategy, goodProb) * currentWealth;
+          const frac = strategyFraction(p.strategy, goodProb);
+          const risky = frac * currentWealth;
           return {
             id: p.id,
             name: p.display_name,
             wealth: currentWealth,
             risky,
             safe: currentWealth - risky,
+            pct: frac,
             isBot: true,
             submitted: true,
           };
         }
-        // human who hasn't submitted
+        // human who hasn't submitted (defaults to all-safe; nothing to bet at $0)
         return {
           id: p.id,
           name: p.display_name,
           wealth: currentWealth,
           risky: null,
           safe: null,
+          pct: currentWealth > 0 ? 0 : null,
           isBot: false,
           submitted: false,
         };
@@ -99,7 +106,7 @@ export function AllocationsBreakdown({
 
       <ul className="divide-y divide-line">
         {rows.map((r) => {
-          const pct = r.risky != null && r.wealth > 0 ? Math.round((r.risky / r.wealth) * 100) : 0;
+          const pct = r.pct == null ? null : Math.round(r.pct * 100);
           const safeVal = r.safe == null ? r.wealth : r.safe;
           return (
             <li key={r.id} className="flex items-center gap-3 py-2">
@@ -115,7 +122,7 @@ export function AllocationsBreakdown({
                 ) : null}
                 <span className="truncate text-sm text-ink">{r.name}</span>
                 {!r.isBot && !r.submitted ? (
-                  <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-strong">
+                  <span className="shrink-0 rounded-full border border-ink bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink">
                     no bet
                   </span>
                 ) : null}
@@ -123,13 +130,15 @@ export function AllocationsBreakdown({
 
               {/* Risk meter — instant read of how aggressive each player is */}
               <div className="flex h-2.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24">
-                <div className="bg-loss" style={{ width: `${pct}%` }} />
-                <div className="bg-gain" style={{ width: `${100 - pct}%` }} />
+                <div className="bg-loss" style={{ width: `${pct ?? 0}%` }} />
+                <div className="bg-gain" style={{ width: `${100 - (pct ?? 0)}%` }} />
               </div>
 
               {/* Numbers: % is the hero; exact dollars sit quietly beneath */}
               <div className="w-[88px] shrink-0 text-right">
-                <div className="font-mono text-sm font-bold text-ink">{pct}%</div>
+                <div className="font-mono text-sm font-bold text-ink">
+                  {pct == null ? "—" : `${pct}%`}
+                </div>
                 <div className="font-mono text-[11px] leading-tight text-ink-subtle">
                   <span className="text-loss/90">{r.risky == null ? "—" : money(r.risky)}</span>
                   <span className="text-line-strong"> · </span>

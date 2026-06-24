@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { AllocationRow, RoundRow } from "@/lib/game/db";
-import { money } from "@/lib/game/format";
+import { signedMoney } from "@/lib/game/format";
 import { ArrowUp, ArrowDown } from "@/components/icons";
 
 interface HistoryRow {
@@ -10,9 +10,16 @@ interface HistoryRow {
   outcome: RoundRow["market_outcome"] | "independent";
   goodCount: number;
   badCount: number;
+  /** per-player wealth CHANGE that round, summarized across the class */
   avg: number | null;
+  median: number | null;
   high: number | null;
   low: number | null;
+}
+
+function medianOf(sorted: number[]): number {
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 export function SessionHistoryTable({
@@ -29,9 +36,17 @@ export function SessionHistoryTable({
 
     return revealed.map((r) => {
       const allocs = allocations.filter((a) => a.round_id === r.id);
-      const wealths = allocs
-        .map((a) => (a.resulting_wealth == null ? null : Number(a.resulting_wealth)))
-        .filter((w): w is number => w != null);
+      // Each player's outcome THAT round = wealth change from the round's start
+      // (risky+safe, what they bet from) to its end. Players who entered the
+      // round already wiped out ($0) have no stake, so they're excluded.
+      const deltas = allocs
+        .map((a) => {
+          if (a.resulting_wealth == null) return null;
+          const before = Number(a.risky_amount) + Number(a.safe_amount);
+          return before > 0 ? Number(a.resulting_wealth) - before : null;
+        })
+        .filter((d): d is number => d != null)
+        .sort((a, b) => a - b);
       const goodCount = allocs.filter((a) => a.market_outcome === "good").length;
       const badCount = allocs.filter((a) => a.market_outcome === "bad").length;
       return {
@@ -39,25 +54,31 @@ export function SessionHistoryTable({
         outcome: r.market_outcome ?? "independent",
         goodCount,
         badCount,
-        avg: wealths.length ? wealths.reduce((s, w) => s + w, 0) / wealths.length : null,
-        high: wealths.length ? Math.max(...wealths) : null,
-        low: wealths.length ? Math.min(...wealths) : null,
+        avg: deltas.length ? deltas.reduce((s, d) => s + d, 0) / deltas.length : null,
+        median: deltas.length ? medianOf(deltas) : null,
+        high: deltas.length ? deltas[deltas.length - 1] : null,
+        low: deltas.length ? deltas[0] : null,
       };
     });
   }, [rounds, allocations]);
 
   if (history.length === 0) {
-    return <p className="text-sm text-ink-subtle">No completed rounds yet.</p>;
+    return <p className="font-editorial text-sm italic text-ink-subtle">No completed rounds yet.</p>;
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <p className="mb-2 font-editorial text-xs italic text-ink-muted">
+        How players did <span className="font-semibold">in that round</span> — each player&apos;s
+        wealth change, summarized across the class.
+      </p>
+      <table className="w-full overflow-hidden rounded-xl border-2 border-ink text-sm">
         <thead>
-          <tr className="text-left text-xs font-bold uppercase tracking-wide text-ink-subtle">
+          <tr className="bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper">
             <th className="px-2 py-2">Round</th>
             <th className="px-2 py-2">Market</th>
             <th className="px-2 py-2 text-right">Avg</th>
+            <th className="px-2 py-2 text-right">Median</th>
             <th className="px-2 py-2 text-right">High</th>
             <th className="px-2 py-2 text-right">Low</th>
           </tr>
@@ -89,19 +110,31 @@ export function SessionHistoryTable({
                   </span>
                 )}
               </td>
-              <td className="px-2 py-2 text-right font-mono text-ink">
-                {h.avg == null ? "—" : money(h.avg)}
-              </td>
-              <td className="px-2 py-2 text-right font-mono text-gain">
-                {h.high == null ? "—" : money(h.high)}
-              </td>
-              <td className="px-2 py-2 text-right font-mono text-loss">
-                {h.low == null ? "—" : money(h.low)}
-              </td>
+              <DeltaCell value={h.avg} />
+              <DeltaCell value={h.median} />
+              <DeltaCell value={h.high} />
+              <DeltaCell value={h.low} />
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** A signed money cell colored by its sign (gain / loss / neutral). */
+function DeltaCell({ value }: { value: number | null }) {
+  const cls =
+    value == null
+      ? "text-ink-subtle"
+      : value > 0
+        ? "text-gain"
+        : value < 0
+          ? "text-loss"
+          : "text-ink-muted";
+  return (
+    <td className={`px-2 py-2 text-right font-mono ${cls}`}>
+      {value == null ? "—" : signedMoney(value)}
+    </td>
   );
 }

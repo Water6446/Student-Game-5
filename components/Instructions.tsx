@@ -57,14 +57,16 @@ export function Instructions({ role, className }: { role: Role; className?: stri
 
   return (
     <div
-      className={`rounded-2xl border border-line bg-surface p-6 text-left shadow-card ${className ?? ""}`}
+      className={`rounded-2xl border-2 border-ink bg-surface p-6 text-left shadow-card ${className ?? ""}`}
     >
-      <h2 className="text-lg font-bold text-ink">{content.heading}</h2>
+      <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+        {content.heading}
+      </h2>
 
       <ul className="mt-4 space-y-2.5">
         {content.simple.map((line, i) => (
           <li key={line} className="flex gap-3 text-ink">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand-strong">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-brand text-xs font-bold text-ink">
               {i + 1}
             </span>
             <span>{line}</span>

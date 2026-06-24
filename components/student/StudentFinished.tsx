@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
-import { buildPlayerResults, type PlayerResult } from "@/lib/game/results";
+import { buildPlayerResults, goodCount, type PlayerResult } from "@/lib/game/results";
 import { edgeFraction } from "@/lib/game/counterfactual";
 import { money, ordinal, signedMoney } from "@/lib/game/format";
 import { Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
-import { Trophy, ArrowLeft } from "@/components/icons";
+import { Trophy, ArrowLeft, Clover } from "@/components/icons";
 
 export function StudentFinished({
   supabase,
@@ -65,26 +65,41 @@ export function StudentFinished({
 
   const topThree = rank ? rank.rank <= 3 : false;
 
+  // how lucky were *my* market draws?
+  const good = result ? goodCount(result.outcomes) : 0;
+  const totalOutcomes = result ? result.outcomes.length : 0;
+  const luckPct = totalOutcomes > 0 ? Math.round((good / totalOutcomes) * 100) : null;
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-8">
       {topThree ? <Confetti /> : null}
       <Card className="animate-pop-in text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-soft text-3xl text-brand">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Trophy />
         </div>
-        <h1 className="mt-3 text-2xl font-bold text-ink">Game over</h1>
+        <h1 className="mt-3 font-display text-3xl font-black uppercase tracking-tight text-ink">
+          Game over
+        </h1>
 
-        <div className="mt-6 rounded-xl border border-gain/20 bg-gain-soft p-5">
-          <div className="text-sm font-medium text-gain/80">Final wealth</div>
-          <div className="font-mono text-4xl font-black text-gain">
-            {money(me.current_wealth)}
+        <div className="mt-6 rounded-xl border-2 border-ink bg-gain p-5 text-white shadow-card">
+          <div className="font-display text-xs font-extrabold uppercase tracking-wide text-white/85">
+            Final wealth
           </div>
+          <div className="font-mono text-4xl font-black">{money(me.current_wealth)}</div>
         </div>
 
         {rank ? (
           <div className="mt-4 text-lg text-ink">
             You finished <span className="font-bold text-play">{ordinal(rank.rank)}</span> of{" "}
             {rank.total}
+          </div>
+        ) : null}
+
+        {luckPct != null ? (
+          <div className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
+            <Clover className="text-gain" />
+            You drew {good}/{totalOutcomes} good markets —{" "}
+            <span className="font-bold text-gain">{luckPct}% lucky</span>
           </div>
         ) : null}
 
@@ -144,10 +159,10 @@ function CfRow({
 }) {
   const diff = actual - value;
   return (
-    <li className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2">
+    <li className="flex items-center justify-between rounded-lg border-2 border-ink bg-paper-2 px-4 py-2">
       <span className="flex flex-col">
-        <span className="font-medium text-ink">{label}</span>
-        {desc ? <span className="text-xs text-ink-subtle">{desc}</span> : null}
+        <span className="font-semibold text-ink">{label}</span>
+        {desc ? <span className="font-editorial text-xs italic text-ink-subtle">{desc}</span> : null}
       </span>
       <span className="flex items-baseline gap-2">
         <span className="font-mono text-ink">{money(value)}</span>

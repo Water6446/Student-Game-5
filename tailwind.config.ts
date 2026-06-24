@@ -9,10 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["var(--font-display)", "Georgia", "serif"],
-        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"], // Archivo
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"], // Hanken Grotesk
+        editorial: ["var(--font-editorial)", "Georgia", "serif"], // Fraunces italic
         // tabular numbers read better on the projected leaderboard
-        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"], // JetBrains Mono
+      },
+      borderWidth: {
+        // the look relies on chunky ink borders; make plain `border` 2px.
+        DEFAULT: "2px",
       },
       colors: {
         paper: { DEFAULT: token("--paper"), 2: token("--paper-2") },
@@ -33,10 +38,10 @@ const config: Config = {
         play: { DEFAULT: token("--play"), soft: token("--play-soft") },
       },
       boxShadow: {
-        // soft, warm paper-like elevation
-        card: "0 1px 2px rgba(40, 33, 20, 0.04), 0 6px 20px -8px rgba(40, 33, 20, 0.12)",
-        lift: "0 2px 4px rgba(40, 33, 20, 0.05), 0 16px 36px -12px rgba(40, 33, 20, 0.22)",
-        pop: "0 2px 0 rgb(var(--brand-strong))",
+        // hard ink offset shadows, no blur (Academy Arcade)
+        card: "3px 3px 0 rgb(var(--ink))", // standard card / button
+        lift: "6px 6px 0 rgb(var(--ink))", // hero card, modal, big CTA
+        pop: "5px 5px 0 rgb(var(--ink))", // primary CTA emphasis
       },
       keyframes: {
         "pop-in": {

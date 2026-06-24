@@ -52,8 +52,12 @@ export function JoinForm() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">
       <Card className="animate-pop-in">
-        <h1 className="text-2xl font-bold text-ink">Join the game</h1>
-        <p className="mt-1 text-sm text-ink-muted">Enter the code your professor is showing.</p>
+        <h1 className="font-display text-3xl font-black uppercase tracking-tight text-ink">
+          Who&apos;s playing?
+        </h1>
+        <p className="mt-1 font-editorial italic text-ink-muted">
+          Enter the code your professor is showing.
+        </p>
 
         <div className="mt-6 space-y-4">
           <Field label="Join code">
@@ -64,7 +68,7 @@ export function JoinForm() {
               autoCapitalize="characters"
               autoComplete="off"
               maxLength={6}
-              className="text-center font-mono text-3xl font-bold tracking-[0.4em]"
+              className="bg-brand-soft text-center font-mono text-3xl font-bold tracking-[0.4em]"
             />
           </Field>
 
@@ -79,8 +83,13 @@ export function JoinForm() {
 
           {error ? <Banner kind="error">{error}</Banner> : null}
 
-          <Button onClick={join} disabled={busy || code.trim().length < 4} className="w-full text-lg">
-            {busy ? "Joining…" : "Join"}
+          <Button
+            variant="gold"
+            onClick={join}
+            disabled={busy || code.trim().length < 4}
+            className="w-full text-lg"
+          >
+            {busy ? "Joining…" : "Enter the market →"}
           </Button>
         </div>
       </Card>

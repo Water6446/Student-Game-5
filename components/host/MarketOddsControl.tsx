@@ -93,7 +93,7 @@ export function MarketOddsControl({
           type="button"
           onClick={save}
           disabled={busy || !dirty}
-          className="ml-auto rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-strong disabled:bg-line-strong disabled:text-ink-subtle"
+          className="ml-auto rounded-md border-2 border-ink bg-brand px-3 py-1.5 text-xs font-bold text-ink shadow-card transition hover:bg-brand-strong disabled:opacity-60"
         >
           {busy ? "Saving…" : dirty ? "Apply odds" : "Saved"}
         </button>

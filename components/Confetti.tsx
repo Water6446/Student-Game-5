@@ -5,7 +5,7 @@ import { useMemo } from "react";
 // Lightweight, dependency-free celebratory confetti. Pure CSS animation; hidden
 // automatically under prefers-reduced-motion (see globals.css). Render it only
 // when you want the burst (e.g. a GOOD market reveal or the finish screen).
-const COLORS = ["#A16207", "#047857", "#7C3AED", "#BE123C", "#CA8A04", "#0EA5E9"];
+const COLORS = ["#F0A92B", "#2557E8", "#FFFDF6", "#1F8A4C", "#DB3B2B", "#211A12"];
 
 export function Confetti({ count = 70 }: { count?: number }) {
   const pieces = useMemo(

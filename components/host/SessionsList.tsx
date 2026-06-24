@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
 
 const STATUS_STYLES: Record<string, string> = {
-  lobby: "bg-brand-soft text-brand-strong",
+  lobby: "bg-brand-soft text-ink",
   active: "bg-gain-soft text-gain",
   finished: "bg-paper-2 text-ink-subtle",
 };
@@ -66,7 +66,7 @@ export function SessionsList({ supabase, hostId }: { supabase: SupabaseClient; h
                 </span>
               </div>
               <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[s.status] ?? ""}`}
+                className={`rounded-full border-2 border-ink px-3 py-1 text-xs font-display font-extrabold capitalize shadow-card ${STATUS_STYLES[s.status] ?? ""}`}
               >
                 {s.status}
               </span>

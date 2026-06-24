@@ -36,37 +36,50 @@ export function AllocationInput({
     <div className="space-y-4">
       {/* Safe on the left, Risky on the right — matches the slider (drag right = riskier) */}
       <div className="flex items-stretch gap-3">
-        <div className="flex-1 rounded-xl border border-gain/20 bg-gain-soft p-3 text-center">
-          <div className="text-xs font-bold uppercase tracking-wide text-gain">Safe</div>
-          <div className="font-mono text-xl font-bold leading-tight text-gain sm:text-2xl">
+        <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white shadow-card">
+          <div className="font-display text-xs font-extrabold uppercase tracking-wide">Safe 🛡</div>
+          <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
             {money(safe)}
           </div>
-          <div className="font-mono text-sm font-semibold text-gain/80 sm:text-base">
+          <div className="font-mono text-sm font-semibold text-white/85 sm:text-base">
             {safePct}%
           </div>
         </div>
-        <div className="flex-1 rounded-xl border border-loss/20 bg-loss-soft p-3 text-center">
-          <div className="text-xs font-bold uppercase tracking-wide text-loss">Risky</div>
-          <div className="font-mono text-xl font-bold leading-tight text-loss sm:text-2xl">
+        <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white shadow-card">
+          <div className="font-display text-xs font-extrabold uppercase tracking-wide">Risky 🔥</div>
+          <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
             {money(risky)}
           </div>
-          <div className="font-mono text-sm font-semibold text-loss/80 sm:text-base">
+          <div className="font-mono text-sm font-semibold text-white/85 sm:text-base">
             {riskyPct}%
           </div>
         </div>
       </div>
 
-      <input
-        type="range"
-        min={0}
-        max={wealth}
-        step={Math.max(wealth / 100, 0.01)}
-        value={risky}
-        disabled={disabled}
-        onChange={(e) => onChange(clamp(Number(e.target.value)))}
-        aria-label="Amount to put at risk"
-        className="game-slider h-3 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-gain via-brand to-loss disabled:opacity-50"
-      />
+      {/* Ink-bordered pill track: green safe base, red risky fill grows from the right. */}
+      <div
+        className="rounded-full border-2 border-ink shadow-card"
+        style={{
+          background: `linear-gradient(to right, rgb(var(--gain)) ${safePct}%, rgb(var(--loss)) ${safePct}%)`,
+        }}
+      >
+        <input
+          type="range"
+          min={0}
+          max={wealth}
+          step={Math.max(wealth / 100, 0.01)}
+          value={risky}
+          disabled={disabled}
+          onChange={(e) => onChange(clamp(Number(e.target.value)))}
+          aria-label="Amount to put at risk"
+          className="game-slider h-3 w-full cursor-pointer appearance-none rounded-full bg-transparent disabled:opacity-50"
+        />
+      </div>
+
+      <div className="flex justify-between font-mono text-xs font-bold text-ink-muted">
+        <span>ALL SAFE</span>
+        <span>ALL RISKY</span>
+      </div>
 
       <div className="flex items-center gap-2">
         <div className="flex shrink-0 overflow-hidden rounded-lg border border-line-strong">

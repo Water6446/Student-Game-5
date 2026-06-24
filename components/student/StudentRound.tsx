@@ -60,16 +60,16 @@ export function StudentRound({
           disabled={busy}
         />
         {error ? <Banner kind="error">{error}</Banner> : null}
-        <Button onClick={submit} disabled={busy} className="w-full text-lg">
-          {busy ? "Saving…" : mine ? "Update allocation" : "Lock in my bet"}
+        <Button variant="gold" onClick={submit} disabled={busy} className="w-full text-lg shadow-pop">
+          {busy ? "Saving…" : mine ? "Update allocation 🔒" : "Lock in my bet 🔒"}
         </Button>
         {mine ? (
           <Banner kind="success">
             Submitted {money(Number(mine.risky_amount))} risky — you can still edit until it locks.
           </Banner>
         ) : (
-          <p className="text-center text-sm text-ink-subtle">
-            Choose how much to put at risk, then submit.
+          <p className="text-center font-editorial text-sm italic text-ink-subtle">
+            Choose how much to put at risk, then lock it in.
           </p>
         )}
       </Shell>
@@ -79,21 +79,30 @@ export function StudentRound({
   if (round.status === "locked") {
     return (
       <Shell wealth={me.current_wealth} round={round} session={session}>
-        <div className="rounded-xl border border-brand/20 bg-brand-soft/60 p-5 text-center">
-          <div className="flex items-center justify-center gap-2 text-lg font-bold text-brand-strong">
-            <Lock /> Allocations locked
+        <div className="rounded-xl border-2 border-ink bg-brand-soft p-5 text-center shadow-card">
+          <div className="flex items-center justify-center gap-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+            <Lock /> Nice. Now we wait.
           </div>
-          <p className="mt-1 text-sm text-ink-muted">Waiting for the reveal…</p>
+          <p className="mt-1 font-editorial text-sm italic text-ink-muted">Waiting for the reveal…</p>
           {mine ? (
             <p className="mt-3 font-mono text-ink">
               You risked {money(Number(mine.risky_amount))} · safe{" "}
               {money(Number(mine.safe_amount))}
             </p>
           ) : (
-            <p className="mt-3 text-sm text-ink-subtle">
+            <p className="mt-3 font-editorial text-sm italic text-ink-subtle">
               You didn&apos;t submit — you&apos;ll default to all-safe.
             </p>
           )}
+          <div className="mt-4 flex justify-center gap-2" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-3 w-3 animate-pulse-soft rounded-full border-2 border-ink bg-brand"
+                style={{ animationDelay: `${i * 0.25}s` }}
+              />
+            ))}
+          </div>
         </div>
       </Shell>
     );
@@ -121,14 +130,19 @@ function Shell({
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-8">
       <div className="mb-4 flex items-center justify-between">
-        <span className="rounded-full bg-paper-2 px-3 py-1 text-sm font-semibold text-ink-muted">
+        <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-sm font-bold uppercase text-paper">
           Round {round.round_number} / {session.config.num_rounds}
         </span>
-        <span className="font-mono text-xl font-bold text-gain">{money(wealth)}</span>
+        <span className="text-right">
+          <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+            Your wealth
+          </span>
+          <span className="font-mono text-xl font-bold text-ink">{money(wealth)}</span>
+        </span>
       </div>
       {showOdds ? (
-        <div className="mb-4 flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-2 text-sm shadow-card">
-          <span className="text-ink-muted">This round&apos;s market odds</span>
+        <div className="mb-4 flex items-center justify-between rounded-xl border-2 border-ink bg-surface px-4 py-2 text-sm shadow-card">
+          <span className="font-editorial italic text-ink-muted">The market looks like</span>
           <span className="flex items-center gap-2 font-mono font-semibold">
             <span className="inline-flex items-center gap-0.5 text-gain">
               <ArrowUp /> {goodPct}%
@@ -196,22 +210,24 @@ function Reveal({
       </div>
       <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
         <div
-          className={`mx-auto flex w-fit items-center gap-2 rounded-full px-6 py-2 text-2xl font-black ${
-            good ? "bg-gain-soft text-gain" : "bg-loss-soft text-loss"
+          className={`-mx-6 -mt-6 mb-1 flex items-center justify-center gap-2 border-b-2 border-ink px-6 py-4 font-display text-3xl font-black uppercase tracking-tight text-white ${
+            good ? "bg-gain" : "bg-loss"
           }`}
         >
           {good ? <ArrowUp /> : <ArrowDown />}
-          {good ? "GOOD market" : "BAD market"}
+          {good ? "Good! ▲" : "Down ▼"}
         </div>
 
         <div>
-          <div className="text-sm text-ink-muted">New wealth</div>
+          <div className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
+            New wealth
+          </div>
           <div className="animate-count-pop font-mono text-5xl font-black text-ink">
             {money(resulting)}
           </div>
           <div
-            className={`mt-1 font-mono text-xl font-bold ${
-              delta > 0 ? "text-gain" : delta < 0 ? "text-loss" : "text-ink-subtle"
+            className={`mt-2 inline-block rounded-full border-2 border-ink px-3 py-0.5 font-mono text-lg font-bold text-white ${
+              delta > 0 ? "bg-gain" : delta < 0 ? "bg-loss" : "bg-ink-subtle"
             }`}
           >
             {signedMoney(delta)} this round
@@ -219,8 +235,8 @@ function Reveal({
         </div>
 
         {rank ? (
-          <div className="rounded-xl bg-play-soft py-3 text-lg text-ink">
-            You&apos;re <span className="font-bold text-play">{ordinal(rank.rank)}</span> of{" "}
+          <div className="rounded-xl border-2 border-ink bg-brand-soft py-3 text-lg font-semibold text-ink shadow-card">
+            🏆 You&apos;re <span className="font-display font-black">{ordinal(rank.rank)}</span> of{" "}
             {rank.total}
           </div>
         ) : null}

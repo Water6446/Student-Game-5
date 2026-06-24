@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,500;1,9..144,600&family=JetBrains+Mono:wght@400;500;700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #EBE3D0; }
+  .rg-range { -webkit-appearance:none; appearance:none; width:100%; height:30px; background:transparent; cursor:pointer; }
+  .rg-range::-webkit-slider-runnable-track { height:30px; background:transparent; }
+  .rg-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:34px; height:34px; margin-top:-2px; border-radius:50%; background:#F0A92B; border:3px solid #211A12; box-shadow:3px 3px 0 #211A12; cursor:grab; }
+  .rg-range::-moz-range-thumb { width:34px; height:34px; border-radius:50%; background:#F0A92B; border:3px solid #211A12; box-shadow:3px 3px 0 #211A12; cursor:grab; }
+  @keyframes rgPop { 0%{transform:scale(.7);opacity:0;} 60%{transform:scale(1.06);} 100%{transform:scale(1);opacity:1;} }
+  @keyframes rgFloat { 0%,100%{transform:translateY(0) rotate(var(--r,0deg));} 50%{transform:translateY(-7px) rotate(var(--r,0deg));} }
+  @keyframes rgPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.04);} }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#EBE3D0;font-family:'Hanken Grotesk',sans-serif;color:#211A12;background-image:radial-gradient(#dfd6bf 1.4px, transparent 1.4px);background-size:22px 22px;">
+
+  <!-- ===== Top nav ===== -->
+  <div style="position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:18px;padding:14px 24px;background:#FFFDF6;border-bottom:2.5px solid #211A12;">
+    <div style="display:flex;align-items:center;gap:11px;">
+      <div style="width:34px;height:34px;border:2.5px solid #211A12;border-radius:9px;background:#F0A92B;box-shadow:2.5px 2.5px 0 #211A12;display:flex;align-items:center;justify-content:center;font:900 18px 'Archivo';">R</div>
+      <span style="font:900 19px 'Archivo';letter-spacing:-.01em;">THE RISK GAME</span>
+      <span style="font:italic 500 15px 'Fraunces';color:#6B5C40;">— a new look</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div style="display:flex;gap:8px;">
+      <sc-if value="{{ tabLanding }}" hint-placeholder-val="{{ true }}"><div onClick="{{ goLanding }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#211A12;color:#F6EFDD;transform:translate(2px,2px);">Landing</div></sc-if>
+      <sc-if value="{{ notLanding }}" hint-placeholder-val="{{ false }}"><div onClick="{{ goLanding }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#FFFDF6;color:#211A12;box-shadow:3px 3px 0 #211A12;">Landing</div></sc-if>
+      <sc-if value="{{ tabStudent }}" hint-placeholder-val="{{ false }}"><div onClick="{{ goStudent }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#211A12;color:#F6EFDD;transform:translate(2px,2px);">Student</div></sc-if>
+      <sc-if value="{{ notStudent }}" hint-placeholder-val="{{ true }}"><div onClick="{{ goStudent }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#FFFDF6;color:#211A12;box-shadow:3px 3px 0 #211A12;">Student</div></sc-if>
+      <sc-if value="{{ tabHost }}" hint-placeholder-val="{{ false }}"><div onClick="{{ goHost }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#211A12;color:#F6EFDD;transform:translate(2px,2px);">Host</div></sc-if>
+      <sc-if value="{{ notHost }}" hint-placeholder-val="{{ true }}"><div onClick="{{ goHost }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#FFFDF6;color:#211A12;box-shadow:3px 3px 0 #211A12;">Host</div></sc-if>
+      <sc-if value="{{ tabProjector }}" hint-placeholder-val="{{ false }}"><div onClick="{{ goProjector }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#211A12;color:#F6EFDD;transform:translate(2px,2px);">Projector</div></sc-if>
+      <sc-if value="{{ notProjector }}" hint-placeholder-val="{{ true }}"><div onClick="{{ goProjector }}" style="cursor:pointer;padding:9px 17px;border:2.5px solid #211A12;border-radius:11px;font:800 14px 'Archivo';background:#FFFDF6;color:#211A12;box-shadow:3px 3px 0 #211A12;">Projector</div></sc-if>
+    </div>
+  </div>
+
+  <div style="padding:40px 24px 64px;">
+
+  <!-- ============================================================ LANDING ============================================================ -->
+  <sc-if value="{{ tabLanding }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Landing" style="max-width:980px;margin:0 auto;display:grid;grid-template-columns:1.15fr .85fr;gap:32px;align-items:center;">
+      <div>
+        <div style="display:inline-flex;align-items:center;gap:8px;font:800 12px 'Archivo';letter-spacing:.1em;text-transform:uppercase;background:#E4ECFF;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2.5px 2.5px 0 #211A12;">📈 Investing, but make it a game</div>
+        <h1 style="margin:22px 0 0;font:900 72px/.92 'Archivo';letter-spacing:-.025em;">PLAY THE<br>MARKET.</h1>
+        <p style="margin:20px 0 0;max-width:430px;font:italic 400 21px/1.45 'Fraunces';color:#5C5240;">Twenty-five rounds. Split your wealth between the <span style="font-style:normal;font-weight:600;color:#1F8A4C;">safe</span> bet and the <span style="font-style:normal;font-weight:600;color:#DB3B2B;">risky</span> one. Read the odds, ride the swings, and try to top the class.</p>
+        <div style="display:flex;gap:12px;margin-top:30px;">
+          <div onClick="{{ goStudent }}" style="cursor:pointer;padding:15px 26px;background:#2557E8;color:#fff;border:2.5px solid #211A12;border-radius:13px;font:900 17px 'Archivo';box-shadow:5px 5px 0 #211A12;">Join a game →</div>
+          <div onClick="{{ goHost }}" style="cursor:pointer;padding:15px 26px;background:#FFFDF6;color:#211A12;border:2.5px solid #211A12;border-radius:13px;font:900 17px 'Archivo';box-shadow:5px 5px 0 #211A12;">Host a game</div>
+        </div>
+      </div>
+
+      <div style="position:relative;">
+        <span style="position:absolute;top:-18px;left:-10px;width:18px;height:18px;background:#F0A92B;border:2px solid #211A12;transform:rotate(18deg);--r:18deg;animation:rgFloat 4s ease-in-out infinite;"></span>
+        <span style="position:absolute;bottom:24px;right:-14px;width:16px;height:16px;border-radius:50%;background:#2557E8;border:2px solid #211A12;--r:0deg;animation:rgFloat 5s ease-in-out infinite;"></span>
+        <div style="background:#FFFDF6;border:2.5px solid #211A12;border-radius:20px;box-shadow:8px 8px 0 #211A12;padding:26px 24px;">
+          <div style="font:800 12px 'Archivo';letter-spacing:.12em;text-transform:uppercase;color:#6B5C40;">Enter game code</div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <div style="flex:1;text-align:center;padding:16px 0;border:2.5px solid #211A12;border-radius:11px;background:#FBEFD2;font:800 30px 'JetBrains Mono';">4</div>
+            <div style="flex:1;text-align:center;padding:16px 0;border:2.5px solid #211A12;border-radius:11px;background:#FBEFD2;font:800 30px 'JetBrains Mono';">F</div>
+            <div style="flex:1;text-align:center;padding:16px 0;border:2.5px solid #211A12;border-radius:11px;background:#FBEFD2;font:800 30px 'JetBrains Mono';">2</div>
+            <div style="flex:1;text-align:center;padding:16px 0;border:2.5px solid #211A12;border-radius:11px;background:#FBEFD2;font:800 30px 'JetBrains Mono';">K</div>
+            <div style="flex:1;text-align:center;padding:16px 0;border:2.5px solid #211A12;border-radius:11px;background:#FBEFD2;font:800 30px 'JetBrains Mono';">9</div>
+          </div>
+          <div onClick="{{ goStudent }}" style="cursor:pointer;margin-top:16px;text-align:center;padding:15px;background:#F0A92B;border:2.5px solid #211A12;border-radius:12px;font:900 17px 'Archivo';box-shadow:4px 4px 0 #211A12;">Enter the market</div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px;font:italic 400 14px 'Fraunces';color:#6B5C40;border-top:2px dashed #d8cdb2;padding-top:14px;">
+            <span style="font-style:normal;font:800 13px 'JetBrains Mono';color:#1F8A4C;">28</span> students already in the room
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============================================================ STUDENT ============================================================ -->
+  <sc-if value="{{ tabStudent }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Student" style="display:flex;flex-direction:column;align-items:center;">
+      <!-- step rail -->
+      <div style="display:flex;gap:7px;margin-bottom:24px;align-items:center;">
+        <sc-for list="{{ dots }}" as="d" hint-placeholder-count="5">
+          <sc-if value="{{ d.cur }}" hint-placeholder-val="{{ false }}"><div onClick="{{ d.go }}" style="cursor:pointer;width:26px;height:13px;border-radius:99px;border:2px solid #211A12;background:#F0A92B;transition:all .15s;"></div></sc-if>
+          <sc-if value="{{ d.done }}" hint-placeholder-val="{{ false }}"><div onClick="{{ d.go }}" style="cursor:pointer;width:13px;height:13px;border-radius:99px;border:2px solid #211A12;background:#1F8A4C;transition:all .15s;"></div></sc-if>
+          <sc-if value="{{ d.future }}" hint-placeholder-val="{{ true }}"><div onClick="{{ d.go }}" style="cursor:pointer;width:13px;height:13px;border-radius:99px;border:2px solid #211A12;background:#FFFDF6;transition:all .15s;"></div></sc-if>
+        </sc-for>
+        <span style="margin-left:10px;font:italic 400 14px 'Fraunces';color:#6B5C40;">{{ stepLabel }}</span>
+      </div>
+
+      <!-- phone shell -->
+      <div style="width:360px;padding:10px;background:#211A12;border-radius:46px;box-shadow:10px 12px 0 rgba(33,26,18,.18);">
+        <div style="width:340px;min-height:640px;border-radius:38px;overflow:hidden;background:#F6EFDD;position:relative;">
+
+          <!-- STEP 0 — JOIN -->
+          <sc-if value="{{ stIsJoin }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:34px 24px;display:flex;flex-direction:column;min-height:640px;">
+              <div style="width:48px;height:48px;border:2.5px solid #211A12;border-radius:12px;background:#F0A92B;box-shadow:3px 3px 0 #211A12;display:flex;align-items:center;justify-content:center;font:900 24px 'Archivo';">R</div>
+              <h2 style="margin:26px 0 0;font:900 34px/1 'Archivo';letter-spacing:-.02em;">WHO'S<br>PLAYING?</h2>
+              <p style="margin:12px 0 0;font:italic 400 16px 'Fraunces';color:#6B5C40;">Pick a name your class will see on the leaderboard.</p>
+              <div style="margin-top:26px;font:800 11px 'Archivo';letter-spacing:.12em;text-transform:uppercase;color:#6B5C40;">Your name</div>
+              <div style="margin-top:8px;padding:15px 16px;border:2.5px solid #211A12;border-radius:13px;background:#fff;font:700 18px 'Hanken Grotesk';box-shadow:3px 3px 0 #211A12;">Jordan ▏</div>
+              <div style="margin-top:18px;font:800 11px 'Archivo';letter-spacing:.12em;text-transform:uppercase;color:#6B5C40;">Game code</div>
+              <div style="margin-top:8px;padding:15px 16px;border:2.5px solid #211A12;border-radius:13px;background:#FBEFD2;font:800 20px 'JetBrains Mono';letter-spacing:.3em;box-shadow:3px 3px 0 #211A12;">4F2K9</div>
+              <div style="flex:1;"></div>
+              <div onClick="{{ sNext }}" style="cursor:pointer;text-align:center;padding:17px;background:#2557E8;color:#fff;border:2.5px solid #211A12;border-radius:14px;font:900 18px 'Archivo';box-shadow:5px 5px 0 #211A12;">Enter the market →</div>
+            </div>
+          </sc-if>
+
+          <!-- STEP 1 — LOBBY -->
+          <sc-if value="{{ stIsLobby }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:34px 24px;display:flex;flex-direction:column;min-height:640px;text-align:center;">
+              <div style="font:800 12px 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:#1F8A4C;">✓ You're in</div>
+              <h2 style="margin:14px 0 0;font:900 36px/1 'Archivo';letter-spacing:-.02em;">HOLD<br>TIGHT.</h2>
+              <p style="margin:14px 0 0;font:italic 400 16px/1.4 'Fraunces';color:#6B5C40;">The professor starts the game when everyone's settled. You'll feel your phone buzz.</p>
+              <div style="margin:28px auto 0;width:88px;height:88px;border:3px solid #211A12;border-radius:50%;background:#FBEFD2;box-shadow:4px 4px 0 #211A12;display:flex;align-items:center;justify-content:center;font:900 34px 'Archivo';animation:rgPulse 2.2s ease-in-out infinite;">⏳</div>
+              <div style="margin-top:30px;padding:16px;border:2.5px solid #211A12;border-radius:14px;background:#fff;box-shadow:3px 3px 0 #211A12;">
+                <div style="font:800 11px 'Archivo';letter-spacing:.1em;text-transform:uppercase;color:#6B5C40;">In the room</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;">
+                  <span style="font:700 13px 'Hanken Grotesk';background:#E4ECFF;border:1.5px solid #211A12;border-radius:99px;padding:4px 11px;">Priya</span>
+                  <span style="font:700 13px 'Hanken Grotesk';background:#FBEFD2;border:1.5px solid #211A12;border-radius:99px;padding:4px 11px;">Marcus</span>
+                  <span style="font:700 13px 'Hanken Grotesk';background:#FFFDF6;border:1.5px solid #211A12;border-radius:99px;padding:4px 11px;">Dana</span>
+                  <span style="font:700 13px 'Hanken Grotesk';background:#FFE3DD;border:1.5px solid #211A12;border-radius:99px;padding:4px 11px;">Leo</span>
+                  <span style="font:700 13px 'Hanken Grotesk';background:#FFFDF6;border:1.5px solid #211A12;border-radius:99px;padding:4px 11px;">You</span>
+                  <span style="font:700 13px 'Hanken Grotesk';background:#FFFDF6;border:1.5px solid #211A12;border-radius:99px;padding:4px 11px;">+23</span>
+                </div>
+              </div>
+              <div style="flex:1;"></div>
+              <div onClick="{{ sNext }}" style="cursor:pointer;text-align:center;padding:15px;background:#FFFDF6;border:2.5px dashed #211A12;border-radius:14px;font:800 14px 'Archivo';color:#6B5C40;">▶ Skip ahead (demo)</div>
+            </div>
+          </sc-if>
+
+          <!-- STEP 2 — ALLOCATE -->
+          <sc-if value="{{ stIsAllocate }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:24px 20px 26px;min-height:640px;display:flex;flex-direction:column;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font:800 12px 'JetBrains Mono';background:#211A12;color:#F6EFDD;border-radius:99px;padding:5px 12px;letter-spacing:.04em;">ROUND 07/25</span>
+                <div style="text-align:right;"><div style="font:700 10px 'Archivo';letter-spacing:.1em;color:#6B5C40;">YOUR WEALTH</div><div style="font:800 23px 'JetBrains Mono';">$142.50</div></div>
+              </div>
+
+              <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;padding:10px 13px;border:2.5px solid #211A12;border-radius:12px;background:#fff;box-shadow:3px 3px 0 #211A12;">
+                <span style="font:italic 500 14px 'Fraunces';color:#5C5240;">The market looks like</span>
+                <span style="font:800 13px 'JetBrains Mono';"><span style="color:#1F8A4C;">▲62%</span> <span style="color:#6B5C40;">/</span> <span style="color:#DB3B2B;">▼38%</span></span>
+              </div>
+
+              <div style="display:flex;gap:10px;margin-top:14px;">
+                <div style="flex:1;border:2.5px solid #211A12;background:#1F8A4C;border-radius:15px;padding:14px;color:#fff;box-shadow:4px 4px 0 #211A12;">
+                  <div style="font:800 11px 'Archivo';letter-spacing:.08em;">🛡 SAFE</div>
+                  <div style="font:800 26px 'JetBrains Mono';margin-top:3px;">{{ safeAmt }}</div>
+                  <div style="font:700 14px 'JetBrains Mono';opacity:.85;">{{ safePct }}%</div>
+                </div>
+                <div style="flex:1;border:2.5px solid #211A12;background:#DB3B2B;border-radius:15px;padding:14px;color:#fff;box-shadow:4px 4px 0 #211A12;">
+                  <div style="font:800 11px 'Archivo';letter-spacing:.08em;">🔥 RISKY</div>
+                  <div style="font:800 26px 'JetBrains Mono';margin-top:3px;">{{ riskyAmt }}</div>
+                  <div style="font:700 14px 'JetBrains Mono';opacity:.85;">{{ riskyPct }}%</div>
+                </div>
+              </div>
+
+              <div style="margin-top:24px;font:800 11px 'Archivo';letter-spacing:.1em;text-transform:uppercase;color:#6B5C40;">Drag to set your risky share</div>
+              <div style="position:relative;margin-top:12px;height:34px;">
+                <div style="position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);height:14px;border:2.5px solid #211A12;border-radius:99px;overflow:hidden;background:#1F8A4C;">
+                  <div style="{{ riskyFill }}"></div>
+                </div>
+                <input class="rg-range" type="range" min="0" max="100" step="5" value="{{ riskyVal }}" onInput="{{ onRisky }}" style="position:absolute;inset:0;margin:0;">
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:8px;font:700 11px 'JetBrains Mono';color:#6B5C40;">
+                <span>ALL SAFE</span><span>ALL RISKY</span>
+              </div>
+
+              <div style="flex:1;"></div>
+              <div onClick="{{ sNext }}" style="cursor:pointer;text-align:center;padding:17px;background:#F0A92B;border:2.5px solid #211A12;border-radius:14px;font:900 18px 'Archivo';box-shadow:5px 5px 0 #211A12;">Lock in my bet 🔒</div>
+              <p style="text-align:center;margin:11px 0 0;font:italic 400 13px 'Fraunces';color:#6B5C40;">You can still tweak it until the round locks.</p>
+            </div>
+          </sc-if>
+
+          <!-- STEP 3 — LOCKED -->
+          <sc-if value="{{ stIsLocked }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:34px 24px;display:flex;flex-direction:column;min-height:640px;text-align:center;">
+              <div style="font:800 12px 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:#2557E8;">🔒 Bet locked</div>
+              <h2 style="margin:14px 0 0;font:900 34px/1 'Archivo';letter-spacing:-.02em;">NICE.<br>NOW WE WAIT.</h2>
+              <p style="margin:14px 0 0;font:italic 400 16px/1.4 'Fraunces';color:#6B5C40;">When everyone's locked in, the professor reveals whether the market went up or down.</p>
+              <div style="margin-top:26px;display:flex;gap:10px;">
+                <div style="flex:1;border:2.5px solid #211A12;border-radius:14px;background:#1F8A4C;color:#fff;padding:14px;box-shadow:3px 3px 0 #211A12;"><div style="font:800 11px 'Archivo';">🛡 SAFE</div><div style="font:800 22px 'JetBrains Mono';margin-top:3px;">{{ safeAmt }}</div></div>
+                <div style="flex:1;border:2.5px solid #211A12;border-radius:14px;background:#DB3B2B;color:#fff;padding:14px;box-shadow:3px 3px 0 #211A12;"><div style="font:800 11px 'Archivo';">🔥 RISKY</div><div style="font:800 22px 'JetBrains Mono';margin-top:3px;">{{ riskyAmt }}</div></div>
+              </div>
+              <div style="margin:28px auto 0;display:flex;gap:8px;">
+                <span style="width:13px;height:13px;border-radius:50%;background:#F0A92B;border:2px solid #211A12;animation:rgPulse 1.2s ease-in-out infinite;"></span>
+                <span style="width:13px;height:13px;border-radius:50%;background:#F0A92B;border:2px solid #211A12;animation:rgPulse 1.2s ease-in-out .2s infinite;"></span>
+                <span style="width:13px;height:13px;border-radius:50%;background:#F0A92B;border:2px solid #211A12;animation:rgPulse 1.2s ease-in-out .4s infinite;"></span>
+              </div>
+              <div style="flex:1;"></div>
+              <div onClick="{{ sNext }}" style="cursor:pointer;text-align:center;padding:15px;background:#FFFDF6;border:2.5px dashed #211A12;border-radius:14px;font:800 14px 'Archivo';color:#6B5C40;">▶ Reveal (demo)</div>
+            </div>
+          </sc-if>
+
+          <!-- STEP 4 — REVEAL -->
+          <sc-if value="{{ stIsReveal }}" hint-placeholder-val="{{ false }}">
+            <div style="min-height:640px;display:flex;flex-direction:column;">
+              <div style="background:#1F8A4C;color:#fff;padding:30px 24px 22px;text-align:center;position:relative;border-bottom:2.5px solid #211A12;animation:rgPop .5s ease;">
+                <span style="position:absolute;top:14px;left:20px;width:11px;height:11px;background:#F0A92B;border:1.5px solid #211A12;transform:rotate(20deg);"></span>
+                <span style="position:absolute;top:24px;right:30px;width:11px;height:11px;background:#fff;border:1.5px solid #211A12;border-radius:50%;"></span>
+                <span style="position:absolute;bottom:14px;right:22px;width:11px;height:11px;background:#F0A92B;border:1.5px solid #211A12;"></span>
+                <div style="font:900 44px/1 'Archivo';letter-spacing:-.01em;">GOOD! ▲</div>
+                <div style="font:italic 500 15px 'Fraunces';margin-top:6px;opacity:.95;">The risky market paid off this round.</div>
+              </div>
+              <div style="padding:26px 24px;text-align:center;flex:1;display:flex;flex-direction:column;">
+                <div style="font:800 11px 'Archivo';letter-spacing:.12em;text-transform:uppercase;color:#6B5C40;">New wealth</div>
+                <div style="font:800 56px/1 'JetBrains Mono';margin-top:6px;">$148.20</div>
+                <div style="display:inline-block;margin:12px auto 0;font:800 16px 'JetBrains Mono';color:#fff;background:#1F8A4C;border:2.5px solid #211A12;border-radius:99px;padding:5px 16px;box-shadow:3px 3px 0 #211A12;">+$5.70</div>
+                <div style="margin-top:22px;padding:15px;border:2.5px solid #211A12;border-radius:14px;background:#FBEFD2;box-shadow:3px 3px 0 #211A12;font:800 18px 'Archivo';">🏆 You're 3rd <span style="font:700 14px 'JetBrains Mono';color:#6B5C40;">of 28</span></div>
+                <div style="flex:1;"></div>
+                <div onClick="{{ sRestart }}" style="cursor:pointer;text-align:center;padding:16px;background:#2557E8;color:#fff;border:2.5px solid #211A12;border-radius:14px;font:900 17px 'Archivo';box-shadow:5px 5px 0 #211A12;">On to round 8 →</div>
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============================================================ HOST ============================================================ -->
+  <sc-if value="{{ tabHost }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Host" style="max-width:920px;margin:0 auto;">
+      <div style="display:flex;gap:8px;margin-bottom:22px;">
+        <div onClick="{{ hostToLobby }}" style="{{ hostLobbyTab }}">Lobby</div>
+        <div onClick="{{ hostToControl }}" style="{{ hostControlTab }}">Round control</div>
+      </div>
+
+      <!-- HOST LOBBY -->
+      <sc-if value="{{ hostLobby }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:24px;align-items:start;">
+          <div style="background:#211A12;color:#F6EFDD;border:2.5px solid #211A12;border-radius:20px;padding:28px 24px;box-shadow:7px 7px 0 rgba(33,26,18,.25);text-align:center;">
+            <div style="font:800 12px 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:#F0A92B;">Game code</div>
+            <div style="font:800 66px/1 'JetBrains Mono';letter-spacing:.08em;margin-top:8px;">4F2K9</div>
+            <div style="margin-top:18px;width:128px;height:128px;margin-left:auto;margin-right:auto;background:#F6EFDD;border:2.5px solid #F6EFDD;border-radius:12px;background-image:conic-gradient(#211A12 25%, #F6EFDD 0 50%, #211A12 0 75%, #F6EFDD 0);background-size:18px 18px;"></div>
+            <div style="margin-top:16px;font:italic 400 14px 'Fraunces';color:#cdbcaa;">Project this. Students join at <span style="font-style:normal;font:700 13px 'JetBrains Mono';color:#F0A92B;">riskgame.app</span></div>
+          </div>
+          <div style="background:#FFFDF6;border:2.5px solid #211A12;border-radius:20px;padding:24px;box-shadow:7px 7px 0 #211A12;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font:900 20px 'Archivo';">Players joined</span>
+              <span style="font:800 16px 'JetBrains Mono';background:#E4ECFF;border:2px solid #211A12;border-radius:99px;padding:4px 13px;box-shadow:2px 2px 0 #211A12;">28</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:16px;">
+              <span style="font:700 13px 'Hanken Grotesk';background:#FBEFD2;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Priya</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#E4ECFF;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Marcus</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#FFE3DD;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Dana</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#FFFDF6;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Leo</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#E4FBEA;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Wen</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#FBEFD2;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Aisha</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#FFFDF6;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Tom</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#E4ECFF;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">Kira</span>
+              <span style="font:700 13px 'Hanken Grotesk';background:#FFFDF6;border:1.5px solid #211A12;border-radius:99px;padding:5px 12px;">+20 more</span>
+            </div>
+            <div style="margin-top:22px;display:flex;gap:12px;align-items:center;">
+              <div style="flex:1;border:2px dashed #d8cdb2;border-radius:12px;padding:13px 14px;font:italic 400 14px 'Fraunces';color:#6B5C40;">Rounds: <span style="font-style:normal;font:700 13px 'JetBrains Mono';color:#211A12;">25</span> · Start wealth: <span style="font-style:normal;font:700 13px 'JetBrains Mono';color:#211A12;">$100</span></div>
+            </div>
+            <div onClick="{{ hostToControl }}" style="cursor:pointer;margin-top:18px;text-align:center;padding:17px;background:#1F8A4C;color:#fff;border:2.5px solid #211A12;border-radius:14px;font:900 18px 'Archivo';box-shadow:5px 5px 0 #211A12;">▶ Start the game</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- HOST CONTROL -->
+      <sc-if value="{{ hostControl }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+          <div style="background:#FFFDF6;border:2.5px solid #211A12;border-radius:20px;padding:24px;box-shadow:7px 7px 0 #211A12;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font:800 12px 'JetBrains Mono';background:#211A12;color:#F6EFDD;border-radius:99px;padding:5px 13px;">ROUND 07 / 25</span>
+              <span style="font:italic 400 14px 'Fraunces';color:#6B5C40;">betting open</span>
+            </div>
+            <div style="margin-top:20px;font:800 11px 'Archivo';letter-spacing:.1em;text-transform:uppercase;color:#6B5C40;">Set the odds students see</div>
+            <div style="margin-top:12px;display:flex;height:20px;border:2.5px solid #211A12;border-radius:99px;overflow:hidden;box-shadow:3px 3px 0 #211A12;">
+              <div style="width:62%;background:#1F8A4C;"></div>
+              <div style="width:38%;background:#DB3B2B;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:9px;font:800 14px 'JetBrains Mono';">
+              <span style="color:#1F8A4C;">▲ Good 62%</span><span style="color:#DB3B2B;">38% Bad ▼</span>
+            </div>
+            <div style="margin-top:22px;padding:16px;border:2.5px solid #211A12;border-radius:14px;background:#FBEFD2;box-shadow:3px 3px 0 #211A12;display:flex;justify-content:space-between;align-items:center;">
+              <div><div style="font:800 11px 'Archivo';letter-spacing:.1em;color:#6B5C40;">BETS LOCKED IN</div><div style="font:800 32px 'JetBrains Mono';">18 <span style="font-size:18px;color:#6B5C40;">/ 28</span></div></div>
+              <div style="font:italic 400 14px 'Fraunces';color:#6B5C40;text-align:right;max-width:120px;">Waiting on 10 more students…</div>
+            </div>
+          </div>
+
+          <div style="background:#FFFDF6;border:2.5px solid #211A12;border-radius:20px;padding:24px;box-shadow:7px 7px 0 #211A12;">
+            <div style="font:900 20px 'Archivo';">Resolve the round</div>
+            <p style="margin:8px 0 0;font:italic 400 15px 'Fraunces';color:#6B5C40;">Roll the market, then reveal the outcome to everyone at once.</p>
+            <div style="display:flex;gap:12px;margin-top:18px;">
+              <div style="flex:1;cursor:pointer;text-align:center;padding:22px 10px;background:#1F8A4C;color:#fff;border:2.5px solid #211A12;border-radius:14px;box-shadow:4px 4px 0 #211A12;"><div style="font:900 30px 'Archivo';">▲</div><div style="font:900 16px 'Archivo';margin-top:2px;">MARKET UP</div></div>
+              <div style="flex:1;cursor:pointer;text-align:center;padding:22px 10px;background:#DB3B2B;color:#fff;border:2.5px solid #211A12;border-radius:14px;box-shadow:4px 4px 0 #211A12;"><div style="font:900 30px 'Archivo';">▼</div><div style="font:900 16px 'Archivo';margin-top:2px;">MARKET DOWN</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:10px;">
+              <div style="flex:1;cursor:pointer;text-align:center;padding:13px;background:#FFFDF6;border:2.5px solid #211A12;border-radius:12px;font:800 14px 'Archivo';color:#211A12;">⟲ Re-open betting</div>
+              <div onClick="{{ goProjector }}" style="flex:1;cursor:pointer;text-align:center;padding:13px;background:#F0A92B;border:2.5px solid #211A12;border-radius:12px;font:800 14px 'Archivo';box-shadow:3px 3px 0 #211A12;">Show projector ↗</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ============================================================ PROJECTOR ============================================================ -->
+  <sc-if value="{{ tabProjector }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Projector" style="max-width:1040px;margin:0 auto;">
+      <div style="display:flex;gap:8px;margin-bottom:22px;">
+        <div onClick="{{ projToLobby }}" style="{{ projLobbyTab }}">Lobby</div>
+        <div onClick="{{ projToBet }}" style="{{ projBetTab }}">Betting</div>
+        <div onClick="{{ projToReveal }}" style="{{ projRevealTab }}">Reveal</div>
+      </div>
+
+      <!-- 16:9 stage -->
+      <div style="position:relative;width:100%;aspect-ratio:16/9;background:#F6EFDD;border:3px solid #211A12;border-radius:18px;box-shadow:10px 10px 0 #211A12;overflow:hidden;background-image:radial-gradient(#e4dabf 1.6px, transparent 1.6px);background-size:26px 26px;">
+
+        <!-- PROJECTOR LOBBY -->
+        <sc-if value="{{ projLobby }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;">
+            <div style="padding:48px;display:flex;flex-direction:column;justify-content:center;border-right:3px solid #211A12;background:#211A12;color:#F6EFDD;">
+              <div style="font:900 26px 'Archivo';letter-spacing:-.01em;">THE RISK GAME</div>
+              <div style="font:italic 500 19px 'Fraunces';color:#F0A92B;margin-top:6px;">Join from your phone</div>
+              <div style="margin-top:36px;font:800 13px 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:#cdbcaa;">Game code</div>
+              <div style="font:800 92px/1 'JetBrains Mono';letter-spacing:.06em;margin-top:6px;">4F2K9</div>
+              <div style="margin-top:22px;font:italic 400 17px 'Fraunces';color:#cdbcaa;">go to <span style="font-style:normal;font:700 16px 'JetBrains Mono';color:#F0A92B;">riskgame.app</span></div>
+            </div>
+            <div style="padding:44px;display:flex;flex-direction:column;justify-content:center;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                <span style="font:900 22px 'Archivo';">In the room</span>
+                <span style="font:800 40px 'JetBrains Mono';color:#1F8A4C;">28</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;align-content:flex-start;">
+                <span style="font:700 15px 'Hanken Grotesk';background:#FBEFD2;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Priya</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#E4ECFF;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Marcus</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#FFE3DD;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Dana</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#E4FBEA;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Leo</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#FFFDF6;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Wen</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#FBEFD2;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Aisha</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#E4ECFF;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Tom</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#FFFDF6;border:2px solid #211A12;border-radius:99px;padding:6px 14px;box-shadow:2px 2px 0 #211A12;">Kira</span>
+                <span style="font:700 15px 'Hanken Grotesk';background:#FFFDF6;border:2px dashed #211A12;border-radius:99px;padding:6px 14px;">+ 20</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- PROJECTOR BETTING -->
+        <sc-if value="{{ projBet }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 32px;border-bottom:3px solid #211A12;background:#FFFDF6;">
+              <span style="font:800 13px 'JetBrains Mono';background:#211A12;color:#F6EFDD;border-radius:99px;padding:6px 15px;">ROUND 07 / 25</span>
+              <span style="font:900 22px 'Archivo';">PLACE YOUR BETS</span>
+              <span style="font:italic 400 16px 'Fraunces';color:#6B5C40;">code <span style="font-style:normal;font:700 15px 'JetBrains Mono';color:#211A12;">4F2K9</span></span>
+            </div>
+            <div style="flex:1;display:grid;grid-template-columns:.8fr 1.2fr;">
+              <div style="border-right:3px solid #211A12;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#E4ECFF;">
+                <div style="font:800 12px 'Archivo';letter-spacing:.12em;text-transform:uppercase;color:#5C5240;">Locked in</div>
+                <div style="font:800 96px/1 'JetBrains Mono';color:#2557E8;margin-top:6px;">18<span style="font-size:40px;color:#211A12;">/28</span></div>
+                <div style="margin-top:14px;font:italic 500 17px 'Fraunces';color:#5C5240;">10 students still deciding…</div>
+              </div>
+              <div style="padding:26px 32px;display:flex;flex-direction:column;justify-content:center;gap:10px;">
+                <div style="font:800 12px 'Archivo';letter-spacing:.1em;text-transform:uppercase;color:#6B5C40;margin-bottom:2px;">Standings so far</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border:2.5px solid #211A12;border-radius:12px;background:#FBEFD2;box-shadow:3px 3px 0 #211A12;font:800 19px 'Archivo';"><span>🥇 Priya</span><span style="font:800 19px 'JetBrains Mono';color:#1F8A4C;">$312.00</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border:2.5px solid #211A12;border-radius:12px;background:#FFFDF6;box-shadow:3px 3px 0 #211A12;font:800 19px 'Archivo';"><span>🥈 Marcus</span><span style="font:800 19px 'JetBrains Mono';color:#1F8A4C;">$287.40</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border:2.5px solid #211A12;border-radius:12px;background:#FFFDF6;box-shadow:3px 3px 0 #211A12;font:800 19px 'Archivo';"><span>🥉 Dana</span><span style="font:800 19px 'JetBrains Mono';color:#DB3B2B;">$241.10</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border:2.5px solid #211A12;border-radius:12px;background:#FFFDF6;font:700 18px 'Archivo';color:#6B5C40;"><span>4&nbsp;&nbsp;Leo</span><span style="font:700 18px 'JetBrains Mono';">$198.60</span></div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- PROJECTOR REVEAL -->
+        <sc-if value="{{ projReveal }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;">
+            <div style="background:#1F8A4C;color:#fff;padding:22px 32px;text-align:center;border-bottom:3px solid #211A12;position:relative;animation:rgPop .5s ease;">
+              <span style="position:absolute;top:14px;left:40px;width:14px;height:14px;background:#F0A92B;border:2px solid #211A12;transform:rotate(20deg);"></span>
+              <span style="position:absolute;bottom:16px;right:60px;width:14px;height:14px;background:#fff;border:2px solid #211A12;border-radius:50%;"></span>
+              <div style="font:900 46px/1 'Archivo';letter-spacing:-.01em;">MARKET UP! ▲</div>
+              <div style="font:italic 500 18px 'Fraunces';margin-top:5px;opacity:.95;">Round 7 — risky bets gained, safe bets held.</div>
+            </div>
+            <div style="flex:1;padding:24px 32px;display:flex;flex-direction:column;justify-content:center;gap:11px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border:2.5px solid #211A12;border-radius:13px;background:#FBEFD2;box-shadow:4px 4px 0 #211A12;font:900 22px 'Archivo';">
+                <span>🥇 Priya</span>
+                <span style="display:flex;align-items:center;gap:12px;"><span style="font:700 14px 'JetBrains Mono';color:#1F8A4C;">▲ +$28.10</span><span style="font:800 22px 'JetBrains Mono';">$340.10</span></span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border:2.5px solid #211A12;border-radius:13px;background:#FFFDF6;box-shadow:4px 4px 0 #211A12;font:900 22px 'Archivo';">
+                <span>🥈 Marcus</span>
+                <span style="display:flex;align-items:center;gap:12px;"><span style="font:700 14px 'JetBrains Mono';color:#1F8A4C;">▲ +$19.40</span><span style="font:800 22px 'JetBrains Mono';">$306.80</span></span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border:2.5px solid #211A12;border-radius:13px;background:#FFFDF6;box-shadow:4px 4px 0 #211A12;font:900 22px 'Archivo';">
+                <span style="display:flex;align-items:center;gap:10px;">🥉 Jordan <span style="font:700 12px 'JetBrains Mono';color:#fff;background:#1F8A4C;border:2px solid #211A12;border-radius:99px;padding:2px 8px;">▲ up 2</span></span>
+                <span style="display:flex;align-items:center;gap:12px;"><span style="font:700 14px 'JetBrains Mono';color:#1F8A4C;">▲ +$5.70</span><span style="font:800 22px 'JetBrains Mono';">$148.20</span></span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border:2.5px solid #211A12;border-radius:13px;background:#FFFDF6;font:700 20px 'Archivo';color:#6B5C40;">
+                <span>4&nbsp;&nbsp;Dana</span>
+                <span style="display:flex;align-items:center;gap:12px;"><span style="font:700 14px 'JetBrains Mono';color:#DB3B2B;">▼ −$12.30</span><span style="font:700 20px 'JetBrains Mono';">$228.80</span></span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:820}}">
+class Component extends DCLogic {
+  state = { tab: 'landing', sStep: 0, host: 'lobby', proj: 'lobby', risky: 40 };
+
+  tabStyle(active) {
+    const base = { cursor:'pointer', padding:'9px 17px', border:'2.5px solid #211A12', borderRadius:'11px', font:"800 14px 'Archivo'", transition:'all .12s' };
+    return active
+      ? { ...base, background:'#211A12', color:'#F6EFDD', boxShadow:'none', transform:'translate(2px,2px)' }
+      : { ...base, background:'#FFFDF6', color:'#211A12', boxShadow:'3px 3px 0 #211A12' };
+  }
+  subTab(active) {
+    const base = { cursor:'pointer', padding:'9px 18px', border:'2.5px solid #211A12', borderRadius:'11px', font:"800 14px 'Archivo'" };
+    return active
+      ? { ...base, background:'#F0A92B', color:'#211A12', boxShadow:'none', transform:'translate(2px,2px)' }
+      : { ...base, background:'#FFFDF6', color:'#6B5C40', boxShadow:'3px 3px 0 #211A12' };
+  }
+  dotStyle(i) {
+    const on = this.state.sStep === i;
+    const done = i < this.state.sStep;
+    const c = on ? '#F0A92B' : (done ? '#1F8A4C' : '#FFFDF6');
+    const w = on ? '26px' : '13px';
+    return { cursor:'pointer', width:w, height:'13px', borderRadius:'99px', border:'2px solid #211A12', background:c, transition:'all .15s' };
+  }
+
+  renderVals() {
+    const { tab, sStep, host, proj, risky } = this.state;
+    const W = 142.50;
+    const riskyAmt = (W * risky / 100);
+    const safeAmt = W - riskyAmt;
+    const fmt = (n) => '$' + n.toFixed(2);
+    const labels = ['Join the game','In the lobby','Allocate your wealth','Bet locked — waiting','The reveal'];
+
+    return {
+      // tab routing
+      tabLanding: tab === 'landing',
+      tabStudent: tab === 'student',
+      tabHost: tab === 'host',
+      tabProjector: tab === 'projector',
+      notLanding: tab !== 'landing',
+      notStudent: tab !== 'student',
+      notHost: tab !== 'host',
+      notProjector: tab !== 'projector',
+      goLanding: () => this.setState({ tab: 'landing' }),
+      goStudent: () => this.setState({ tab: 'student' }),
+      goHost: () => this.setState({ tab: 'host' }),
+      goProjector: () => this.setState({ tab: 'projector' }),
+      tabLandingStyle: this.tabStyle(tab === 'landing'),
+      tabStudentStyle: this.tabStyle(tab === 'student'),
+      tabHostStyle: this.tabStyle(tab === 'host'),
+      tabProjectorStyle: this.tabStyle(tab === 'projector'),
+
+      // student steps
+      stIsJoin: sStep === 0,
+      stIsLobby: sStep === 1,
+      stIsAllocate: sStep === 2,
+      stIsLocked: sStep === 3,
+      stIsReveal: sStep === 4,
+      stepLabel: labels[sStep],
+      sNext: () => this.setState(s => ({ sStep: Math.min(4, s.sStep + 1) })),
+      sRestart: () => this.setState({ sStep: 2 }),
+      sStep0: () => this.setState({ sStep: 0 }),
+      sStep1: () => this.setState({ sStep: 1 }),
+      sStep2: () => this.setState({ sStep: 2 }),
+      sStep3: () => this.setState({ sStep: 3 }),
+      sStep4: () => this.setState({ sStep: 4 }),
+      dots: [0,1,2,3,4].map(i => ({
+        cur: sStep === i,
+        done: i < sStep,
+        future: i > sStep,
+        go: () => this.setState({ sStep: i }),
+      })),
+
+      // allocation (live values)
+      riskyVal: risky,
+      riskyPct: risky,
+      safePct: 100 - risky,
+      riskyAmt: fmt(riskyAmt),
+      safeAmt: fmt(safeAmt),
+      onRisky: (e) => this.setState({ risky: parseInt(e.target.value, 10) }),
+      riskyFill: { height:'100%', width:risky + '%', background:'#DB3B2B', float:'right' },
+
+      // host
+      hostLobby: host === 'lobby',
+      hostControl: host === 'control',
+      hostToLobby: () => this.setState({ host: 'lobby' }),
+      hostToControl: () => this.setState({ host: 'control' }),
+      hostLobbyTab: this.subTab(host === 'lobby'),
+      hostControlTab: this.subTab(host === 'control'),
+
+      // projector
+      projLobby: proj === 'lobby',
+      projBet: proj === 'bet',
+      projReveal: proj === 'reveal',
+      projToLobby: () => this.setState({ proj: 'lobby' }),
+      projToBet: () => this.setState({ proj: 'bet' }),
+      projToReveal: () => this.setState({ proj: 'reveal' }),
+      projLobbyTab: this.subTab(proj === 'lobby'),
+      projBetTab: this.subTab(proj === 'bet'),
+      projRevealTab: this.subTab(proj === 'reveal'),
+    };
+  }
+}
+</script>
+</body>
+</html>

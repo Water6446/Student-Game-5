@@ -19,6 +19,7 @@ import { playerOutcomesMap } from "@/lib/game/results";
 import { money } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 import { useShowBots } from "@/components/use-show-bots";
+import { FinalResults } from "@/components/host/FinalResults";
 import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Bot, Monitor, Sliders, ChevronDown } from "@/components/icons";
 
 export function HostRoundControl({
@@ -119,6 +120,10 @@ export function HostRoundControl({
   const finish = () => run(() => supabase.rpc("finish_session", { p_session_id: session.id }));
 
   const status = round?.status ?? "open";
+  // Post-final-round state: the game is effectively over, the host just hasn't
+  // clicked "Finish game" yet — show final results, not last-round minutiae.
+  const gameOver = isLastRound && status === "revealed";
+  const independent = session.config.market_scope === "independent";
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -187,7 +192,7 @@ export function HostRoundControl({
                 Finish game
               </Button>
             ) : (
-              <Button onClick={next} disabled={busy} className="w-full text-lg">
+              <Button onClick={next} disabled={busy} variant="success" className="w-full text-lg">
                 Next round <ArrowRight />
               </Button>
             ))}
@@ -227,15 +232,17 @@ export function HostRoundControl({
 
           {status === "locked" && (
             <>
-              <div className="flex items-center justify-center gap-2 text-sm font-bold text-brand-strong">
+              <div className="flex items-center justify-center gap-2 rounded-xl border-2 border-ink bg-brand-soft px-4 py-2 text-sm font-display font-extrabold uppercase tracking-tight text-ink shadow-card">
                 <Lock /> Bets locked in — review, then reveal
               </div>
               {isManual ? (
                 <div className="space-y-3">
-                  <p className="text-center text-sm text-ink-muted">Set this round&apos;s market:</p>
+                  <p className="text-center font-editorial text-sm italic text-ink-muted">
+                    Resolve the round:
+                  </p>
                   <div className="flex gap-3">
-                    <OutcomeButton label="GOOD" active={pick === "good"} onClick={() => setPick("good")} good />
-                    <OutcomeButton label="BAD" active={pick === "bad"} onClick={() => setPick("bad")} />
+                    <OutcomeButton label="Market up" active={pick === "good"} onClick={() => setPick("good")} good />
+                    <OutcomeButton label="Market down" active={pick === "bad"} onClick={() => setPick("bad")} />
                   </div>
                 </div>
               ) : (
@@ -261,22 +268,30 @@ export function HostRoundControl({
                 </div>
               ) : (
                 <div
-                  className={`flex items-center justify-center gap-2 rounded-xl p-4 text-center text-2xl font-black ${
-                    round?.market_outcome === "good"
-                      ? "bg-gain-soft text-gain"
-                      : "bg-loss-soft text-loss"
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 border-ink p-4 text-center font-display text-2xl font-black uppercase tracking-tight text-white shadow-card ${
+                    round?.market_outcome === "good" ? "bg-gain" : "bg-loss"
                   }`}
                 >
-                  Market was {round?.market_outcome === "good" ? "GOOD" : "BAD"}
+                  Market {round?.market_outcome === "good" ? "up" : "down"}
                   {round?.market_outcome === "good" ? <ArrowUp /> : <ArrowDown />}
                 </div>
               )}
-              {/* what everyone bet this round (still visible after the roll) */}
-              <AllocationsBreakdown
-                players={visiblePlayers}
-                allocations={allocs}
-                goodProb={session.config.good_prob ?? 0.6}
-              />
+              {/* what everyone bet this round (still visible after the roll) —
+                  except after the FINAL round, where the last round's bets are
+                  no longer interesting: show final portfolios + luck instead */}
+              {gameOver ? (
+                <FinalResults
+                  players={visiblePlayers}
+                  outcomesByPlayer={outcomesByPlayer}
+                  independent={independent}
+                />
+              ) : (
+                <AllocationsBreakdown
+                  players={visiblePlayers}
+                  allocations={allocs}
+                  goodProb={session.config.good_prob ?? 0.6}
+                />
+              )}
             </>
           )}
         </Card>
@@ -284,7 +299,9 @@ export function HostRoundControl({
         {/* Live standings — each player's last 5 markets shown inline */}
         <Card>
           <div className="mb-1 flex items-center justify-between gap-2">
-            <h2 className="text-xl font-bold text-ink">Standings</h2>
+            <h2 className="text-xl font-bold text-ink">
+              {gameOver ? "Final standings" : "Standings"}
+            </h2>
             {hasBots ? (
               <button
                 type="button"
@@ -377,11 +394,13 @@ function OddsDisclosure({
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     open: "bg-gain-soft text-gain",
-    locked: "bg-brand-soft text-brand-strong",
+    locked: "bg-brand-soft text-ink",
     revealed: "bg-play-soft text-play",
   };
   return (
-    <span className={`rounded-full px-4 py-1.5 text-sm font-bold capitalize ${styles[status] ?? ""}`}>
+    <span
+      className={`rounded-full border-2 border-ink px-4 py-1.5 text-sm font-display font-extrabold capitalize shadow-card ${styles[status] ?? ""}`}
+    >
       {status}
     </span>
   );
@@ -399,15 +418,13 @@ function OutcomeButton({
   good?: boolean;
 }) {
   // Static class strings (Tailwind JIT can't see interpolated class names).
-  const activeCls = good
-    ? "border-gain bg-gain-soft text-gain"
-    : "border-loss bg-loss-soft text-loss";
-  const idleCls = "border-line-strong bg-paper text-ink-muted hover:border-ink-subtle";
+  const activeCls = good ? "bg-gain text-white shadow-card" : "bg-loss text-white shadow-card";
+  const idleCls = "bg-surface text-ink-muted shadow-card hover:bg-paper-2";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border-2 py-4 text-lg font-bold transition active:scale-[0.98] ${
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border-2 border-ink py-4 font-display text-lg font-extrabold uppercase tracking-tight transition active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
         active ? activeCls : idleCls
       }`}
     >

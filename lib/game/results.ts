@@ -4,7 +4,12 @@
 
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
 import type { MarketOutcome, MarketScope } from "./types";
-import { allStrategyOutcomes, STRATEGY_KEYS, type StrategyKey } from "./counterfactual";
+import {
+  allStrategyOutcomes,
+  strategyFraction,
+  STRATEGY_KEYS,
+  type StrategyKey,
+} from "./counterfactual";
 import { toCsv } from "./csv";
 
 export interface PlayerResult {
@@ -14,7 +19,11 @@ export interface PlayerResult {
   startWealth: number;
   /** wealth after each revealed round, parallel to revealedRounds() */
   wealthByRound: number[];
-  /** fraction of wealth put at risk each revealed round (null if no allocation) */
+  /**
+   * fraction of wealth put at risk each revealed round. A wiped-out ($0) round
+   * has no meaningful share: a bot keeps its fixed strategy share (all-risky
+   * stays 100%), a human is null. Also null when there is no allocation row.
+   */
   riskByRound: (number | null)[];
   /** average dollars bet per round, ignoring rounds where the player had $0 */
   avgBet: number;
@@ -98,10 +107,14 @@ export function buildPlayerResults(
       if (a) {
         const risky = Number(a.risky_amount);
         const wealthThatRound = risky + Number(a.safe_amount);
-        riskByRound.push(wealthThatRound > 0 ? risky / wealthThatRound : 0);
         if (wealthThatRound > 0) {
+          riskByRound.push(risky / wealthThatRound);
           betSum += risky;
           betRounds += 1;
+        } else {
+          // wiped out — 0/0 is undefined, so report the bot's strategy share
+          // (the all-risky bot is still "100% at risk"), nothing for a human
+          riskByRound.push(p.is_bot ? strategyFraction(p.strategy, goodProb) : null);
         }
       } else {
         riskByRound.push(null);

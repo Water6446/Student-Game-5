@@ -65,16 +65,18 @@ function PresentHeader({ session }: { session: SessionRow }) {
   return (
     <header className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2 text-ink">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-ink bg-brand text-ink">
           <Coins />
         </span>
-        <span className="font-display text-2xl font-black tracking-tight">The Risk Game</span>
+        <span className="font-display text-2xl font-black uppercase tracking-tight">The Risk Game</span>
       </div>
 
       <div className="flex items-center gap-3">
         {session.status !== "finished" ? (
-          <span className="hidden items-baseline gap-2 rounded-full border border-line bg-surface px-4 py-1.5 shadow-card sm:flex">
-            <span className="text-sm text-ink-muted">join code</span>
+          <span className="hidden items-baseline gap-2 rounded-full border-2 border-ink bg-surface px-4 py-1.5 shadow-card sm:flex">
+            <span className="font-display text-sm font-extrabold uppercase tracking-wide text-ink-muted">
+              join code
+            </span>
             <span className="font-mono text-xl font-bold tracking-[0.25em] text-ink">
               {session.join_code}
             </span>
@@ -85,7 +87,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
           onClick={toggleFs}
           aria-label={fs ? "Exit fullscreen" : "Go fullscreen"}
           title={fs ? "Exit fullscreen" : "Go fullscreen"}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-line-strong bg-surface text-ink-muted shadow-card transition hover:text-ink"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-ink bg-surface text-ink-muted shadow-card transition hover:text-ink"
         >
           <Maximize />
         </button>
@@ -93,7 +95,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
           href={`/host/${session.id}`}
           aria-label="Exit present mode"
           title="Exit present mode"
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-line-strong bg-surface text-ink-muted shadow-card transition hover:text-ink"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-ink bg-surface text-ink-muted shadow-card transition hover:text-ink"
         >
           <X />
         </Link>
@@ -108,26 +110,36 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
   const link = joinUrl(session.join_code);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
-      <div>
-        <p className="text-2xl text-ink-muted">Join the game at</p>
-        <p className="mt-1 break-all font-mono text-3xl font-bold text-brand-strong sm:text-4xl">
-          {link}
+    <div className="grid flex-1 items-center gap-8 py-4 lg:grid-cols-2">
+      {/* Dark ink panel: giant game code + join caption */}
+      <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-ink bg-ink p-10 text-center text-[#F6EFDD] shadow-lift">
+        <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-[#F6EFDD]/70">
+          Game code
         </p>
-      </div>
-      <div className="rounded-3xl border border-line bg-white p-6 shadow-lift">
-        <QRCodeSVG value={link} size={260} fgColor="#1C1917" />
-      </div>
-      <div>
-        <p className="text-2xl text-ink-muted">or enter code</p>
-        <p className="font-mono text-7xl font-black tracking-[0.3em] text-ink sm:text-8xl">
+        <p className="font-mono text-7xl font-black tracking-[0.3em] text-[#F6EFDD] sm:text-8xl">
           {session.join_code}
         </p>
+        <div className="mt-8 rounded-3xl border-2 border-ink bg-white p-6 shadow-card">
+          <QRCodeSVG value={link} size={220} fgColor="#211A12" />
+        </div>
+        <p className="mt-6 break-all font-editorial text-2xl italic text-[#F6EFDD]/80">
+          join from your phone — {link}
+        </p>
       </div>
-      <p className="flex items-center gap-3 text-3xl font-bold text-ink">
-        <Users className="text-[0.8em] text-ink-subtle" />
-        {players.length} {players.length === 1 ? "player" : "players"} in
-      </p>
+
+      {/* Live count */}
+      <div className="flex flex-col items-center justify-center gap-4 text-center">
+        <p className="font-display text-2xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
+          In the room
+        </p>
+        <p className="flex items-center gap-4 font-mono text-[clamp(5rem,16vw,11rem)] font-black leading-none text-ink">
+          {players.length}
+        </p>
+        <p className="flex items-center gap-3 text-3xl font-bold text-ink">
+          <Users className="text-[0.8em] text-ink-muted" />
+          {players.length === 1 ? "player" : "players"} in
+        </p>
+      </div>
     </div>
   );
 }
@@ -188,28 +200,30 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     <div className="grid flex-1 gap-6 py-4 lg:grid-cols-[1fr_1.1fr]">
       {/* Left column: status panel on top, wealth chart below */}
       <div className="flex min-h-0 flex-col gap-6">
-        <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-line bg-surface p-8 text-center shadow-card">
-          <p className="text-xl font-semibold uppercase tracking-[0.2em] text-ink-subtle">
+        <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border-2 border-ink bg-play-soft p-8 text-center shadow-card">
+          <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
             Round {session.current_round} / {session.config.num_rounds}
           </p>
 
           {status === "open" ? (
             <>
-              <p className="mt-6 font-display text-4xl font-black text-ink sm:text-5xl">
+              <p className="mt-6 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
                 Place your bets
               </p>
-              <div className="mt-8 font-mono text-[clamp(4rem,12vw,9rem)] font-black leading-none text-gain">
+              <div className="mt-8 font-mono text-[clamp(4rem,12vw,9rem)] font-black leading-none text-ink">
                 {submitted}
-                <span className="text-line-strong">/{humanCount}</span>
+                <span className="text-ink-muted">/{humanCount}</span>
               </div>
-              <p className="mt-2 text-2xl text-ink-muted">locked in</p>
+              <p className="mt-2 font-display text-2xl font-extrabold uppercase tracking-wide text-ink-muted">
+                locked in
+              </p>
             </>
           ) : status === "locked" ? (
             <>
-              <p className="mt-6 font-display text-4xl font-black text-brand-strong sm:text-5xl">
+              <p className="mt-6 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
                 Bets are locked
               </p>
-              <p className="mt-4 animate-pulse-soft text-2xl text-ink-muted">
+              <p className="mt-4 animate-pulse-soft font-editorial text-2xl italic text-ink-muted">
                 Revealing the market…
               </p>
             </>
@@ -217,17 +231,21 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
             <RoundOutcomeBig good={round?.market_outcome === "good"} />
           ) : (
             <>
-              <Shuffle className="mt-6 text-5xl text-ink-subtle" />
-              <p className="mt-4 font-display text-4xl font-black text-ink sm:text-5xl">
+              <Shuffle className="mt-6 text-5xl text-ink-muted" />
+              <p className="mt-4 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
                 Results are in
               </p>
-              <p className="mt-2 text-2xl text-ink-muted">Each player drew their own market.</p>
+              <p className="mt-2 font-editorial text-2xl italic text-ink-muted">
+                Each player drew their own market.
+              </p>
             </>
           )}
         </section>
 
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <h2 className="mb-2 text-lg font-bold text-ink">Wealth over rounds</h2>
+        <section className="rounded-3xl border-2 border-ink bg-surface p-5 shadow-card">
+          <h2 className="mb-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+            Wealth over rounds
+          </h2>
           <WealthChart
             players={visiblePlayers}
             rounds={history.rounds}
@@ -238,9 +256,9 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
       </div>
 
       {/* Leaderboard */}
-      <section className="rounded-3xl border border-line bg-surface p-6 shadow-card sm:p-8">
-        <h2 className="mb-4 flex items-center gap-2 text-2xl font-black text-ink">
-          <Trophy className="text-brand" /> Leaderboard
+      <section className="rounded-3xl border-2 border-ink bg-surface p-6 shadow-card sm:p-8">
+        <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black uppercase tracking-tight text-ink">
+          <Trophy className="text-ink" /> Standings so far
         </h2>
         <Leaderboard ranked={ranked} outcomesByPlayer={outcomesByPlayer} />
       </section>
@@ -260,15 +278,15 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
 function RoundOutcomeBig({ good }: { good: boolean }) {
   return (
     <div
-      className={`mt-6 flex flex-col items-center gap-3 rounded-2xl px-8 py-6 ${
-        good ? "bg-gain-soft text-gain" : "bg-loss-soft text-loss"
+      className={`mt-6 flex flex-col items-center gap-3 rounded-2xl border-2 border-ink px-8 py-6 text-white shadow-card ${
+        good ? "bg-gain" : "bg-loss"
       }`}
     >
       <span className="text-[clamp(3rem,9vw,7rem)] leading-none">
         {good ? <ArrowUp /> : <ArrowDown />}
       </span>
-      <span className="font-display text-4xl font-black sm:text-5xl">
-        {good ? "GOOD market" : "BAD market"}
+      <span className="font-display text-4xl font-black uppercase tracking-tight sm:text-5xl">
+        {good ? "Market up!" : "Market down!"}
       </span>
     </div>
   );
@@ -296,17 +314,17 @@ function RevealTakeover({
       className={`animate-pop-in fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-6 ${cls}`}
     >
       {!neutral && good ? <Confetti /> : null}
-      <span className="text-sm font-bold uppercase tracking-[0.3em] opacity-80">
+      <span className="font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
         Round {roundNumber}
       </span>
       <span className="text-[clamp(5rem,22vw,16rem)] leading-none">
         {neutral ? <Shuffle /> : good ? <ArrowUp /> : <ArrowDown />}
       </span>
-      <span className="font-display text-[clamp(2.5rem,9vw,7rem)] font-black leading-none">
-        {neutral ? "Results are in" : good ? "GOOD market" : "BAD market"}
+      <span className="font-display text-[clamp(2.5rem,9vw,7rem)] font-black uppercase leading-none tracking-tight">
+        {neutral ? "Results are in" : good ? "Market up! ▲" : "Market down! ▼"}
       </span>
       {!neutral ? (
-        <span className="text-2xl font-semibold opacity-90">
+        <span className="font-editorial text-2xl italic opacity-90">
           Risky bets {good ? "paid off" : "took a hit"}
         </span>
       ) : null}
@@ -330,10 +348,12 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
   return (
     <div className="flex flex-1 flex-col py-4">
       <div className="mb-6 text-center">
-        <h2 className="flex items-center justify-center gap-3 font-display text-5xl font-black text-ink">
-          <Trophy className="text-brand" /> Final standings
+        <h2 className="flex items-center justify-center gap-3 font-display text-5xl font-black uppercase tracking-tight text-ink">
+          <Trophy className="text-ink" /> Final standings
         </h2>
-        <p className="mt-1 text-xl text-ink-muted">{session.config.num_rounds} rounds · game over</p>
+        <p className="mt-1 font-editorial text-xl italic text-ink-muted">
+          {session.config.num_rounds} rounds · game over
+        </p>
       </div>
       <div className="mx-auto w-full max-w-3xl">
         <Leaderboard ranked={ranked} outcomesByPlayer={outcomesByPlayer} />
@@ -355,7 +375,7 @@ function Leaderboard({
   const extra = ranked.length - shown.length;
 
   if (ranked.length === 0) {
-    return <p className="text-center text-xl text-ink-subtle">No players yet.</p>;
+    return <p className="text-center font-editorial text-xl italic text-ink-subtle">No players yet.</p>;
   }
 
   return (
@@ -367,19 +387,15 @@ function Leaderboard({
           return (
             <li
               key={p.id}
-              className={`flex items-center justify-between gap-3 rounded-2xl border px-5 py-3 ${
-                i === 0
-                  ? "border-brand/40 bg-brand-soft"
-                  : top
-                    ? "border-line-strong bg-paper-2"
-                    : "border-line bg-paper"
+              className={`flex items-center justify-between gap-3 rounded-2xl border-2 border-ink px-5 py-3 shadow-card ${
+                i === 0 ? "bg-brand-soft" : top ? "bg-surface" : "bg-paper-2"
               }`}
             >
               <span className="flex min-w-0 items-center gap-4">
-                <span className="w-9 shrink-0 text-center font-mono text-2xl font-bold text-ink-subtle">
+                <span className="w-9 shrink-0 text-center font-mono text-2xl font-bold text-ink-muted">
                   {top ? <span className="text-3xl">{MEDALS[i]}</span> : i + 1}
                 </span>
-                <span className="truncate text-2xl font-semibold text-ink sm:text-3xl">
+                <span className="truncate font-display text-2xl font-extrabold text-ink sm:text-3xl">
                   {p.display_name}
                 </span>
               </span>
@@ -389,7 +405,11 @@ function Leaderboard({
                 ) : last === "bad" ? (
                   <ArrowDown className="text-xl text-loss" />
                 ) : null}
-                <span className="font-mono text-2xl font-bold text-ink sm:text-3xl">
+                <span
+                  className={`font-mono text-2xl font-bold sm:text-3xl ${
+                    last === "good" ? "text-gain" : last === "bad" ? "text-loss" : "text-ink"
+                  }`}
+                >
                   {money(p.current_wealth)}
                 </span>
               </span>
@@ -398,7 +418,9 @@ function Leaderboard({
         })}
       </ol>
       {extra > 0 ? (
-        <p className="mt-3 text-center text-lg text-ink-subtle">+{extra} more players</p>
+        <p className="mt-3 text-center font-editorial text-lg italic text-ink-subtle">
+          +{extra} more players
+        </p>
       ) : null}
     </div>
   );

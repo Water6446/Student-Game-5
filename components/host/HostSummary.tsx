@@ -39,6 +39,8 @@ export function HostSummary({
   const cf = useMemo(() => classCounterfactual(session, results), [session, results]);
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
   const [openId, setOpenId] = useState<string | null>(null);
+  // per-player luck only varies when each player draws their own market
+  const independent = session.config.market_scope === "independent";
 
   // "Luck": who drew the most good markets (outcomes are independent per player)
   const luck = useMemo(
@@ -98,10 +100,10 @@ export function HostSummary({
           >
             <ArrowLeft /> Dashboard
           </Link>
-          <h1 className="flex items-center gap-2 text-3xl font-black text-ink">
-            <Trophy className="text-brand" /> Game finished
+          <h1 className="flex items-center gap-2 text-3xl font-black uppercase tracking-tight text-ink">
+            <Trophy className="text-ink" /> Game finished
           </h1>
-          <p className="text-ink-muted">
+          <p className="font-editorial italic text-ink-muted">
             {session.config.num_rounds} rounds · {results.length} players · started at{" "}
             {money(session.config.starting_wealth)}
           </p>
@@ -110,7 +112,7 @@ export function HostSummary({
           <Link
             href={`/host/${session.id}/present`}
             target="_blank"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-sm font-semibold text-ink shadow-card transition hover:border-brand"
+            className="inline-flex items-center gap-1.5 rounded-xl border-2 border-ink bg-surface px-4 py-2.5 text-sm font-display font-extrabold text-ink shadow-card transition hover:bg-paper-2 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
             title="Open the projector view in a new tab"
           >
             <Monitor /> Present
@@ -170,6 +172,9 @@ export function HostSummary({
             {results.map((r, i) => {
               const open = openId === r.player.id;
               const good = goodCount(r.outcomes);
+              const luckPct = r.outcomes.length
+                ? Math.round((good / r.outcomes.length) * 100)
+                : null;
               return (
                 <li key={r.player.id} className="overflow-hidden rounded-lg border border-line bg-paper-2">
                   <button
@@ -186,8 +191,18 @@ export function HostSummary({
                         className={`text-ink-subtle transition-transform ${open ? "rotate-180" : ""}`}
                       />
                     </span>
-                    <span className="font-mono text-lg font-bold text-gain">
-                      {money(r.finalWealth)}
+                    <span className="flex items-center gap-3">
+                      {independent && luckPct != null ? (
+                        <span
+                          className="flex items-center gap-1 text-xs text-ink-muted"
+                          title="share of rounds this player drew a GOOD market"
+                        >
+                          <Clover className="text-gain" /> {luckPct}% lucky
+                        </span>
+                      ) : null}
+                      <span className="font-mono text-2xl font-black text-ink">
+                        {money(r.finalWealth)}
+                      </span>
                     </span>
                   </button>
                   {open ? (
@@ -280,15 +295,15 @@ function StrategyCard({
   tone: "slate" | "emerald" | "play" | "loss";
 }) {
   const tones = {
-    slate: "border-line-strong bg-paper-2 text-ink",
-    emerald: "border-gain/25 bg-gain-soft text-gain",
-    play: "border-play/25 bg-play-soft text-play",
-    loss: "border-loss/25 bg-loss-soft text-loss",
+    slate: "bg-paper-2 text-ink",
+    emerald: "bg-gain-soft text-gain",
+    play: "bg-play-soft text-play",
+    loss: "bg-loss-soft text-loss",
   };
   return (
-    <div className={`flex flex-col rounded-xl border p-4 text-center ${tones[tone]}`}>
-      <div className="text-base font-bold">{label}</div>
-      {desc ? <div className="text-xs opacity-80">{desc}</div> : null}
+    <div className={`flex flex-col rounded-xl border-2 border-ink p-4 text-center shadow-card ${tones[tone]}`}>
+      <div className="font-display text-base font-extrabold">{label}</div>
+      {desc ? <div className="font-editorial text-xs italic opacity-80">{desc}</div> : null}
       <div className="mt-auto pt-2 font-mono text-2xl font-black">{money(value)}</div>
     </div>
   );

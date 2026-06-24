@@ -40,8 +40,10 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">
       <Card className="animate-pop-in">
-        <h1 className="text-2xl font-bold text-ink">Host sign-in</h1>
-        <p className="mt-1 text-sm text-ink-muted">
+        <h1 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
+          Host sign-in
+        </h1>
+        <p className="mt-1 font-editorial text-sm italic text-ink-muted">
           Hosts use a real account so privileges are tied to a verified identity, not a guessable
           secret. We&apos;ll email you a magic link.
         </p>

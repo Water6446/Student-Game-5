@@ -86,8 +86,10 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <Card>
-      <h2 className="text-xl font-bold text-ink">New session</h2>
-      <p className="mt-1 text-sm text-ink-muted">
+      <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
+        New session
+      </h2>
+      <p className="mt-1 font-editorial text-sm italic text-ink-muted">
         {advanced
           ? "Customize the simulation, then start the lobby."
           : "Start with the standard setup, or flip on Advanced to change anything."}
@@ -185,12 +187,14 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
           </div>
         </>
       ) : (
-        <div className="mt-6 rounded-xl border border-brand/20 bg-brand-soft/50 p-4">
-          <div className="text-sm font-bold text-brand-strong">Standard setup</div>
+        <div className="mt-6 rounded-xl border-2 border-ink bg-brand-soft p-4 shadow-card">
+          <div className="font-display text-sm font-extrabold uppercase tracking-tight text-ink">
+            Standard setup
+          </div>
           <ul className="mt-2 space-y-1.5 text-sm text-ink-muted">
             {summary.map((line) => (
               <li key={line} className="flex gap-2">
-                <span className="text-brand">•</span>
+                <span className="text-ink">•</span>
                 <span>{line}</span>
               </li>
             ))}
@@ -209,7 +213,7 @@ export function CreateSessionForm({ supabase }: { supabase: SupabaseClient }) {
       ) : null}
 
       <div className="mt-6">
-        <Button onClick={submit} disabled={busy}>
+        <Button variant="gold" onClick={submit} disabled={busy}>
           {busy ? "Creating…" : "Create session"}
         </Button>
       </div>
