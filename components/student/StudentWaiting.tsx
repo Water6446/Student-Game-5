@@ -32,7 +32,7 @@ export function StudentWaiting({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6">
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-6">
       <Card className="animate-pop-in text-center">
         <div className="mx-auto flex h-16 w-16 animate-pulse-soft items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Sparkle />

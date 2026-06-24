@@ -129,7 +129,7 @@ function Shell({
   const goodPct = Math.round((session.config.good_prob ?? 0.6) * 100);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
       <div className="mb-4 flex items-center justify-between">
         <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-sm font-bold uppercase text-paper">
           Round {round.round_number} / {session.config.num_rounds}
@@ -204,7 +204,7 @@ function Reveal({
   const celebrate = delta > 0;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
       {celebrate ? <Confetti /> : null}
       <div className="mb-4 text-center text-sm font-semibold text-ink-muted">
         Round {round.round_number} / {session.config.num_rounds}

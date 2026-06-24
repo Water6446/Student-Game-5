@@ -61,12 +61,14 @@ export function AllocationInput({
         </div>
       </div>
 
-      {/* Ink-bordered pill track: green safe base, red risky fill grows from the right. */}
+      {/* Ink-bordered pill track: red risky fill grows from the left up to the
+          handle, green safe remainder to its right — so the color split sits
+          exactly under the thumb (thumb position = risky share). */}
       <div
         className="rounded-full border-2 border-ink shadow-card"
         style={{
           background: has
-            ? `linear-gradient(to right, rgb(var(--gain)) ${safePct}%, rgb(var(--loss)) ${safePct}%)`
+            ? `linear-gradient(to right, rgb(var(--loss)) ${riskyPct}%, rgb(var(--gain)) ${riskyPct}%)`
             : "rgb(var(--paper-2))",
         }}
       >

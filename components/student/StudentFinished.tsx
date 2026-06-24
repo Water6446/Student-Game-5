@@ -71,7 +71,7 @@ export function StudentFinished({
   const luckPct = totalOutcomes > 0 ? Math.round((good / totalOutcomes) * 100) : null;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-6 py-8">
       {topThree ? <Confetti /> : null}
       <Card className="animate-pop-in text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
