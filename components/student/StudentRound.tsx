@@ -62,7 +62,7 @@ export function StudentRound({
         />
         {error ? <Banner kind="error">{error}</Banner> : null}
         <Button variant="gold" onClick={submit} disabled={busy || risky === null} className="w-full text-lg shadow-pop">
-          {busy ? "Saving…" : mine ? "Update allocation 🔒" : "Lock in my bet 🔒"}
+          {busy ? "Saving…" : mine ? "Update allocation" : "Lock in my bet"}
         </Button>
         {mine ? (
           <Banner kind="success">
@@ -216,7 +216,7 @@ function Reveal({
           }`}
         >
           {good ? <ArrowUp /> : <ArrowDown />}
-          {good ? "Good! ▲" : "Down ▼"}
+          {good ? "Good!" : "Down"}
         </div>
 
         <div>
@@ -237,7 +237,7 @@ function Reveal({
 
         {rank ? (
           <div className="rounded-xl border-2 border-ink bg-brand-soft py-3 text-lg font-semibold text-ink shadow-card">
-            🏆 You&apos;re <span className="font-display font-black">{ordinal(rank.rank)}</span> of{" "}
+            You&apos;re <span className="font-display font-black">{ordinal(rank.rank)}</span> of{" "}
             {rank.total}
           </div>
         ) : null}

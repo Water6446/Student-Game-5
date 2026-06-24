@@ -17,8 +17,6 @@ import { money } from "@/lib/game/format";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, Coins, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
 
-const MEDALS = ["🥇", "🥈", "🥉"];
-
 /**
  * Read-only, projector-optimized view of a session. The host keeps the real
  * controls on their laptop (/host/[id]); this screen just reflects live state
@@ -321,7 +319,7 @@ function RevealTakeover({
         {neutral ? <Shuffle /> : good ? <ArrowUp /> : <ArrowDown />}
       </span>
       <span className="font-display text-[clamp(2.5rem,9vw,7rem)] font-black uppercase leading-none tracking-tight">
-        {neutral ? "Results are in" : good ? "Market up! ▲" : "Market down! ▼"}
+        {neutral ? "Results are in" : good ? "Market up!" : "Market down!"}
       </span>
       {!neutral ? (
         <span className="font-editorial text-2xl italic opacity-90">
@@ -393,7 +391,7 @@ function Leaderboard({
             >
               <span className="flex min-w-0 items-center gap-4">
                 <span className="w-9 shrink-0 text-center font-mono text-2xl font-bold text-ink-muted">
-                  {top ? <span className="text-3xl">{MEDALS[i]}</span> : i + 1}
+                  {i + 1}
                 </span>
                 <span className="truncate font-display text-2xl font-extrabold text-ink sm:text-3xl">
                   {p.display_name}

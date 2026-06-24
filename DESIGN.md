@@ -33,11 +33,10 @@ Next.js + Tailwind project.
    full-screen. See the **Present mode** pattern.
 7. **Motion is meaning, and optional.** 150–320ms, ease-out; celebratory only at
    real beats (a win, a reveal). Always respect `prefers-reduced-motion`.
-8. **SVG icons, not emoji, for structure.** One inline line-icon set
-   (`components/icons.tsx`, 1.75 stroke, `currentColor`). Unicode glyphs
-   (▲ ▼ 🛡 🔥 🔒 🥇🥈🥉 🏆) are allowed as accents/flourish, never as
-   structural/navigational icons. Directional meaning always uses
-   `ArrowUp`/`ArrowDown`, never color alone.
+8. **SVG icons only — no emoji or decorative glyphs.** One inline line-icon set
+   (`components/icons.tsx`, 1.75 stroke, `currentColor`). Emoji and pictographic
+   Unicode accents are not used anywhere — not in UI copy, not as flourish.
+   Directional meaning always uses `ArrowUp`/`ArrowDown`, never color alone.
 
 ---
 
@@ -222,9 +221,9 @@ Tailwind keyframes/animations; everything below is gated by a global
 One inline SVG set in `components/icons.tsx`: 24×24 viewBox, `fill="none"`,
 `stroke="currentColor"`, `strokeWidth={1.75}`, round caps/joins, `width/height
 ="1em"` (size with text/`w-`, color with `text-*`), `aria-hidden` by default.
-Add new icons in the same style; never reach for an icon library. Unicode glyphs
-(▲ ▼ 🛡 🔥 🔒 🥇🥈🥉 🏆) are fine as accents alongside text. Directional meaning
-(GOOD/BAD, up/down) always pairs an arrow with text, never color alone.
+Add new icons in the same style; never reach for an icon library, and never use
+emoji or pictographic Unicode glyphs as accents. Directional meaning
+(GOOD/BAD, up/down) always pairs an arrow icon with text, never color alone.
 
 ---
 

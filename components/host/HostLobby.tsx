@@ -136,7 +136,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               disabled={busy || players.length === 0}
               className="w-full text-lg"
             >
-              {busy ? "Starting…" : `▶ Start the game (${session.config.num_rounds} rounds)`}
+              {busy ? "Starting…" : `Start the game (${session.config.num_rounds} rounds)`}
             </Button>
             {players.length === 0 ? (
               <p className="mt-2 text-center font-editorial text-xs italic text-ink-subtle">

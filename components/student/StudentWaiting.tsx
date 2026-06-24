@@ -38,7 +38,7 @@ export function StudentWaiting({
           <Sparkle />
         </div>
         <div className="mt-4 inline-flex items-center gap-1 rounded-full border-2 border-ink bg-gain-soft px-3 py-1 text-sm font-extrabold text-gain shadow-card">
-          ✓ You&apos;re in
+          You&apos;re in
         </div>
         <h1 className="mt-3 font-display text-3xl font-black uppercase tracking-tight text-ink">
           Hold tight.
@@ -70,7 +70,7 @@ export function StudentWaiting({
             onClick={() => setEditing(true)}
             className="mt-3 text-lg font-semibold text-play underline-offset-4 hover:underline"
           >
-            {me.display_name} ✎
+            {me.display_name} (edit)
           </button>
         )}
 

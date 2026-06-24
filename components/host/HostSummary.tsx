@@ -20,8 +20,6 @@ import { money } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
 import { ArrowLeft, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
 
-const MEDALS = ["🥇", "🥈", "🥉"];
-
 export function HostSummary({
   supabase,
   session,
@@ -169,7 +167,7 @@ export function HostSummary({
           <h2 className="mb-1 text-xl font-bold text-ink">Final standings</h2>
           <p className="mb-3 text-xs text-ink-subtle">Click a player to see every market they faced.</p>
           <ol className="space-y-1">
-            {results.map((r, i) => {
+            {results.map((r) => {
               const open = openId === r.player.id;
               const good = goodCount(r.outcomes);
               const luckPct = r.outcomes.length
@@ -184,7 +182,7 @@ export function HostSummary({
                   >
                     <span className="flex items-center gap-2 text-ink">
                       <span className="w-7 text-center font-mono font-bold text-ink-subtle">
-                        {i < 3 ? <span className="text-base">{MEDALS[i]}</span> : r.rank}
+                        {r.rank}
                       </span>
                       {r.player.display_name}
                       <ChevronDown

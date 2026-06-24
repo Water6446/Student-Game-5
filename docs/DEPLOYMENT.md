@@ -78,7 +78,7 @@ Each isolated storage = its own anonymous user.
 
 Work top to bottom.
 
-### 1. Undo the temporary testing bypass  ⚠️ REQUIRED
+### 1. Undo the temporary testing bypass — REQUIRED
 
 While testing we let anyone host without email. This must come out before launch,
 or any student could create sessions. Tell me **"do the launch revert"** and I'll
