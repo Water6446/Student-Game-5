@@ -16,13 +16,18 @@ export function AllocationInput({
   disabled,
 }: {
   wealth: number;
-  risky: number;
-  onChange: (risky: number) => void;
+  /** null = no selection yet — the field is blank until the student enters one. */
+  risky: number | null;
+  onChange: (risky: number | null) => void;
   disabled?: boolean;
 }) {
   const [unit, setUnit] = useState<"dollar" | "percent">("percent");
-  const safe = cents(wealth - risky);
-  const pct = wealth > 0 ? (risky / wealth) * 100 : 0;
+  // Until the student enters a value (`risky === null`) everything reads blank;
+  // `r` is the numeric stand-in only for laying out the (empty) slider track.
+  const has = risky !== null;
+  const r = risky ?? 0;
+  const safe = cents(wealth - r);
+  const pct = wealth > 0 ? (r / wealth) * 100 : 0;
   const riskyPct = Math.round(pct);
   const safePct = wealth > 0 ? Math.round((safe / wealth) * 100) : 0;
 
@@ -39,19 +44,19 @@ export function AllocationInput({
         <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white shadow-card">
           <div className="font-display text-xs font-extrabold uppercase tracking-wide">Safe 🛡</div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
-            {money(safe)}
+            {has ? money(safe) : "—"}
           </div>
           <div className="font-mono text-sm font-semibold text-white/85 sm:text-base">
-            {safePct}%
+            {has ? `${safePct}%` : "—"}
           </div>
         </div>
         <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white shadow-card">
           <div className="font-display text-xs font-extrabold uppercase tracking-wide">Risky 🔥</div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
-            {money(risky)}
+            {has ? money(r) : "—"}
           </div>
           <div className="font-mono text-sm font-semibold text-white/85 sm:text-base">
-            {riskyPct}%
+            {has ? `${riskyPct}%` : "—"}
           </div>
         </div>
       </div>
@@ -60,7 +65,9 @@ export function AllocationInput({
       <div
         className="rounded-full border-2 border-ink shadow-card"
         style={{
-          background: `linear-gradient(to right, rgb(var(--gain)) ${safePct}%, rgb(var(--loss)) ${safePct}%)`,
+          background: has
+            ? `linear-gradient(to right, rgb(var(--gain)) ${safePct}%, rgb(var(--loss)) ${safePct}%)`
+            : "rgb(var(--paper-2))",
         }}
       >
         <input
@@ -68,7 +75,7 @@ export function AllocationInput({
           min={0}
           max={wealth}
           step={Math.max(wealth / 100, 0.01)}
-          value={risky}
+          value={r}
           disabled={disabled}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
           aria-label="Amount to put at risk"
@@ -109,9 +116,12 @@ export function AllocationInput({
               min={0}
               max={wealth}
               step={0.01}
-              value={risky}
+              value={has ? r : ""}
+              placeholder="0.00"
               disabled={disabled}
-              onChange={(e) => onChange(clamp(Number(e.target.value)))}
+              onChange={(e) =>
+                onChange(e.target.value === "" ? null : clamp(Number(e.target.value)))
+              }
               className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-8 pr-3 text-right font-mono text-lg tabular-nums text-ink focus:border-brand"
             />
           ) : (
@@ -120,9 +130,12 @@ export function AllocationInput({
               min={0}
               max={100}
               step={1}
-              value={Math.round(pct)}
+              value={has ? Math.round(pct) : ""}
+              placeholder="0"
               disabled={disabled}
-              onChange={(e) => onChange(clamp((Number(e.target.value) / 100) * wealth))}
+              onChange={(e) =>
+                onChange(e.target.value === "" ? null : clamp((Number(e.target.value) / 100) * wealth))
+              }
               className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-8 pr-3 text-right font-mono text-lg tabular-nums text-ink focus:border-brand"
             />
           )}

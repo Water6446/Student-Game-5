@@ -24,19 +24,20 @@ export function StudentRound({
   const myAllocs = useRoundAllocations(supabase, round.id);
   const mine = myAllocs.find((a) => a.player_id === me.id) ?? null;
 
-  const [risky, setRisky] = useState(0);
+  const [risky, setRisky] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset the slider when a new round opens; pre-fill with any saved allocation.
+  // Each new round opens blank — never pre-filled and never carrying over the
+  // previous round's choice. Students must deliberately enter an amount every
+  // round (even to repeat the same number), so the field stays empty until they do.
   useEffect(() => {
-    setRisky(mine ? Number(mine.risky_amount) : 0);
+    setRisky(null);
     setError(null);
-    // depend on round id + whether a saved alloc exists, not on every alloc change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id]);
 
   async function submit() {
+    if (risky === null) return;
     setBusy(true);
     setError(null);
     // All writes go through a SECURITY DEFINER RPC. The server validates the
@@ -60,7 +61,7 @@ export function StudentRound({
           disabled={busy}
         />
         {error ? <Banner kind="error">{error}</Banner> : null}
-        <Button variant="gold" onClick={submit} disabled={busy} className="w-full text-lg shadow-pop">
+        <Button variant="gold" onClick={submit} disabled={busy || risky === null} className="w-full text-lg shadow-pop">
           {busy ? "Saving…" : mine ? "Update allocation 🔒" : "Lock in my bet 🔒"}
         </Button>
         {mine ? (
