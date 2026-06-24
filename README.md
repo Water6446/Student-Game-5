@@ -10,18 +10,14 @@ from their phones/laptops to split their wealth between a **safe** and a
 > student with browser dev tools and the public anon key. See
 > [Security model](#security-model) and the [hardening checklist](#supabase-hardening-checklist).
 
----
+All five build stages are complete: schema + RLS + RPCs + game math (with tests
+and a security self-test); host create/lobby + student join (anon auth, join code,
+QR); the round loop over Realtime (submit → lock → reveal → next); leaderboard +
+chart + history + student wealth/rank view (host can tune market odds mid-game and
+see per-student allocations at lock); and the end summary + counterfactual + CSV
+export.
 
-## Build status (staged)
-
-The project is built in confirmable stages:
-
-1. **Schema + RLS + RPCs + game math (with tests + a security self-test).** ✅ done
-2. **Host create/lobby + student join (anon auth, join code, QR).** ✅ done
-3. **Round loop with Realtime: submit → lock → reveal → next.** ✅ done
-4. **Leaderboard + chart + history (host) and student wealth/rank view.** ✅ done
-   _(plus: host can tune market odds mid-game and see per-student allocations at lock)_
-5. **End summary + counterfactual + CSV export.** ✅ done
+The **UI follows the shared "Academy Arcade" design system — see [DESIGN.md](./DESIGN.md).**
 
 ---
 
@@ -88,13 +84,12 @@ the app — every privileged action is a host-only RPC.
 ## Supabase setup
 
 1. Create a Supabase project. Note the project URL and the **anon** key.
-2. Apply the migrations **in order** (`0001` → `0002` → `0003`). Either:
-   - paste each file into the SQL editor, or
-   - with the Supabase CLI: `supabase db push` (place files under
-     `supabase/migrations`).
+2. Apply the migrations **in order** with the Supabase CLI (`npm run db:push`).
 3. **Auth**: enable **Email (magic link)** for hosts and **Anonymous sign-in**
    for students (Authentication → Providers / Sign-in).
 4. Apply the [hardening checklist](#supabase-hardening-checklist).
+
+Full CLI workflow and the dashboard toggles are in **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**.
 
 ---
 
@@ -134,6 +129,9 @@ which asserts (and aborts on any failure) that:
    set the service_role key in Vercel.
 3. Deploy. Add the Vercel URL to Supabase **Auth → URL Configuration** (Site URL
    + redirect URLs) so magic-link sign-in returns to your app.
+
+The full pre-class launch checklist, dashboard steps, smoke test, and rollback
+plan live in **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**.
 
 ---
 

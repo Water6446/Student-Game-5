@@ -6,16 +6,18 @@ This project — and every new game in this in-class/student-game family — fol
 a single design system documented in **[DESIGN.md](./DESIGN.md)**.
 
 **Before building or changing any UI, read `DESIGN.md` and follow it exactly:**
-the "Parchment Pro + a little Kahoot" identity, the semantic color tokens
-(`paper`/`ink`/`brand` gold/`gain` green/`loss` rose/`play` violet), the font
-stack (Fraunces / Plus Jakarta Sans / JetBrains Mono), the `components/ui.tsx`
-primitives, the icon set in `components/icons.tsx`, and the patterns for present
-mode, risk meters, motion, and accessibility.
+the "Academy Arcade" identity (warm paper, ink-black borders, hard offset
+shadows, saturated color blocks, bold grotesk headlines), the semantic color
+tokens (`paper`/`ink`/`brand` amber/`gain` green/`loss` red/`play` electric
+blue), the font stack (Archivo / Hanken Grotesk / Fraunces italic / JetBrains
+Mono), the `components/ui.tsx` primitives, the icon set in `components/icons.tsx`,
+and the patterns for present mode, risk meters, motion, and accessibility.
 
-Use the semantic Tailwind classes (`bg-surface`, `text-ink`, `text-brand`,
-`text-gain`, `text-loss`, `border-line`, …) — never raw `slate-*` / `indigo-*` /
-`emerald-N`. When starting a brand-new game, copy the foundation files listed in
-DESIGN.md §11 and build from the `ui.tsx` primitives.
+Use the semantic Tailwind classes (`bg-surface`, `text-ink`, `border-ink`,
+`text-gain`, `text-loss`, `bg-brand`, `bg-play`, …) — never raw `slate-*` /
+`indigo-*` / `emerald-N`. Note `brand` (amber) is a fill behind **ink** text,
+never gold text on white. When starting a brand-new game, copy the foundation
+files listed in DESIGN.md §11 and build from the `ui.tsx` primitives.
 
 ## Notable
 

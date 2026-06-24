@@ -1,4 +1,4 @@
-# Design System — "Parchment Pro + a little Kahoot"
+# Design System — "Academy Arcade"
 
 The shared design language for this family of **live, in-class student games**
 (Kahoot-style: a host runs a session on a projector, students join from phones).
@@ -7,29 +7,37 @@ like one product. It is self-contained and copy-pasteable into a fresh
 Next.js + Tailwind project.
 
 > **North star:** academic and trustworthy (it's used in a classroom and shown on
-> a projector), but warm and a little playful (it's a game). Light, paper-like,
-> high-contrast, legible from the back of a room and on a student's phone.
+> a projector), but warm and a little playful (it's a game). Warm paper, **ink-black
+> borders, hard offset shadows, saturated color blocks, big bold grotesk headlines** —
+> game-show energy that still reads as a finance classroom tool and stays legible
+> from the back of a lit room and on a student's phone.
 
 ---
 
 ## 1. Principles
 
-1. **Light & legible first.** Warm parchment background, dark ink text. Light
-   themes read better on classroom projectors in lit rooms. No dark mode.
-2. **Semantic, not decorative, color.** Green = gain / GOOD / safe-ish upside;
-   rose = loss / BAD / risk. These map to game meaning and must always be paired
-   with an icon or text (never color alone).
-3. **One primary action per screen.** The main CTA is gold, full-width, and
-   pinned to a stable position so repeated actions can be clicked in place.
-4. **Show consequences, teach by playing.** Prefer tangible, visual encodings
+1. **Light & legible first.** Warm paper background, dark ink text. Light themes
+   read better on classroom projectors in lit rooms. No dark mode.
+2. **Hard edges, solid fills.** Every surface gets a 2–2.5px **ink border** and a
+   **hard offset shadow** (solid ink, no blur). Always put text on a solid fill,
+   never directly on the dot texture.
+3. **Semantic, not decorative, color.** Green = gain / GOOD / safe-ish upside;
+   rose/red = loss / BAD / risk. These map to game meaning and must always be
+   paired with an icon or text (never color alone).
+4. **One primary action per screen.** The headline CTA is gold (amber fill, ink
+   text), full-width, and pinned to a stable position so repeated actions can be
+   clicked in place.
+5. **Show consequences, teach by playing.** Prefer tangible, visual encodings
    (risk meters, outcome previews, sparklines) over bare numbers.
-5. **A "moment" on the projector.** Reveals are events — big, animated,
+6. **A "moment" on the projector.** Reveals are events — big, animated,
    full-screen. See the **Present mode** pattern.
-6. **Motion is meaning, and optional.** 150–320ms, ease-out; celebratory only at
+7. **Motion is meaning, and optional.** 150–320ms, ease-out; celebratory only at
    real beats (a win, a reveal). Always respect `prefers-reduced-motion`.
-7. **SVG icons, not emoji.** One inline line-icon set (1.75 stroke,
-   `currentColor`). Emoji allowed only as occasional celebratory flourish
-   (medals on a podium), never as structural/navigational icons.
+8. **SVG icons, not emoji, for structure.** One inline line-icon set
+   (`components/icons.tsx`, 1.75 stroke, `currentColor`). Unicode glyphs
+   (▲ ▼ 🛡 🔥 🔒 🥇🥈🥉 🏆) are allowed as accents/flourish, never as
+   structural/navigational icons. Directional meaning always uses
+   `ArrowUp`/`ArrowDown`, never color alone.
 
 ---
 
@@ -43,38 +51,40 @@ Defined as **RGB channel triplets** in `:root` so Tailwind opacity modifiers
 :root {
   color-scheme: light;
 
-  --paper: 247 243 234;       /* #F7F3EA warm parchment page */
-  --paper-2: 240 234 221;     /* #F0EADD deeper inset panel */
-  --surface: 255 254 251;     /* #FFFEFB cards */
+  --paper: 235 227 208;       /* #EBE3D0 warm paper page */
+  --paper-2: 251 239 210;     /* #FBEFD2 gold-tint inset panel */
+  --surface: 255 253 246;     /* #FFFDF6 cards */
 
-  --ink: 28 25 23;            /* #1C1917 headings / primary text */
-  --ink-muted: 87 83 78;      /* #57534E secondary text */
-  --ink-subtle: 120 113 108;  /* #78716C hints */
+  --ink: 33 26 18;            /* #211A12 text AND borders */
+  --ink-muted: 107 92 64;     /* #6B5C40 secondary text (darkened for projector) */
+  --ink-subtle: 124 107 72;   /* #7C6B48 hints */
 
-  --line: 231 224 210;        /* #E7E0D2 borders */
-  --line-strong: 214 204 184; /* #D6CCB8 stronger borders */
+  --line: 33 26 18;           /* #211A12 borders → ink */
+  --line-strong: 33 26 18;    /* #211A12 strong borders → ink */
 
-  --brand: 161 98 7;          /* #A16207 premium gold — primary/CTA (AA on white) */
-  --brand-strong: 133 77 14;  /* #854D0E gold hover */
-  --brand-soft: 254 243 199;  /* #FEF3C7 gold tint */
+  --brand: 240 169 43;        /* #F0A92B amber FILL — buttons/blocks (ink text on top) */
+  --brand-strong: 224 150 26; /* #E0961A amber hover */
+  --brand-soft: 251 239 210;  /* #FBEFD2 amber/gold tint */
 
-  --gain: 4 120 87;           /* #047857 emerald — GOOD / profit / safe upside */
-  --gain-soft: 209 250 229;   /* #D1FAE5 */
-  --loss: 190 18 60;          /* #BE123C rose — BAD / loss / risk */
-  --loss-soft: 255 228 230;   /* #FFE4E6 */
+  --gain: 31 138 76;          /* #1F8A4C GOOD market / profit / safe upside */
+  --gain-soft: 228 251 234;   /* #E4FBEA */
+  --loss: 219 59 43;          /* #DB3B2B BAD market / loss / risk */
+  --loss-soft: 255 227 221;   /* #FFE3DD */
 
-  --play: 124 58 237;         /* #7C3AED violet — playful highlight / "you" / toggles */
-  --play-soft: 237 233 254;   /* #EDE9FE */
+  --play: 37 87 232;          /* #2557E8 electric blue — "you" / primary nav accent / toggles */
+  --play-soft: 228 236 255;   /* #E4ECFF */
 }
 ```
 
 **Roles**
-- `brand` (gold): the single primary action, brand marks, key highlights.
-- `gain` / `loss`: outcomes & directional data. Use the `-soft` tints for
-  backgrounds, the solid for text/icons/bars.
-- `play` (violet): sparingly — the "you" highlight on leaderboards, stateful
-  toggles, info banners.
-- `ink` scale: text. `paper`/`surface`/`line`: structure.
+- `brand` (amber): a **fill** behind ink text — buttons, blocks, the slider thumb.
+  **Never amber text on white** (fails contrast); anywhere you'd want "gold text,"
+  use `ink`. Amber buttons get `text-ink`, not white.
+- `gain` / `loss`: outcomes & directional data. Solid fills get white text; use
+  the `-soft` tints for quiet backgrounds, the solid for text/icons/bars.
+- `play` (electric blue): the "you" highlight on leaderboards, stateful toggles,
+  navigational primary CTAs (join / next round), info banners.
+- `ink` scale: text **and borders**. `paper`/`surface`: structure.
 
 Tailwind maps them (see `tailwind.config.ts`):
 
@@ -92,35 +102,51 @@ colors: {
 }
 ```
 
-**Always use the semantic classes** (`bg-surface`, `text-ink`, `text-brand`,
-`text-gain`, `border-line`, `bg-play-soft`) — never raw `slate-*` / `indigo-*` /
-`emerald-N`. For Recharts/canvas that need hex, use the values above
-(series palette: `#A16207 #047857 #7C3AED #BE123C #0E7490 #B45309 #1D4ED8 …`,
-grid `#E7E0D2`, axes `#78716C`, tooltip bg `#FFFEFB` border `#D6CCB8`).
+**Always use the semantic classes** (`bg-surface`, `text-ink`, `border-ink`,
+`text-gain`, `bg-play-soft`) — never raw `slate-*` / `indigo-*` / `emerald-N`.
+For Recharts/canvas that need hex, use the values above (series palette:
+`#1F8A4C #2557E8 #F0A92B #DB3B2B …`, ink axes/grid `#211A12`, muted ticks
+`#6B5C40`, tooltip bg `#FFFDF6`). Extra tint fills for chips/accents:
+gold `#FBEFD2`, blue `#E4ECFF`, green `#E4FBEA`, red `#FFE3DD`.
 
 ---
 
 ## 3. Typography
 
-Three Google fonts via `next/font` (self-hosted, `display: swap`), exposed as CSS
+Four Google fonts via `next/font` (self-hosted, `display: swap`), exposed as CSS
 variables and mapped in Tailwind.
 
 | Role | Font | Tailwind | Use |
 |------|------|----------|-----|
-| Display / headings | **Fraunces** (serif) | `font-display` | h1–h3, hero numbers, big moments. Editorial, academic gravitas. |
-| UI / body | **Plus Jakarta Sans** | `font-sans` (default) | Everything else. Friendly, geometric, legible. |
-| Numbers / data | **JetBrains Mono** | `font-mono` | Money, leaderboards, codes, timers. Always tabular. |
+| Display / headings | **Archivo** (700–900 grotesk) | `font-display` | h1–h3, hero numbers, button labels, leaderboard names. Punchy, game-show. |
+| UI / body | **Hanken Grotesk** | `font-sans` (default) | Everything else. Friendly, geometric, legible. |
+| Editorial accents | **Fraunces italic** (400–600) | `font-editorial` | The "professor's voice": instructional captions, subtitles, helper text. Italic only. |
+| Numbers / data | **JetBrains Mono** (400–800) | `font-mono` | Money, leaderboards, codes, timers, round counters. Always tabular. |
 
 ```ts
 // app/layout.tsx
-import { Fraunces, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
-const display = Fraunces({ subsets:["latin"], weight:["400","500","600","700","900"], style:["normal","italic"], variable:"--font-display", display:"swap" });
-const sans = Plus_Jakarta_Sans({ subsets:["latin"], weight:["400","500","600","700","800"], variable:"--font-sans", display:"swap" });
-const mono = JetBrains_Mono({ subsets:["latin"], weight:["400","500","700"], variable:"--font-mono", display:"swap" });
-// <html className={`${display.variable} ${sans.variable} ${mono.variable}`}><body className="min-h-dvh font-sans">
+import { Archivo, Hanken_Grotesk, Fraunces, JetBrains_Mono } from "next/font/google";
+const display = Archivo({ subsets:["latin"], weight:["600","700","800","900"], variable:"--font-display", display:"swap" });
+const sans = Hanken_Grotesk({ subsets:["latin"], weight:["400","500","600","700"], variable:"--font-sans", display:"swap" });
+const editorial = Fraunces({ subsets:["latin"], weight:["400","500","600"], style:["italic"], variable:"--font-editorial", display:"swap" });
+const mono = JetBrains_Mono({ subsets:["latin"], weight:["400","500","700","800"], variable:"--font-mono", display:"swap" });
+// <html className={`${display.variable} ${sans.variable} ${editorial.variable} ${mono.variable}`}><body className="min-h-dvh font-sans">
+// viewport.themeColor = "#EBE3D0"
 ```
 
-- Headings default to `font-display` via a base rule; weight `900` for big titles.
+```ts
+// tailwind.config.ts
+fontFamily: {
+  display:   ["var(--font-display)", "system-ui", "sans-serif"],          // Archivo
+  sans:      ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"], // Hanken Grotesk
+  editorial: ["var(--font-editorial)", "Georgia", "serif"],               // Fraunces italic
+  mono:      ["var(--font-mono)", "ui-monospace", "Menlo", "monospace"],   // JetBrains Mono
+}
+```
+
+- Headings default to `font-display` (Archivo) via a base rule; weight `800–900`
+  for big titles, tight tracking (`leading-[.92]` on heroes).
+- Use `font-editorial italic` in `text-ink-muted` for instructional/helper copy.
 - `.font-mono { font-variant-numeric: tabular-nums; }` globally so money columns
   never jitter. Apply `tabular-nums` to any numeric input too.
 - Body min 16px on mobile. Line-height 1.5 for prose.
@@ -134,27 +160,31 @@ const mono = JetBrains_Mono({ subsets:["latin"], weight:["400","500","700"], var
   projector/present uses viewport units (`px-[3vw]`). Page padding `px-6 py-…`.
 - **Full height:** use `min-h-dvh` (not `100vh`) so mobile browser chrome doesn't
   clip content.
-- **Radius:** cards `rounded-2xl`, controls/inputs `rounded-xl`, chips/pills
-  `rounded-full`, small `rounded-lg`. Present-mode panels `rounded-3xl`.
-- **Spacing:** 4/8px rhythm; cards use `p-6`, vertical stacks `space-y-4/5`.
-- **Elevation (warm, paper-like):**
+- **Radius:** cards `rounded-2xl` (16px), controls/inputs/cells `rounded-xl`
+  (12px), chips/pills `rounded-full`. Present-mode panels `rounded-3xl`.
+- **Borders:** **ink**, `border-2` on cards/buttons/inputs, `border-[2.5px]`/`border-[3px]`
+  on hero elements, the phone shell, and the projector stage. Prefer explicit
+  `border-2 border-ink` per surface (clearer than a global default).
+- **Spacing:** 4/8px rhythm; cards use `p-6`, vertical stacks `space-y-4/5`,
+  section gaps 22–32px.
+- **Elevation (hard ink offset shadows, no blur):**
   ```ts
   boxShadow: {
-    card: "0 1px 2px rgba(40,33,20,.04), 0 6px 20px -8px rgba(40,33,20,.12)",
-    lift: "0 2px 4px rgba(40,33,20,.05), 0 16px 36px -12px rgba(40,33,20,.22)",
+    card: "3px 3px 0 rgb(var(--ink))",   // standard card / button
+    lift: "6px 6px 0 rgb(var(--ink))",   // hero card, modal, big CTA
+    pop:  "5px 5px 0 rgb(var(--ink))",   // primary CTA emphasis
   }
   ```
-  Cards: `border border-line bg-surface shadow-card`. Hover-lift interactive
-  cards with `hover:-translate-y-0.5 hover:shadow-lift`.
-- **Texture:** the page body carries a faint tiled-dot grid + a warm gold corner
-  glow (identity, very subtle):
+  Cards: `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
+- **Press affordance:** interactive elements shift down-right and drop their
+  shadow on `:active` — `active:translate-x-[2px] active:translate-y-[2px]
+  active:shadow-none`. Apply per interactive element.
+- **Texture:** the page body carries a faint **ink** tiled-dot grid (no gold glow):
   ```css
   body {
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='1' cy='1' r='1.1' fill='%231c1917' fill-opacity='0.08'/%3E%3C/svg%3E"),
-      radial-gradient(1100px 560px at 100% -10%, rgb(var(--brand)/.08), transparent 60%);
-    background-size: 22px 22px, 100% 100%;
-    background-attachment: fixed, fixed;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='1' cy='1' r='1.3' fill='%23211a12' fill-opacity='0.07'/%3E%3C/svg%3E");
+    background-size: 22px 22px;
+    background-attachment: fixed;
   }
   ```
 
@@ -167,13 +197,13 @@ Tailwind keyframes/animations; everything below is gated by a global
 
 | Name | Use |
 |------|-----|
-| `animate-pop-in` | Card / panel entrance (scale+fade, ~0.32s). |
+| `animate-pop-in` | Card / panel / reveal-banner entrance (scale+fade, ~0.32s). |
 | `animate-rise` | Hero / section entrance (translateY+fade). |
 | `animate-count-pop` | A result number landing. |
-| `animate-confetti` | Celebratory burst (see `Confetti.tsx`) — wins, reveals. |
+| `animate-confetti` | Celebratory burst (`Confetti.tsx`, retinted amber/blue/white) — wins, reveals. |
 | `animate-shake` | A negative result (BAD outcome card). |
-| `animate-pulse-soft` | "Waiting…" idle states. |
-| `active:scale-[0.98]` | Press feedback on buttons/cards. |
+| `animate-pulse-soft` | "Waiting…" idle states (medallion, lock dots). |
+| `active:scale-[0.98]` / press shift | Press feedback on buttons/cards. |
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -192,27 +222,33 @@ Tailwind keyframes/animations; everything below is gated by a global
 One inline SVG set in `components/icons.tsx`: 24×24 viewBox, `fill="none"`,
 `stroke="currentColor"`, `strokeWidth={1.75}`, round caps/joins, `width/height
 ="1em"` (size with text/`w-`, color with `text-*`), `aria-hidden` by default.
-Add new icons in the same style; never reach for an icon library or emoji for
-structural UI. Directional meaning (GOOD/BAD, up/down) always uses
-`ArrowUp`/`ArrowDown`, never color alone.
+Add new icons in the same style; never reach for an icon library. Unicode glyphs
+(▲ ▼ 🛡 🔥 🔒 🥇🥈🥉 🏆) are fine as accents alongside text. Directional meaning
+(GOOD/BAD, up/down) always pairs an arrow with text, never color alone.
 
 ---
 
 ## 7. Core components (`components/ui.tsx`)
 
-Build screens from these; they encode the tokens so restyles cascade.
+Build screens from these; they encode the tokens so restyles cascade. Everything
+gets `border-2 border-ink` + `shadow-card` + the press shift.
 
-- **`Card`** — `rounded-2xl border border-line bg-surface p-6 shadow-card`.
-- **`Button`** — `variant`: `primary` (gold, the one CTA), `secondary`
-  (`bg-paper-2` outline), `danger` (`bg-loss`). Always `active:scale-[0.98]`,
-  full-width in panels (`className="w-full text-lg"`), shows a busy label while
-  async.
+- **`Card`** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
+- **`Button`** — `variant`: `primary` (electric blue, navigational CTAs),
+  `gold` (amber fill, **ink** text — the headline "lock in / start" CTA),
+  `secondary` (`bg-surface` outline → `hover:bg-paper-2`), `success` (`bg-gain`),
+  `danger` (`bg-loss`). Base: `border-2 border-ink ... shadow-card font-display
+  font-extrabold active:translate-x-[2px] active:translate-y-[2px]
+  active:shadow-none`. Full-width in panels (`className="w-full text-lg"`), shows
+  a busy label while async.
 - **`Field` / `TextInput` / `Select`** — visible bold label, optional hint,
-  `border-line-strong bg-paper`, focus → `border-brand`. Use semantic input
-  `type`/`inputMode`.
-- **`Toggle`** — switch with `role="switch"`, gold when on.
-- **`Banner`** — `kind`: `error` (loss), `info` (play), `success` (gain); soft
-  tint bg + matching border, `role="alert"`.
+  `border-2 border-ink bg-surface shadow-card font-semibold`, focus → brand/ink
+  ring. Use semantic input `type`/`inputMode`.
+- **`Toggle`** — switch with `role="switch"`; ink `border-2`, track on = `bg-play`
+  (blue), knob white with a thin ink border.
+- **`Banner`** — `kind`: `error` (loss), `info` (play/blue), `success` (gain);
+  `rounded-xl border-2 border-ink shadow-card`, soft-tint fill + matching text,
+  `role="alert"`.
 
 **Focus:** every interactive element gets a visible ring —
 `focus-visible:ring-2 ring-brand ring-offset-2 ring-offset-paper` (set globally
@@ -230,13 +266,14 @@ top position). Put the button first; supporting context flows below it.
 **Money & data.** Format via a single `money()` helper (`$1,234.56`,
 `maximumFractionDigits: 2`) and a `signedMoney()` with ± and `−`. Render in
 `font-mono` (tabular). For "X vs Y" splits (safe/risky), prefer a **risk-meter
-bar** (a flex bar: `bg-loss` width = % risky, `bg-gain` width = % safe) with the
-% as the hero number and exact dollars quiet beneath — far more scannable than
-columns of numbers.
+bar** — an ink-bordered pill, green (safe) base with a **red (risky) fill that
+grows from the right** as the risky share increases — with the % as the hero
+number and exact dollars quiet beneath. Big SAFE/RISKY stat blocks use solid
+`bg-gain`/`bg-loss` with white text, ink border, Archivo label + mono amount.
 
 **GOOD / BAD outcomes.** Soft-tint pill with an arrow icon inline; the dramatic
-version (present mode) is a full-screen color flood + huge arrow + confetti on
-good / shake on bad.
+version (present mode) is a full-bleed `bg-gain`/`bg-loss` banner with an ink
+bottom border + huge arrow + Archivo headline + confetti on good / shake on bad.
 
 **Collapse the rarely-used.** Tuck infrequent controls behind a styled native
 `<details>` disclosure (chevron rotates with `group-open:rotate-180`) to keep
@@ -250,6 +287,9 @@ bounded `max-h-[…] overflow-y-auto` so primary actions never get pushed off-sc
 tab and the projector tab use `localStorage` + a `storage` event listener (see
 `useShowBots`), not React state.
 
+**Active nav/step.** Active tab = solid ink fill + cream text + pressed offset;
+inactive = `bg-surface` + ink border + shadow. Drive via conditional classes.
+
 **Loading / empty states.** Never ship a bare spinner only; use a short, on-brand
 line (`text-ink-subtle`) and, for data, a helpful empty state ("appears after the
 first round"). Prefer skeletons for >300ms loads.
@@ -260,24 +300,29 @@ first round"). Prefer skeletons for >300ms loads.
 
 Every game gets a dedicated **read-only big-screen view** for the projector while
 the host drives from their laptop. Pattern (see `components/host/HostPresent.tsx`,
-route `app/host/[sessionId]/present/page.tsx`):
+route `app/host/[sessionId]/present/page.tsx`): the stage is an ink-bordered
+`rounded-3xl` panel with `shadow-lift` and the ink dot-grid inside.
 
 - A **"Present"** link (Monitor icon, `target="_blank"`) on the lobby, the live
   control screen, and the summary.
 - Read-only; auto-updates via the same realtime hooks as the control screen.
   Header = wordmark + a join-code chip (latecomers) + fullscreen toggle + exit.
-- Covers all states: **lobby** (huge join URL + QR + live count), **in-progress
-  open** ("Place your bets" + giant submitted/total), **locked** ("Revealing…"),
-  **revealed** (full-screen GOOD/BAD `RevealTakeover` with confetti on good; a
-  neutral "Results are in" when outcomes are per-player), **finished** (final
-  standings). Big type throughout (`clamp()` sizes), medal podium for top 3.
+- Covers all states: **lobby** (giant mono join code/URL + QR + live count, often
+  a dark ink panel `bg-ink` with cream text), **in-progress open** ("Place your
+  bets" + huge mono submitted/total), **locked** ("Revealing…"), **revealed**
+  (full-bleed GOOD/BAD `RevealTakeover` with confetti on good; a neutral "Results
+  are in" when outcomes are per-player), **finished** (final standings). Big type
+  throughout (`clamp()` sizes), medal podium for top 3.
+- **Projector legibility rules:** minimum on-screen text ~24px; use `ink-muted`
+  (#6B5C40), never lighter, for secondary text; keep solid fills behind all text;
+  maintain ink borders for hard edges that survive projector blur.
 
 ---
 
 ## 10. Accessibility checklist (ship gate)
 
-- [ ] Text contrast ≥ 4.5:1 (gold `#A16207`, gain `#047857`, loss `#BE123C` all
-      pass on white/paper). Verify any new pairing.
+- [ ] Text contrast ≥ 4.5:1. Solid fills carry white or ink text (amber/gold gets
+      **ink**, never white or gold-on-white). Verify any new pairing.
 - [ ] Color never the sole signal — pair with icon/text (GOOD/BAD use arrows).
 - [ ] Visible focus ring on every interactive element; logical tab order.
 - [ ] Icon-only buttons have `aria-label`; toggles use `role="switch"` /
@@ -291,9 +336,9 @@ route `app/host/[sessionId]/present/page.tsx`):
 ## 11. File map (where the system lives)
 
 ```
-app/globals.css          tokens, base type, focus rings, body texture, motion reset, slider/confetti CSS
-tailwind.config.ts       color tokens, font families, shadows, keyframes/animations
-app/layout.tsx           next/font wiring (Fraunces / Plus Jakarta / JetBrains Mono)
+app/globals.css          tokens, base type, focus rings, body dot texture, motion reset, slider/confetti CSS
+tailwind.config.ts       color tokens, font families, hard-offset shadows, keyframes/animations
+app/layout.tsx           next/font wiring (Archivo / Hanken Grotesk / Fraunces italic / JetBrains Mono)
 components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti
