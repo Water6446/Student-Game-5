@@ -28,7 +28,7 @@ import { money } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 import { useShowBots } from "@/components/use-show-bots";
 import { FinalResults } from "@/components/host/FinalResults";
-import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Bot, Monitor, Sliders, ChevronDown } from "@/components/icons";
+import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Bot, Monitor, Sliders, ChevronDown, Flag } from "@/components/icons";
 
 export function HostRoundControl({
   supabase,
@@ -137,6 +137,18 @@ export function HostRoundControl({
     });
   const finish = () => run(() => supabase.rpc("finish_session", { p_session_id: session.id }));
 
+  // Ending the game before the last round is rare and irreversible, so it hides
+  // behind a quiet header button + an explicit confirm.
+  function finishEarly() {
+    const ok = window.confirm(
+      `Finish the game early, at round ${session.current_round} of ${session.config.num_rounds}?\n\n` +
+        "The game ends immediately: no more rounds, students see their final results, " +
+        "and you get the summary screen. This cannot be undone.",
+    );
+    if (!ok) return;
+    void finish();
+  }
+
   const status = round?.status ?? "open";
   // Post-final-round state: the game is effectively over, the host just hasn't
   // clicked "Finish game" yet — show final results, not last-round minutiae.
@@ -197,6 +209,15 @@ export function HostRoundControl({
           >
             <Monitor /> Present
           </Link>
+          <button
+            type="button"
+            onClick={finishEarly}
+            disabled={busy}
+            title="End the game now and jump to the final summary"
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
+          >
+            <Flag /> Finish early
+          </button>
           <button
             type="button"
             onClick={deleteSession}
