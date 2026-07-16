@@ -13,9 +13,12 @@ import {
   buildPlayerResults,
   buildResultsCsv,
   classCounterfactual,
+  classPortfolioCounterfactual,
   goodCount,
 } from "@/lib/game/results";
 import { edgeFraction, type StrategyKey } from "@/lib/game/counterfactual";
+import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/portfolio";
+import { isPortfolio } from "@/lib/game/types";
 import { money } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
 import { ArrowLeft, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
@@ -30,11 +33,18 @@ export function HostSummary({
   const players = usePlayers(supabase, session.id);
   const { rounds, allocations } = useSessionHistory(supabase, session.id);
 
+  const portfolio = isPortfolio(session.config);
   const results = useMemo(
     () => buildPlayerResults(session, players, rounds, allocations),
     [session, players, rounds, allocations],
   );
-  const cf = useMemo(() => classCounterfactual(session, results), [session, results]);
+  const cf = useMemo(
+    () =>
+      portfolio
+        ? classPortfolioCounterfactual(session, results)
+        : classCounterfactual(session, results),
+    [portfolio, session, results],
+  );
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
   const [openId, setOpenId] = useState<string | null>(null);
   // per-player luck only varies when each player draws their own market
@@ -54,7 +64,7 @@ export function HostSummary({
   );
 
   function downloadCsv() {
-    const csv = buildResultsCsv(results, rounds);
+    const csv = buildResultsCsv(results, rounds, portfolio);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -80,13 +90,16 @@ export function HostSummary({
   const hasBots = botByStrategy.size > 0;
   // benchmark cards show the bot's real result when bots are present, else the
   // computed counterfactual
-  const cardValue = (k: StrategyKey) => botByStrategy.get(k) ?? cf.strategy[k];
+  const cardValue = (k: StrategyKey | PortfolioStrategyKey) =>
+    botByStrategy.get(k) ?? (cf.strategy as Record<string, number>)[k];
   const avgLabel = cf.isAverage ? "class avg" : "everyone";
 
-  // expected number of good markets (luck baseline): goodProb × rounds played
+  // expected number of good draws (luck baseline): goodProb × draws made —
+  // one per round (basic) or one per round × asset (portfolio)
   const goodProb = session.config.good_prob ?? 0.6;
   const numRevealed = rounds.filter((r) => r.status === "revealed").length;
-  const expectedGood = goodProb * numRevealed;
+  const totalDraws = numRevealed * (portfolio ? numAssets(session.config) : 1);
+  const expectedGood = goodProb * totalDraws;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -131,29 +144,61 @@ export function HostSummary({
           Starting wealth was {money(cf.startWealth)}.
         </p>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-          <StrategyCard
-            label="All safe"
-            desc="0% at risk every round"
-            value={cardValue("all_safe")}
-            tone="slate"
-          />
-          <StrategyCard 
-              label={`${edgePct}% Edge`} 
-              desc="market edge percent every round"
-              value={cardValue("edge")} 
-              tone="emerald" />
-          <StrategyCard
-            label="50 / 50"
-            desc="half your wealth at risk every round"
-            value={cardValue("fifty_fifty")}
-            tone="play"
-          />
-          <StrategyCard
-            label="All risky"
-            desc="everything at risk every round"
-            value={cardValue("all_risky")}
-            tone="loss"
-          />
+          {portfolio ? (
+            <>
+              <StrategyCard
+                label="All safe"
+                desc="nothing invested, ever"
+                value={cardValue("all_safe")}
+                tone="slate"
+              />
+              <StrategyCard
+                label="One basket"
+                desc={`everything on ${assetName(session.config, 0)} every round`}
+                value={cardValue("concentrated")}
+                tone="loss"
+              />
+              <StrategyCard
+                label="Half & half"
+                desc="half safe, half split evenly"
+                value={cardValue("half_diversified")}
+                tone="play"
+              />
+              <StrategyCard
+                label="Diversified"
+                desc="everything invested, split evenly"
+                value={cardValue("diversified")}
+                tone="emerald"
+              />
+            </>
+          ) : (
+            <>
+              <StrategyCard
+                label="All safe"
+                desc="0% at risk every round"
+                value={cardValue("all_safe")}
+                tone="slate"
+              />
+              <StrategyCard
+                label={`${edgePct}% Edge`}
+                desc="market edge percent every round"
+                value={cardValue("edge")}
+                tone="emerald"
+              />
+              <StrategyCard
+                label="50 / 50"
+                desc="half your wealth at risk every round"
+                value={cardValue("fifty_fifty")}
+                tone="play"
+              />
+              <StrategyCard
+                label="All risky"
+                desc="everything at risk every round"
+                value={cardValue("all_risky")}
+                tone="loss"
+              />
+            </>
+          )}
         </div>
         <p className="mt-4 text-sm text-ink">
           <span className="font-bold text-gain">{cf.beatAllSafe}</span> of {cf.total}{" "}
@@ -206,8 +251,8 @@ export function HostSummary({
                   {open ? (
                     <div className="border-t border-line px-4 py-2">
                       <div className="mb-1 text-xs text-ink-subtle">
-                        {good}/{r.outcomes.length} good markets · avg bet {money(r.avgBet)} · full
-                        match:
+                        {good}/{r.outcomes.length} good {portfolio ? "draws" : "markets"} · avg bet{" "}
+                        {money(r.avgBet)} · full match{portfolio ? " (round by round, per asset)" : ""}:
                       </div>
                       <OutcomeChips outcomes={r.outcomes} empty="no rounds" />
                     </div>
@@ -231,10 +276,13 @@ export function HostSummary({
           <Clover className="text-gain" /> Luck
         </h2>
         <p className="mb-3 mt-1 text-sm text-ink-muted">
-          Outcomes are independent per player, so some drew better markets than others. Most good
-          markets first. At {Math.round(goodProb * 100)}% odds, the expected count is{" "}
+          {independent
+            ? "Outcomes are independent per player, so some drew better markets than others."
+            : "Everyone faced the same draws, so luck is identical across the class."}{" "}
+          Most good {portfolio ? "draws" : "markets"} first. At {Math.round(goodProb * 100)}% odds,
+          the expected count is{" "}
           <span className="font-semibold text-gain">
-            ~{expectedGood.toFixed(1)} of {numRevealed}
+            ~{expectedGood.toFixed(1)} of {totalDraws}
           </span>{" "}
           good.
         </p>

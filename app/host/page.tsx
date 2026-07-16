@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { HostSignIn } from "@/components/host/HostSignIn";
-import { CreateSessionForm } from "@/components/host/CreateSessionForm";
+import { NewSessionPanel } from "@/components/host/CreateSessionForm";
 import { SessionsList } from "@/components/host/SessionsList";
 import { Instructions } from "@/components/Instructions";
 import { Button, Card } from "@/components/ui";
@@ -46,7 +46,7 @@ export default function HostPage() {
       </header>
 
       <div className="space-y-8">
-        <CreateSessionForm supabase={supabase} />
+        <NewSessionPanel supabase={supabase} />
 
         <Card>
           <h2 className="mb-4 text-xl font-bold text-ink">Your sessions</h2>

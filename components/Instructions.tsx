@@ -28,13 +28,14 @@ const CONTENT: Record<Role, RoleContent> = {
       "After everyone submits, the professor locks the round and reveals the outcome. Your wealth updates and you can see your rank.",
       "If you don't submit, you default to all-safe — you keep your money but gain nothing that round.",
       "Strategy tip: more in the risky asset means more upside but a bigger chance of being wiped out. Mixing safe and risky balances the two.",
-      "At the end you'll see how you did versus always-safe, 50/50, and all-in strategies.",
+      "In the Portfolio game there are several risky assets, each with its own independent market — spreading your money across them (diversifying) tames the wipeout risk.",
+      "At the end you'll see how you did versus fixed benchmark strategies (always-safe, 50/50, all-in — or, in the portfolio game, one-basket vs. diversified).",
     ],
   },
   professor: {
     heading: "How to run a game",
     simple: [
-      "Sign in, then click Create session. The Standard setup is one click.",
+      "Sign in, then pick a game: the Basic Risk Game (one risky bet) or the Portfolio Risk Game (several independent risky assets). The Standard setup is one click.",
       "Share the join code or QR; students appear in your lobby live.",
       "Start the round → students submit → Lock → Reveal. Repeat for each round.",
       "Watch the live leaderboard and chart; Finish to see the summary and export a CSV.",
@@ -42,6 +43,7 @@ const CONTENT: Record<Role, RoleContent> = {
     detailed: [
       "Standard setup: extreme payoff (×2 good / ×0 bad), 25 rounds, $100 start, 60% good-market chance, auto market (the server rolls), shared outcome for everyone.",
       "Flip on Advanced to change any of it: payoff mode, rounds, starting wealth, good-market odds, manual vs. auto market, shared vs. independent outcomes, leaderboard/odds visibility, and late join.",
+      "Portfolio game extras: pick how many risky assets are in play (2–8), an optional per-round interest rate on the safe pot, and optionally customize each asset's name, odds, and payoff. Its benchmark bots compare one-basket vs. diversified investing.",
       "Round flow: Open (students allocate) → Lock (no more changes; you see each student's split) → Reveal (server rolls the market, or you pick it in manual mode; wealth is recomputed) → Next round.",
       "Mid-game you can adjust the good-market odds and choose whether students see them.",
       "The wealth-over-rounds chart and per-round history update live as you go.",

@@ -4,8 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
-import { buildPlayerResults, goodCount, type PlayerResult } from "@/lib/game/results";
+import {
+  buildPlayerResults,
+  goodCount,
+  goodCountMatrix,
+  portfolioOutcomeMatrix,
+  type PlayerResult,
+} from "@/lib/game/results";
 import { edgeFraction } from "@/lib/game/counterfactual";
+import {
+  allPortfolioStrategyOutcomes,
+  assetName,
+  type PortfolioStrategyKey,
+} from "@/lib/game/portfolio";
+import { isPortfolio } from "@/lib/game/types";
 import { money, ordinal, signedMoney } from "@/lib/game/format";
 import { Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
@@ -22,6 +34,10 @@ export function StudentFinished({
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [result, setResult] = useState<PlayerResult | null>(null);
+  const [pfCf, setPfCf] = useState<Record<PortfolioStrategyKey, number> | null>(null);
+  const [pfLuck, setPfLuck] = useState<{ good: number; total: number } | null>(null);
+
+  const portfolio = isPortfolio(session.config);
 
   useEffect(() => {
     let active = true;
@@ -51,23 +67,35 @@ export function StudentFinished({
         allocs = (allocData as AllocationRow[]) ?? [];
       }
       if (!active) return;
-      const [res] = buildPlayerResults(session, [me], rounds, allocs);
-      setResult(res ?? null);
+      if (portfolio) {
+        const matrix = portfolioOutcomeMatrix(session, rounds, allocs, me.id);
+        setPfCf(
+          allPortfolioStrategyOutcomes(session.config, session.config.starting_wealth, matrix),
+        );
+        setPfLuck(goodCountMatrix(matrix));
+      } else {
+        const [res] = buildPlayerResults(session, [me], rounds, allocs);
+        setResult(res ?? null);
+      }
     })();
 
     return () => {
       active = false;
     };
-  }, [supabase, session, me]);
+  }, [supabase, session, me, portfolio]);
 
   const cf = result?.counterfactual;
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
 
   const topThree = rank ? rank.rank <= 3 : false;
 
-  // how lucky were *my* market draws?
-  const good = result ? goodCount(result.outcomes) : 0;
-  const totalOutcomes = result ? result.outcomes.length : 0;
+  // how lucky were *my* market draws? (portfolio: across every asset draw)
+  const good = portfolio ? pfLuck?.good ?? 0 : result ? goodCount(result.outcomes) : 0;
+  const totalOutcomes = portfolio
+    ? pfLuck?.total ?? 0
+    : result
+      ? result.outcomes.length
+      : 0;
   const luckPct = totalOutcomes > 0 ? Math.round((good / totalOutcomes) * 100) : null;
 
   return (
@@ -98,12 +126,49 @@ export function StudentFinished({
         {luckPct != null ? (
           <div className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
             <Clover className="text-gain" />
-            You drew {good}/{totalOutcomes} good markets —{" "}
+            You drew {good}/{totalOutcomes} good {portfolio ? "asset markets" : "markets"} —{" "}
             <span className="font-bold text-gain">{luckPct}% lucky</span>
           </div>
         ) : null}
 
-        {cf ? (
+        {portfolio && pfCf ? (
+          <div className="mt-6 text-left">
+            <h2 className="mb-2 text-center text-xs font-bold uppercase tracking-wide text-ink-subtle">
+              How other strategies would have done
+            </h2>
+            <ul className="space-y-2">
+              <CfRow
+                label="All safe"
+                desc="nothing invested, ever"
+                value={pfCf.all_safe}
+                actual={me.current_wealth}
+              />
+              <CfRow
+                label="One basket"
+                desc={`everything on ${assetName(session.config, 0)} each round`}
+                value={pfCf.concentrated}
+                actual={me.current_wealth}
+              />
+              <CfRow
+                label="Half & half"
+                desc="half safe, half split evenly across assets"
+                value={pfCf.half_diversified}
+                actual={me.current_wealth}
+              />
+              <CfRow
+                label="Diversified"
+                desc="everything invested, split evenly"
+                value={pfCf.diversified}
+                actual={me.current_wealth}
+              />
+            </ul>
+            <p className="mt-3 text-center text-xs text-ink-subtle">
+              Same asset outcomes you faced — only your strategy changes.
+            </p>
+          </div>
+        ) : null}
+
+        {!portfolio && cf ? (
           <div className="mt-6 text-left">
             <h2 className="mb-2 text-center text-xs font-bold uppercase tracking-wide text-ink-subtle">
               How other strategies would have done

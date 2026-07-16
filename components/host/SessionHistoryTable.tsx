@@ -2,12 +2,16 @@
 
 import { useMemo } from "react";
 import type { AllocationRow, RoundRow } from "@/lib/game/db";
+import type { MarketOutcome } from "@/lib/game/types";
 import { signedMoney } from "@/lib/game/format";
+import { OutcomeChips } from "@/components/OutcomeChips";
 import { ArrowUp, ArrowDown } from "@/components/icons";
 
 interface HistoryRow {
   round: number;
   outcome: RoundRow["market_outcome"] | "independent";
+  /** portfolio, shared scope: the class-wide per-asset outcomes */
+  assetOutcomes: MarketOutcome[] | null;
   goodCount: number;
   badCount: number;
   /** per-player wealth CHANGE that round, summarized across the class */
@@ -47,11 +51,20 @@ export function SessionHistoryTable({
         })
         .filter((d): d is number => d != null)
         .sort((a, b) => a - b);
-      const goodCount = allocs.filter((a) => a.market_outcome === "good").length;
-      const badCount = allocs.filter((a) => a.market_outcome === "bad").length;
+      // good/bad tallies for independent rounds: per player (basic) or per
+      // player × asset (portfolio)
+      let goodCount = 0;
+      let badCount = 0;
+      for (const a of allocs) {
+        if (a.asset_outcomes) {
+          for (const o of a.asset_outcomes) o === "good" ? goodCount++ : badCount++;
+        } else if (a.market_outcome === "good") goodCount++;
+        else if (a.market_outcome === "bad") badCount++;
+      }
       return {
         round: r.round_number,
         outcome: r.market_outcome ?? "independent",
+        assetOutcomes: r.market_outcomes ?? null,
         goodCount,
         badCount,
         avg: deltas.length ? deltas.reduce((s, d) => s + d, 0) / deltas.length : null,
@@ -88,7 +101,10 @@ export function SessionHistoryTable({
             <tr key={h.round} className="border-t border-line">
               <td className="px-2 py-2 font-mono text-ink">{h.round}</td>
               <td className="px-2 py-2">
-                {h.outcome === "good" ? (
+                {h.assetOutcomes ? (
+                  // portfolio, shared scope: one arrow per asset, in asset order
+                  <OutcomeChips outcomes={h.assetOutcomes} />
+                ) : h.outcome === "good" ? (
                   <span className="inline-flex items-center gap-0.5 font-semibold text-gain">
                     GOOD <ArrowUp />
                   </span>

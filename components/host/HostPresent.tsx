@@ -12,7 +12,9 @@ import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useSessionHistory } from "@/components/use-session-history";
 import { useShowBots } from "@/components/use-show-bots";
 import { WealthChart } from "@/components/host/WealthChart";
-import { playerOutcomesMap } from "@/lib/game/results";
+import { playerDeltaChipsMap, playerOutcomesMap } from "@/lib/game/results";
+import { assetName } from "@/lib/game/portfolio";
+import { isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
 import { money } from "@/lib/game/format";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, Coins, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
@@ -168,9 +170,14 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     [players, showBots],
   );
 
+  const portfolio = isPortfolio(session.config);
+  // basic: each player's market draws; portfolio: gained/lost chips per round
   const outcomesByPlayer = useMemo(
-    () => playerOutcomesMap(session, players, history.rounds, history.allocations),
-    [session, players, history.rounds, history.allocations],
+    () =>
+      portfolio
+        ? playerDeltaChipsMap(history.rounds, history.allocations)
+        : playerOutcomesMap(session, players, history.rounds, history.allocations),
+    [portfolio, session, players, history.rounds, history.allocations],
   );
 
   const ranked = useMemo(
@@ -225,7 +232,9 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
                 Revealing the market…
               </p>
             </>
-          ) : shared ? (
+          ) : portfolio && round?.market_outcomes ? (
+            <PortfolioOutcomeBig config={session.config} outcomes={round.market_outcomes} />
+          ) : shared && !portfolio ? (
             <RoundOutcomeBig good={round?.market_outcome === "good"} />
           ) : (
             <>
@@ -234,7 +243,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
                 Results are in
               </p>
               <p className="mt-2 font-editorial text-2xl italic text-ink-muted">
-                Each player drew their own market.
+                Each player drew their own market{portfolio ? "s" : ""}.
               </p>
             </>
           )}
@@ -263,12 +272,49 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
 
       {revealFor ? (
         <RevealTakeover
-          shared={shared}
+          shared={shared && !portfolio}
           good={round?.market_outcome === "good"}
           roundNumber={session.current_round}
+          config={session.config}
+          assetOutcomes={portfolio ? round?.market_outcomes ?? null : null}
           onDismiss={() => setRevealFor(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** Portfolio, shared scope: the round's per-asset outcomes, projector-sized. */
+function PortfolioOutcomeBig({
+  config,
+  outcomes,
+}: {
+  config: SessionConfig;
+  outcomes: MarketOutcome[];
+}) {
+  return (
+    <div className="mt-6 w-full max-w-xl">
+      <p className="mb-3 font-display text-3xl font-black uppercase tracking-tight text-ink sm:text-4xl">
+        The markets moved
+      </p>
+      <ul className={`grid gap-2 ${outcomes.length > 4 ? "grid-cols-2" : "grid-cols-1"}`}>
+        {outcomes.map((o, i) => (
+          <li
+            key={i}
+            className={`flex items-center justify-between rounded-xl border-2 border-ink px-4 py-2.5 text-white shadow-card ${
+              o === "good" ? "bg-gain" : "bg-loss"
+            }`}
+          >
+            <span className="truncate font-display text-xl font-extrabold sm:text-2xl">
+              {assetName(config, i)}
+            </span>
+            <span className="flex items-center gap-1 font-display text-xl font-black uppercase sm:text-2xl">
+              {o === "good" ? <ArrowUp /> : <ArrowDown />}
+              {o === "good" ? "Up" : "Down"}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -295,13 +341,66 @@ function RevealTakeover({
   shared,
   good,
   roundNumber,
+  config,
+  assetOutcomes,
   onDismiss,
 }: {
   shared: boolean;
   good: boolean;
   roundNumber: number;
+  config: SessionConfig;
+  /** portfolio, shared scope: the class-wide per-asset outcomes */
+  assetOutcomes: MarketOutcome[] | null;
   onDismiss: () => void;
 }) {
+  // Portfolio with class-wide outcomes: a grid of asset results. All-good gets
+  // the full green flood + confetti; all-bad the red; a mixed round stays ink.
+  if (assetOutcomes && assetOutcomes.length > 0) {
+    const allGood = assetOutcomes.every((o) => o === "good");
+    const allBad = assetOutcomes.every((o) => o === "bad");
+    const cls = allGood ? "bg-gain text-white" : allBad ? "bg-loss text-white" : "bg-ink text-paper";
+    return (
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss reveal"
+        className={`animate-pop-in fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-6 px-6 ${cls}`}
+      >
+        {allGood ? <Confetti /> : null}
+        <span className="font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
+          Round {roundNumber}
+        </span>
+        <span className="font-display text-[clamp(2rem,7vw,5rem)] font-black uppercase leading-none tracking-tight">
+          {allGood ? "Everything up!" : allBad ? "Everything down!" : "The markets moved"}
+        </span>
+        <ul
+          className={`grid w-full max-w-3xl gap-3 ${
+            assetOutcomes.length > 4 ? "grid-cols-2" : "grid-cols-1"
+          }`}
+        >
+          {assetOutcomes.map((o, i) => (
+            <li
+              key={i}
+              className={`flex items-center justify-between rounded-2xl border-2 px-5 py-3 ${
+                o === "good"
+                  ? "border-white/60 bg-gain text-white"
+                  : "border-white/60 bg-loss text-white"
+              }`}
+            >
+              <span className="truncate font-display text-2xl font-extrabold sm:text-3xl">
+                {assetName(config, i)}
+              </span>
+              <span className="flex items-center gap-1 font-display text-2xl font-black uppercase sm:text-3xl">
+                {o === "good" ? <ArrowUp /> : <ArrowDown />}
+                {o === "good" ? "Up" : "Down"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </button>
+    );
+  }
+
   const neutral = !shared;
   const cls = neutral ? "bg-ink text-paper" : good ? "bg-gain text-white" : "bg-loss text-white";
   return (
@@ -335,7 +434,10 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
   const players = usePlayers(supabase, session.id);
   const history = useSessionHistory(supabase, session.id);
   const outcomesByPlayer = useMemo(
-    () => playerOutcomesMap(session, players, history.rounds, history.allocations),
+    () =>
+      isPortfolio(session.config)
+        ? playerDeltaChipsMap(history.rounds, history.allocations)
+        : playerOutcomesMap(session, players, history.rounds, history.allocations),
     [session, players, history.rounds, history.allocations],
   );
   const ranked = useMemo(

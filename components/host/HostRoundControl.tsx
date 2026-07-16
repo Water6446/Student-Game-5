@@ -15,7 +15,15 @@ import { AllocationsBreakdown } from "@/components/host/AllocationsBreakdown";
 import { WealthChart } from "@/components/host/WealthChart";
 import { SessionHistoryTable } from "@/components/host/SessionHistoryTable";
 import { OutcomeChips } from "@/components/OutcomeChips";
-import { playerOutcomesMap } from "@/lib/game/results";
+import {
+  goodCount,
+  goodCountMatrix,
+  playerDeltaChipsMap,
+  playerOutcomesMap,
+  portfolioOutcomeMatrix,
+} from "@/lib/game/results";
+import { assetName, numAssets } from "@/lib/game/portfolio";
+import { isPortfolio } from "@/lib/game/types";
 import { money } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 import { useShowBots } from "@/components/use-show-bots";
@@ -38,6 +46,8 @@ export function HostRoundControl({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pick, setPick] = useState<MarketOutcome | null>(null);
+  // manual portfolio rounds: one pick per asset
+  const [picks, setPicks] = useState<(MarketOutcome | null)[]>([]);
   // Benchmark bots can be hidden mid-game so the class sees only real students
   // in the standings, chart and allocations. Persisted + synced to the present tab.
   const [showBots, setShowBots] = useShowBots(session.id);
@@ -60,6 +70,8 @@ export function HostRoundControl({
 
   const isManual = session.config.market_mode === "manual";
   const isLastRound = session.current_round >= session.config.num_rounds;
+  const portfolioGame = isPortfolio(session.config);
+  const nAssets = numAssets(session.config);
   const submittedIds = useMemo(() => new Set(allocs.map((a) => a.player_id)), [allocs]);
   // bots auto-play and never "submit", so they're excluded from the submission counter
   const humanPlayers = useMemo(() => players.filter((p) => !p.is_bot), [players]);
@@ -94,7 +106,11 @@ export function HostRoundControl({
       supabase.rpc("resolve_round", {
         p_session_id: session.id,
         p_round_number: session.current_round,
-        p_market_override: isManual ? pick : null,
+        p_market_override: isManual && !portfolioGame ? pick : null,
+        p_market_overrides:
+          isManual && portfolioGame
+            ? Array.from({ length: nAssets }, (_, i) => picks[i] ?? null)
+            : null,
       }),
     );
   // auto mode: one click locks the round and rolls the market
@@ -109,12 +125,14 @@ export function HostRoundControl({
         p_session_id: session.id,
         p_round_number: session.current_round,
         p_market_override: null,
+        p_market_overrides: null,
       });
     });
   const next = () =>
     run(async () => {
       const res = await supabase.rpc("next_round", { p_session_id: session.id });
       setPick(null);
+      setPicks([]);
       return res;
     });
   const finish = () => run(() => supabase.rpc("finish_session", { p_session_id: session.id }));
@@ -124,6 +142,35 @@ export function HostRoundControl({
   // clicked "Finish game" yet — show final results, not last-round minutiae.
   const gameOver = isLastRound && status === "revealed";
   const independent = session.config.market_scope === "independent";
+  const picksComplete = Array.from({ length: nAssets }, (_, i) => picks[i]).every(
+    (p) => p === "good" || p === "bad",
+  );
+
+  // Standings chips: basic shows each player's own market draws; portfolio has
+  // no single outcome per round, so chips read gained/lost that round instead.
+  const deltaChipsByPlayer = useMemo(
+    () => (portfolioGame ? playerDeltaChipsMap(history.rounds, history.allocations) : null),
+    [portfolioGame, history.rounds, history.allocations],
+  );
+
+  // Luck per player for the end-of-game panel (only meaningful when draws are
+  // independent): share of GOOD draws — per round (basic) or per asset (portfolio).
+  const luckPctByPlayer = useMemo(() => {
+    const m = new Map<string, number | null>();
+    if (!gameOver) return m;
+    for (const p of players) {
+      if (portfolioGame) {
+        const { good, total } = goodCountMatrix(
+          portfolioOutcomeMatrix(session, history.rounds, history.allocations, p.id),
+        );
+        m.set(p.id, total ? Math.round((good / total) * 100) : null);
+      } else {
+        const outs = outcomesByPlayer.get(p.id) ?? [];
+        m.set(p.id, outs.length ? Math.round((goodCount(outs) / outs.length) * 100) : null);
+      }
+    }
+    return m;
+  }, [gameOver, players, portfolioGame, session, history.rounds, history.allocations, outcomesByPlayer]);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -180,7 +227,7 @@ export function HostRoundControl({
           {status === "locked" && (
             <Button
               onClick={reveal}
-              disabled={busy || (isManual && !pick)}
+              disabled={busy || (isManual && (portfolioGame ? !picksComplete : !pick))}
               className="w-full text-lg"
             >
               Reveal results
@@ -236,24 +283,65 @@ export function HostRoundControl({
                 <Lock /> Bets locked in — review, then reveal
               </div>
               {isManual ? (
-                <div className="space-y-3">
-                  <p className="text-center font-editorial text-sm italic text-ink-muted">
-                    Resolve the round:
-                  </p>
-                  <div className="flex gap-3">
-                    <OutcomeButton label="Market up" active={pick === "good"} onClick={() => setPick("good")} good />
-                    <OutcomeButton label="Market down" active={pick === "bad"} onClick={() => setPick("bad")} />
+                portfolioGame ? (
+                  <div className="space-y-2">
+                    <p className="text-center font-editorial text-sm italic text-ink-muted">
+                      Resolve each asset&apos;s market:
+                    </p>
+                    <ul className="space-y-1.5">
+                      {Array.from({ length: nAssets }, (_, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="w-24 shrink-0 truncate text-sm font-bold text-ink">
+                            {assetName(session.config, i)}
+                          </span>
+                          <AssetPickButton
+                            label="Up"
+                            good
+                            active={picks[i] === "good"}
+                            onClick={() =>
+                              setPicks((prev) => {
+                                const next = Array.from({ length: nAssets }, (_, j) => prev[j] ?? null);
+                                next[i] = "good";
+                                return next;
+                              })
+                            }
+                          />
+                          <AssetPickButton
+                            label="Down"
+                            active={picks[i] === "bad"}
+                            onClick={() =>
+                              setPicks((prev) => {
+                                const next = Array.from({ length: nAssets }, (_, j) => prev[j] ?? null);
+                                next[i] = "bad";
+                                return next;
+                              })
+                            }
+                          />
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-center font-editorial text-sm italic text-ink-muted">
+                      Resolve the round:
+                    </p>
+                    <div className="flex gap-3">
+                      <OutcomeButton label="Market up" active={pick === "good"} onClick={() => setPick("good")} good />
+                      <OutcomeButton label="Market down" active={pick === "bad"} onClick={() => setPick("bad")} />
+                    </div>
+                  </div>
+                )
               ) : (
                 <p className="text-center text-sm text-ink-muted">
-                  Auto market — the server will roll the outcome.
+                  Auto market — the server will roll the outcome{portfolioGame ? "s" : ""}.
                 </p>
               )}
               <AllocationsBreakdown
                 players={visiblePlayers}
                 allocations={allocs}
                 goodProb={session.config.good_prob ?? 0.6}
+                portfolio={portfolioGame}
               />
               {!isManual ? <OddsDisclosure supabase={supabase} session={session} /> : null}
             </>
@@ -261,10 +349,30 @@ export function HostRoundControl({
 
           {status === "revealed" && (
             <>
-              {session.config.market_scope === "independent" ? (
+              {portfolioGame && round?.market_outcomes ? (
+                <div className="rounded-xl border-2 border-ink bg-paper-2 p-3 shadow-card">
+                  <ul className="grid grid-cols-2 gap-1.5">
+                    {round.market_outcomes.map((o, i) => (
+                      <li
+                        key={i}
+                        className={`flex items-center justify-between rounded-lg border-2 border-ink px-2.5 py-1.5 text-sm font-bold ${
+                          o === "good" ? "bg-gain-soft text-gain" : "bg-loss-soft text-loss"
+                        }`}
+                      >
+                        <span className="truncate text-ink">{assetName(session.config, i)}</span>
+                        <span className="flex items-center gap-0.5">
+                          {o === "good" ? <ArrowUp /> : <ArrowDown />}
+                          {o === "good" ? "UP" : "DOWN"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : session.config.market_scope === "independent" ? (
                 <div className="flex items-center gap-2 rounded-xl border border-line bg-paper-2 px-4 py-2.5 text-sm text-ink-muted">
                   <Shuffle className="shrink-0 text-ink-subtle" />
-                  Independent market — each player drew their own outcome.
+                  Independent market — each player drew their own outcome
+                  {portfolioGame ? "s" : ""}.
                 </div>
               ) : (
                 <div
@@ -282,7 +390,7 @@ export function HostRoundControl({
               {gameOver ? (
                 <FinalResults
                   players={visiblePlayers}
-                  outcomesByPlayer={outcomesByPlayer}
+                  luckPctByPlayer={luckPctByPlayer}
                   independent={independent}
                 />
               ) : (
@@ -290,6 +398,7 @@ export function HostRoundControl({
                   players={visiblePlayers}
                   allocations={allocs}
                   goodProb={session.config.good_prob ?? 0.6}
+                  portfolio={portfolioGame}
                 />
               )}
             </>
@@ -320,11 +429,16 @@ export function HostRoundControl({
             ) : null}
           </div>
           <p className="mb-3 text-xs text-ink-subtle">
-            Last 5 markets shown per player{hasBots && !showBots ? " · bots hidden" : ""}.
+            {portfolioGame
+              ? "Last 5 rounds per player (up = gained, down = lost)"
+              : "Last 5 markets shown per player"}
+            {hasBots && !showBots ? " · bots hidden" : ""}.
           </p>
           <ol className="space-y-1">
             {standings.map((p, i) => {
-              const last5 = (outcomesByPlayer.get(p.id) ?? []).slice(-5);
+              const last5 = (
+                (portfolioGame ? deltaChipsByPlayer?.get(p.id) : outcomesByPlayer.get(p.id)) ?? []
+              ).slice(-5);
               return (
                 <li
                   key={p.id}
@@ -403,6 +517,34 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status}
     </span>
+  );
+}
+
+/** Compact per-asset GOOD/BAD pick for manual portfolio rounds. */
+function AssetPickButton({
+  label,
+  active,
+  onClick,
+  good,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  good?: boolean;
+}) {
+  const activeCls = good ? "border-ink bg-gain text-white" : "border-ink bg-loss text-white";
+  const idleCls = "border-line-strong bg-paper text-ink-muted hover:border-ink-subtle";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-1 rounded-lg border-2 py-2 text-sm font-bold transition active:scale-[0.98] ${
+        active ? activeCls : idleCls
+      }`}
+    >
+      {good ? <ArrowUp /> : <ArrowDown />}
+      {label}
+    </button>
   );
 }
 

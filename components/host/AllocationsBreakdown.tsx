@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { AllocationRow, PlayerRow } from "@/lib/game/db";
 import { strategyFraction } from "@/lib/game/counterfactual";
+import { portfolioStrategyFraction } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { Bot } from "@/components/icons";
 
@@ -17,13 +18,18 @@ export function AllocationsBreakdown({
   players,
   allocations,
   goodProb,
+  portfolio = false,
 }: {
   players: PlayerRow[];
   allocations: AllocationRow[];
   goodProb: number;
+  /** portfolio game: bot strategies bet a different fixed share */
+  portfolio?: boolean;
 }) {
   const rows = useMemo(() => {
     const byPlayer = new Map(allocations.map((a) => [a.player_id, a]));
+    const botFraction = (strategy: string | null) =>
+      portfolio ? portfolioStrategyFraction(strategy) : strategyFraction(strategy, goodProb);
     return players
       .map((p) => {
         const a = byPlayer.get(p.id);
@@ -43,14 +49,14 @@ export function AllocationsBreakdown({
             safe,
             // wiped out ($0) means 0/0 — a bot still plays its fixed strategy
             // share (all-risky stays 100%), a human has no meaningful share
-            pct: wealth > 0 ? risky / wealth : p.is_bot ? strategyFraction(p.strategy, goodProb) : null,
+            pct: wealth > 0 ? risky / wealth : p.is_bot ? botFraction(p.strategy) : null,
             isBot: p.is_bot,
             submitted: true,
           };
         }
         if (p.is_bot) {
           // bot's planned bet before the round resolves
-          const frac = strategyFraction(p.strategy, goodProb);
+          const frac = botFraction(p.strategy);
           const risky = frac * currentWealth;
           return {
             id: p.id,
@@ -76,7 +82,7 @@ export function AllocationsBreakdown({
         };
       })
       .sort((x, y) => (y.risky ?? -1) - (x.risky ?? -1));
-  }, [players, allocations, goodProb]);
+  }, [players, allocations, goodProb, portfolio]);
 
   const humans = rows.filter((r) => !r.isBot);
   const submittedHumans = humans.filter((r) => r.submitted).length;

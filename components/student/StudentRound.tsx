@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LeaderboardRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
+import { isPortfolio, type MarketOutcome } from "@/lib/game/types";
+import { riskyMultiplier } from "@/lib/game/math";
+import { assetName, assetPayoffMode, numAssets } from "@/lib/game/portfolio";
 import { useRoundAllocations } from "@/components/use-round-allocations";
 import { AllocationInput } from "@/components/student/AllocationInput";
+import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
@@ -23,30 +27,42 @@ export function StudentRound({
 }) {
   const myAllocs = useRoundAllocations(supabase, round.id);
   const mine = myAllocs.find((a) => a.player_id === me.id) ?? null;
+  const portfolio = isPortfolio(session.config);
+  const n = numAssets(session.config);
 
   const [risky, setRisky] = useState<number | null>(null);
+  const [amounts, setAmounts] = useState<(number | null)[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Each new round opens blank — never pre-filled and never carrying over the
   // previous round's choice. Students must deliberately enter an amount every
-  // round (even to repeat the same number), so the field stays empty until they do.
+  // round (even to repeat the same number), so the fields stay empty until they do.
   useEffect(() => {
     setRisky(null);
+    setAmounts(Array.from({ length: n }, () => null));
     setError(null);
-  }, [round.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round.id, n]);
+
+  const touched = portfolio ? amounts.some((a) => a !== null) : risky !== null;
 
   async function submit() {
-    if (risky === null) return;
+    if (!touched) return;
     setBusy(true);
     setError(null);
-    // All writes go through a SECURITY DEFINER RPC. The server validates the
-    // round is open, that this is our own player, clamps 0 <= risky <= wealth,
-    // and derives safe = wealth - risky. Students have no direct write grant.
-    const { error } = await supabase.rpc("submit_allocation", {
-      p_round_id: round.id,
-      p_risky_amount: Math.round(risky * 100) / 100,
-    });
+    // All writes go through SECURITY DEFINER RPCs. The server validates the
+    // round is open, that this is our own player, bounds every amount, and
+    // derives the safe remainder. Students have no direct write grant.
+    const { error } = portfolio
+      ? await supabase.rpc("submit_portfolio_allocation", {
+          p_round_id: round.id,
+          p_amounts: amounts.map((a) => Math.round((a ?? 0) * 100) / 100),
+        })
+      : await supabase.rpc("submit_allocation", {
+          p_round_id: round.id,
+          p_risky_amount: Math.round((risky ?? 0) * 100) / 100,
+        });
     setBusy(false);
     if (error) setError(error.message);
   }
@@ -54,23 +70,36 @@ export function StudentRound({
   if (round.status === "open") {
     return (
       <Shell wealth={me.current_wealth} round={round} session={session}>
-        <AllocationInput
-          wealth={me.current_wealth}
-          risky={risky}
-          onChange={setRisky}
-          disabled={busy}
-        />
+        {portfolio ? (
+          <PortfolioAllocationInput
+            config={session.config}
+            wealth={me.current_wealth}
+            amounts={amounts}
+            onChange={setAmounts}
+            disabled={busy}
+          />
+        ) : (
+          <AllocationInput
+            wealth={me.current_wealth}
+            risky={risky}
+            onChange={setRisky}
+            disabled={busy}
+          />
+        )}
         {error ? <Banner kind="error">{error}</Banner> : null}
-        <Button variant="gold" onClick={submit} disabled={busy || risky === null} className="w-full text-lg shadow-pop">
-          {busy ? "Saving…" : mine ? "Update allocation" : "Lock in my bet"}
+        <Button variant="gold" onClick={submit} disabled={busy || !touched} className="w-full text-lg shadow-pop">
+          {busy ? "Saving…" : mine ? "Update allocation" : portfolio ? "Lock in my portfolio" : "Lock in my bet"}
         </Button>
         {mine ? (
           <Banner kind="success">
-            Submitted {money(Number(mine.risky_amount))} risky — you can still edit until it locks.
+            Submitted {money(Number(mine.risky_amount))}{" "}
+            {portfolio ? "invested" : "risky"} — you can still edit until it locks.
           </Banner>
         ) : (
           <p className="text-center font-editorial text-sm italic text-ink-subtle">
-            Choose how much to put at risk, then lock it in.
+            {portfolio
+              ? "Spread your wealth across the assets, then lock it in."
+              : "Choose how much to put at risk, then lock it in."}
           </p>
         )}
       </Shell>
@@ -87,8 +116,9 @@ export function StudentRound({
           <p className="mt-1 font-editorial text-sm italic text-ink-muted">Waiting for the reveal…</p>
           {mine ? (
             <p className="mt-3 font-mono text-ink">
-              You risked {money(Number(mine.risky_amount))} · safe{" "}
-              {money(Number(mine.safe_amount))}
+              {portfolio
+                ? `Invested ${money(Number(mine.risky_amount))} across ${n} assets · safe ${money(Number(mine.safe_amount))}`
+                : `You risked ${money(Number(mine.risky_amount))} · safe ${money(Number(mine.safe_amount))}`}
             </p>
           ) : (
             <p className="mt-3 font-editorial text-sm italic text-ink-subtle">
@@ -124,8 +154,13 @@ function Shell({
   round: RoundRow;
   session: SessionRow;
 }) {
+  // hide the odds line when assets have custom per-asset odds (one number
+  // can't summarize them)
+  const customOdds =
+    isPortfolio(session.config) &&
+    (session.config.assets ?? []).some((a) => a?.good_prob != null);
   const showOdds =
-    session.config.show_odds_to_students && session.config.market_mode === "auto";
+    session.config.show_odds_to_students && session.config.market_mode === "auto" && !customOdds;
   const goodPct = Math.round((session.config.good_prob ?? 0.6) * 100);
 
   return (
@@ -143,7 +178,9 @@ function Shell({
       </div>
       {showOdds ? (
         <div className="mb-4 flex items-center justify-between rounded-xl border-2 border-ink bg-surface px-4 py-2 text-sm shadow-card">
-          <span className="font-editorial italic text-ink-muted">The market looks like</span>
+          <span className="font-editorial italic text-ink-muted">
+            {isPortfolio(session.config) ? "Each asset looks like" : "The market looks like"}
+          </span>
           <span className="flex items-center gap-2 font-mono font-semibold">
             <span className="inline-flex items-center gap-0.5 text-gain">
               <ArrowUp /> {goodPct}%
@@ -176,8 +213,14 @@ function Reveal({
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
 
+  const portfolio = isPortfolio(session.config);
   // per-player outcome (independent scope) falls back to the shared round outcome
   const outcome = mine?.market_outcome ?? round.market_outcome;
+  // portfolio: this player's per-asset outcomes (own draws or the class-wide ones)
+  const assetOuts: MarketOutcome[] = portfolio
+    ? mine?.asset_outcomes ?? round.market_outcomes ?? []
+    : [];
+  const breakdown = mine?.risky_breakdown ?? [];
   const resulting = mine?.resulting_wealth != null ? Number(mine.resulting_wealth) : me.current_wealth;
   const before = mine ? Number(mine.safe_amount) + Number(mine.risky_amount) : me.current_wealth;
   const delta = resulting - before;
@@ -199,7 +242,8 @@ function Reveal({
     };
   }, [supabase, session.id, session.config.show_full_leaderboard_to_students, round.id]);
 
-  const good = outcome === "good";
+  // portfolio has no single market — the header reads off YOUR round result
+  const good = portfolio ? delta >= 0 : outcome === "good";
   // Celebrate a personal win (gained money this round).
   const celebrate = delta > 0;
 
@@ -212,12 +256,66 @@ function Reveal({
       <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
         <div
           className={`-mx-6 -mt-6 mb-1 flex items-center justify-center gap-2 border-b-2 border-ink px-6 py-4 font-display text-3xl font-black uppercase tracking-tight text-white ${
-            good ? "bg-gain" : "bg-loss"
+            portfolio
+              ? delta > 0
+                ? "bg-gain"
+                : delta < 0
+                  ? "bg-loss"
+                  : "bg-ink"
+              : good
+                ? "bg-gain"
+                : "bg-loss"
           }`}
         >
-          {good ? <ArrowUp /> : <ArrowDown />}
-          {good ? "Good!" : "Down"}
+          {portfolio ? (
+            <>
+              {delta > 0 ? <ArrowUp /> : delta < 0 ? <ArrowDown /> : null}
+              {delta > 0 ? "Up!" : delta < 0 ? "Down" : "Flat round"}
+            </>
+          ) : (
+            <>
+              {good ? <ArrowUp /> : <ArrowDown />}
+              {good ? "Good!" : "Down"}
+            </>
+          )}
         </div>
+
+        {portfolio && assetOuts.length > 0 ? (
+          <ul className="space-y-1.5 text-left">
+            {assetOuts.map((o, i) => {
+              const amt = Number(breakdown[i] ?? 0);
+              const mult = riskyMultiplier(assetPayoffMode(session.config, i), o);
+              const goodAsset = o === "good";
+              return (
+                <li
+                  key={i}
+                  className={`flex items-center justify-between rounded-lg border-2 border-ink px-3 py-1.5 ${
+                    goodAsset ? "bg-gain-soft" : "bg-loss-soft"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-ink">
+                    <span className={goodAsset ? "text-gain" : "text-loss"}>
+                      {goodAsset ? <ArrowUp /> : <ArrowDown />}
+                    </span>
+                    {assetName(session.config, i)}
+                  </span>
+                  <span className="font-mono text-sm text-ink">
+                    {amt > 0 ? (
+                      <>
+                        {money(amt)} <span className="text-ink-subtle">to</span>{" "}
+                        <span className={goodAsset ? "font-bold text-gain" : "font-bold text-loss"}>
+                          {money(amt * mult)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-ink-subtle">not held</span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
 
         <div>
           <div className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">

@@ -1,8 +1,6 @@
 "use client";
 
 import type { PlayerRow } from "@/lib/game/db";
-import type { MarketOutcome } from "@/lib/game/types";
-import { goodCount } from "@/lib/game/results";
 import { money } from "@/lib/game/format";
 import { Bot, Clover } from "@/components/icons";
 
@@ -10,16 +8,17 @@ import { Bot, Clover } from "@/components/icons";
  * What the Allocations panel becomes once the FINAL round is revealed: the last
  * round's amounts at risk are no longer interesting — what matters is each
  * player's final portfolio (the hero number) and how lucky their market draws
- * were (% of rounds drawn GOOD). Sorted by final wealth, richest first.
+ * were (% of draws that came up GOOD). Sorted by final wealth, richest first.
  * Mid-game reveals keep showing AllocationsBreakdown instead.
  */
 export function FinalResults({
   players,
-  outcomesByPlayer,
+  luckPctByPlayer,
   independent,
 }: {
   players: PlayerRow[];
-  outcomesByPlayer: Map<string, MarketOutcome[]>;
+  /** precomputed luck % per player id (basic: per-round draws; portfolio: per-asset draws) */
+  luckPctByPlayer: Map<string, number | null>;
   /** per-player luck only varies when each player draws their own market */
   independent: boolean;
 }) {
@@ -33,15 +32,14 @@ export function FinalResults({
         </span>
         {independent ? (
           <span className="font-editorial text-xs italic text-ink-subtle">
-            % lucky = share of rounds drawn GOOD
+            % lucky = share of draws that came up GOOD
           </span>
         ) : null}
       </div>
 
       <ul className="divide-y divide-line">
         {rows.map((p) => {
-          const outs = outcomesByPlayer.get(p.id) ?? [];
-          const luckPct = outs.length ? Math.round((goodCount(outs) / outs.length) * 100) : null;
+          const luckPct = luckPctByPlayer.get(p.id) ?? null;
           return (
             <li key={p.id} className="flex items-center gap-3 py-2">
               {/* Name + bot marker */}
@@ -60,7 +58,7 @@ export function FinalResults({
               {independent && luckPct != null ? (
                 <span
                   className="flex shrink-0 items-center gap-1 text-xs text-ink-muted"
-                  title="share of rounds this player drew a GOOD market"
+                  title="share of this player's market draws that came up GOOD"
                 >
                   <Clover className="text-gain" /> {luckPct}% lucky
                 </span>

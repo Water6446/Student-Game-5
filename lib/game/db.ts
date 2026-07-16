@@ -31,6 +31,8 @@ export interface RoundRow {
   round_number: number;
   status: RoundStatus;
   market_outcome: MarketOutcome | null;
+  /** portfolio, shared scope: one outcome per asset (written at reveal) */
+  market_outcomes?: MarketOutcome[] | null;
   revealed_at: string | null;
 }
 
@@ -38,9 +40,14 @@ export interface AllocationRow {
   id: string;
   round_id: string;
   player_id: string;
+  /** portfolio: the SUM of risky_breakdown (aggregate UI keeps working) */
   risky_amount: number;
   safe_amount: number;
   market_outcome: MarketOutcome | null;
+  /** portfolio: per-asset dollar amounts, length = num_assets */
+  risky_breakdown?: number[] | null;
+  /** portfolio, independent scope: this player's per-asset outcomes */
+  asset_outcomes?: MarketOutcome[] | null;
   resulting_wealth: number | null;
   submitted_at: string;
 }

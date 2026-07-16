@@ -61,6 +61,9 @@ export function SessionsList({ supabase, hostId }: { supabase: SupabaseClient; h
                 <span className="font-mono text-lg font-bold tracking-widest text-ink">
                   {s.join_code}
                 </span>
+                <span className="ml-3 rounded-full bg-play-soft px-2 py-0.5 text-xs font-bold text-play">
+                  {s.config.game_type === "portfolio" ? "Portfolio" : "Basic"}
+                </span>
                 <span className="ml-3 text-sm text-ink-subtle">
                   {new Date(s.created_at).toLocaleString()}
                 </span>
