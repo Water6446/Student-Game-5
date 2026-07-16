@@ -264,34 +264,35 @@ export function HostSummary({
           </ol>
         </Card>
 
-        {/* Round history — collapsed: the card is absolutely positioned inside
-            its grid cell, so the Final standings card alone sets the row height
-            and the table shows as many rounds as fit (scroll for the rest).
-            Expanded: back in normal flow, every round visible. */}
-        <div className="relative">
-          <Card className={`flex flex-col ${historyOpen ? "" : "lg:absolute lg:inset-0"}`}>
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(!historyOpen)}
-              className="flex w-full shrink-0 items-center justify-between text-left focus:outline-none"
-            >
-              <h2 className="text-xl font-bold text-ink">Round history</h2>
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
-                {historyOpen ? "Collapse" : "Show all"}
-                <ChevronDown
-                  className={`text-ink transition-transform ${historyOpen ? "rotate-180" : ""}`}
-                />
-              </span>
-            </button>
-            <div
-              className={`mt-3 border-t border-line-strong pt-3 ${
-                historyOpen ? "" : "min-h-0 max-h-96 flex-1 overflow-y-auto lg:max-h-none"
-              }`}
-            >
-              <SessionHistoryTable rounds={rounds} allocations={allocations} />
-            </div>
-          </Card>
-        </div>
+        {/* Round history — collapsed shows a bounded, scrollable window; "Show
+            all" expands to full height. The bound is a plain max-h at every
+            breakpoint, and print variants unbind it so every round makes it
+            onto paper regardless of collapse state. */}
+        <Card>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((v) => !v)}
+            aria-expanded={historyOpen}
+            className="flex w-full items-center justify-between text-left focus:outline-none"
+          >
+            <h2 className="text-xl font-bold text-ink">Round history</h2>
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+              {historyOpen ? "Collapse" : "Show all"}
+              <ChevronDown
+                className={`text-ink transition-transform ${historyOpen ? "rotate-180" : ""}`}
+              />
+            </span>
+          </button>
+          <div className="mt-3 border-t border-line-strong pt-3">
+            <SessionHistoryTable
+              rounds={rounds}
+              allocations={allocations}
+              scrollClassName={
+                historyOpen ? "" : "max-h-96 print:max-h-none print:overflow-visible"
+              }
+            />
+          </div>
+        </Card>
       </div>
 
       {/* Luck — who drew the best markets (independent outcomes) */}

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import type { AllocationRow, PlayerRow, RoundRow } from "@/lib/game/db";
 import { money } from "@/lib/game/format";
-import { useState, useEffect } from "react";
+import { memo, useState, useEffect } from "react";
 import { Toggle } from "@/components/ui";
 
 // Academy Arcade series palette — saturated, ink-legible on warm paper.
@@ -23,7 +23,7 @@ const COLORS = [
 
 type ChartRow = { round: number } & Record<string, number>;
 
-export function WealthChart({
+export const WealthChart = memo(function WealthChart({
   players,
   rounds,
   allocations,
@@ -170,7 +170,7 @@ export function WealthChart({
     )}
     </div>
   );
-}
+});
 
 function labelFor(players: PlayerRow[], id: string): string {
   return players.find((p) => p.id === id)?.display_name ?? id;

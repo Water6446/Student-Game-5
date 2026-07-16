@@ -29,9 +29,13 @@ function medianOf(sorted: number[]): number {
 export function SessionHistoryTable({
   rounds,
   allocations,
+  scrollClassName,
 }: {
   rounds: RoundRow[];
   allocations: AllocationRow[];
+  /** Applied to the single scroll container — e.g. a bounded `max-h-*` when the
+   *  card is collapsed. Print variants keep every row visible on paper. */
+  scrollClassName?: string;
 }) {
   const history = useMemo<HistoryRow[]>(() => {
     const revealed = rounds
@@ -80,14 +84,18 @@ export function SessionHistoryTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div>
+      {/* Caption stays outside the scroller so it never scrolls out of view. */}
       <p className="mb-2 font-editorial text-xs italic text-ink-muted">
         How players did <span className="font-semibold">in that round</span> — each player&apos;s
         wealth change, summarized across the class.
       </p>
-      <table className="w-full overflow-hidden rounded-xl border-2 border-ink text-sm">
+      {/* One scroll container for BOTH axes so the sticky header sticks to it
+          (a nested overflow-x box would capture the vertical scroll instead). */}
+      <div className={`overflow-auto rounded-xl border-2 border-ink ${scrollClassName ?? ""}`}>
+        <table className="w-full text-sm">
         <thead>
-          <tr className="bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper">
+          <tr className="sticky top-0 z-10 bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper">
             <th className="px-2 py-2">Round</th>
             <th className="px-2 py-2">Market</th>
             <th className="px-2 py-2 text-right">Avg</th>
@@ -133,7 +141,8 @@ export function SessionHistoryTable({
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }
