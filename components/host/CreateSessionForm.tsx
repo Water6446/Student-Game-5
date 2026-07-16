@@ -153,7 +153,7 @@ export function CreateSessionForm({
   const n = numAssets(cfg);
 
   function setAssetCount(count: number) {
-    const clamped = Math.max(2, Math.min(8, Math.round(count) || 2));
+    const clamped = Math.max(2, Math.min(10, Math.round(count) || 2));
     setCfg((c) => ({
       ...c,
       num_assets: clamped,
@@ -231,17 +231,18 @@ export function CreateSessionForm({
   const rfPct = Math.round((cfg.risk_free_rate ?? 0) * 100);
   const summary = portfolio
     ? [
-        `Split your wealth across ${n} risky assets + a safe pot`,
+        `Split your wealth across ${n} risky assets + a safe asset`,
         cfg.payoff_mode === "extreme"
-          ? "Each asset pays 2× if its market is good, 0× (wiped out) if bad — independently"
-          : "Each asset pays ×1.1 if its market is good, ×0.9 if bad — independently",
+          ? "Each risky asset pays 2× if its market is good, 0× (total loss) if bad"
+          : "Each risky asset pays ×1.1 if its market is good, ×0.9 if bad",
+        "Risky assets are independent",
         `${cfg.num_rounds} rounds · ${money(cfg.starting_wealth)} starting wealth`,
         cfg.market_mode === "manual"
           ? "You pick each asset's outcome every round"
           : cfg.market_scope === "shared"
-            ? `One class-wide outcome per asset each round — ${goodPct}% chance each is good`
+            ? `Class has common outcomes for each asset in each round — ${goodPct}% chance each is good`
             : `Each student draws their own outcome per asset — ${goodPct}% chance of good`,
-        rfPct > 0 ? `Safe pot earns ${rfPct}% interest per round` : "Safe pot stays flat (0%)",
+        rfPct > 0 ? `Safe asset earns ${rfPct}% interest per round` : "Safe asset returns capital",
       ]
     : [
         cfg.payoff_mode === "extreme"
@@ -258,7 +259,7 @@ export function CreateSessionForm({
   if (cfg.add_benchmark_bots) {
     summary.push(
       portfolio
-        ? "Plus 4 benchmark students: all-safe, one-basket, half & half, diversified"
+        ? "Game includes four benchmark students: all-safe, one-basket, diversified, and half diversified risky & half safe"
         : "Plus 4 benchmark students: all-safe, edge, 50/50, all-risky",
     );
   }
@@ -287,11 +288,11 @@ export function CreateSessionForm({
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {portfolio ? (
-              <Field label="Risky assets" hint="2–8 independent assets students can invest in">
+              <Field label="Risky assets" hint="2–10 independent assets students can invest in">
                 <TextInput
                   type="number"
                   min={2}
-                  max={8}
+                  max={10}
                   value={n}
                   onChange={(e) => setAssetCount(Number(e.target.value))}
                 />
@@ -303,8 +304,8 @@ export function CreateSessionForm({
                 value={cfg.payoff_mode}
                 onChange={(e) => set("payoff_mode", e.target.value as SessionConfig["payoff_mode"])}
               >
-                <option value="moderate">Moderate (×1.1 / ×0.9)</option>
-                <option value="extreme">Extreme (×2 / ×0)</option>
+                <option value="moderate">Moderate (1.1)</option>
+                <option value="extreme">Extreme (2x)</option>
               </Select>
             </Field>
 
@@ -339,7 +340,7 @@ export function CreateSessionForm({
             </Field>
 
             {portfolio ? (
-              <Field label="Risk-free rate per round" hint="0–0.5 · e.g. 0.05 = safe pot grows 5%/round">
+              <Field label="Risk-free rate per round" hint="0–0.5 · e.g. 0.05 = safe asset grows 5%/round">
                 <TextInput
                   type="number"
                   min={0}
@@ -439,8 +440,8 @@ export function CreateSessionForm({
                           className="px-3 py-2 text-sm"
                         >
                           <option value="">Game default</option>
-                          <option value="moderate">Moderate</option>
-                          <option value="extreme">Extreme</option>
+                          <option value="moderate">Moderate (1.1)</option>
+                          <option value="extreme">Extreme (2x)</option>
                         </Select>
                       </div>
                     );

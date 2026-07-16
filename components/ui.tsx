@@ -88,10 +88,12 @@ export function Toggle({
   checked,
   onChange,
   label,
+  className,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
+  className?: string;
 }) {
   return (
     <button
@@ -99,7 +101,10 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between rounded-xl border-2 border-ink bg-surface px-4 py-3 shadow-card transition hover:bg-paper-2"
+      className={clsx(
+        "flex items-center justify-between rounded-xl border-2 border-ink bg-surface px-4 py-3 shadow-card transition hover:bg-paper-2",
+        className ? className : "w-full"
+      )}
     >
       <span className="text-sm font-semibold text-ink">{label}</span>
       <span

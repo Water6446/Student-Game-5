@@ -3,6 +3,7 @@
 import type { SessionConfig } from "@/lib/game/types";
 import { assetName, equalSplitAmounts, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
+import { ArrowDown, ArrowUp } from "@/components/icons";
 
 /** Round to cents to avoid float dust in the submitted amounts. */
 function cents(n: number): number {
@@ -34,6 +35,9 @@ export function PortfolioAllocationInput({
   const safe = cents(wealth - invested);
   const investedPct = wealth > 0 ? Math.round((invested / wealth) * 100) : 0;
   const touched = values.some((a) => a !== null);
+  
+  const customOdds = (config.assets ?? []).some((a) => a?.good_prob != null);
+  const showPerAssetOdds = config.show_odds_to_students && config.market_mode === "auto" && customOdds;
 
   /** Clamp asset i so the total never exceeds wealth. */
   function setAmount(i: number, raw: number | null) {
@@ -93,11 +97,27 @@ export function PortfolioAllocationInput({
       <ul className="space-y-2">
         {values.map((v, i) => {
           const pct = wealth > 0 && v != null ? Math.round((v / wealth) * 100) : null;
+          const prob = config.assets?.[i]?.good_prob ?? config.good_prob ?? 0.6;
+          const goodPct = Math.round(prob * 100);
+          
           return (
             <li key={i} className="flex items-center gap-2">
-              <span className="w-24 shrink-0 truncate text-sm font-bold text-ink">
-                {assetName(config, i)}
-              </span>
+              <div className="w-32 shrink-0 flex flex-col justify-center">
+                <span className="truncate text-sm font-bold text-ink">
+                  {assetName(config, i)}
+                </span>
+                {showPerAssetOdds && (
+                  <span className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                    <span className="inline-flex items-center text-gain">
+                      <ArrowUp /> {goodPct}%
+                    </span>
+                    <span className="text-line-strong">·</span>
+                    <span className="inline-flex items-center text-loss">
+                      <ArrowDown /> {100 - goodPct}%
+                    </span>
+                  </span>
+                )}
+              </div>
               <div className="relative flex min-w-0 flex-1 items-center">
                 <span className="pointer-events-none absolute left-3 font-mono text-base text-ink-subtle">
                   $

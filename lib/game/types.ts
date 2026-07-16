@@ -34,7 +34,7 @@ export interface SessionConfig {
   /** when true, 4 fixed-strategy benchmark "bot" players are added to the session */
   add_benchmark_bots: boolean;
   allow_late_join: boolean;
-  /** portfolio only: number of independent risky assets (2..8) */
+  /** portfolio only: number of independent risky assets (2..10) */
   num_assets?: number;
   /** portfolio only: per-round interest on the safe bucket (0 = flat, like basic) */
   risk_free_rate?: number;

@@ -12,6 +12,8 @@ import {
 } from "recharts";
 import type { AllocationRow, PlayerRow, RoundRow } from "@/lib/game/db";
 import { money } from "@/lib/game/format";
+import { useState } from "react";
+import { Toggle } from "@/components/ui";
 
 // Academy Arcade series palette — saturated, ink-legible on warm paper.
 const COLORS = [
@@ -32,6 +34,8 @@ export function WealthChart({
   allocations: AllocationRow[];
   startingWealth: number;
 }) {
+  const [useLogScale, setUseLogScale] = useState(false);
+
   const data = useMemo<ChartRow[]>(() => {
     const revealed = rounds
       .filter((r) => r.status === "revealed")
@@ -77,10 +81,11 @@ export function WealthChart({
   }
 
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#211A12" strokeOpacity={0.12} />
+    <div className="flex w-full flex-col gap-4">
+      <div className="h-72 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#211A12" strokeOpacity={0.12} />
           <XAxis
             dataKey="round"
             stroke="#211A12"
@@ -89,11 +94,19 @@ export function WealthChart({
             label={{ value: "Round", position: "insideBottom", offset: -2, fill: "#6B5C40", fontSize: 12 }}
           />
           <YAxis
+            scale={useLogScale ? "log" : "linear"}
+            domain={useLogScale ? ["auto", "auto"] : [0, "auto"]}
             stroke="#211A12"
             fontSize={12}
             fontFamily="var(--font-mono)"
-            width={56}
-            tickFormatter={(v: number) => money(v)}
+            width={72}
+            tickFormatter={(v: number) => {
+              if (Math.abs(v) >= 1_000_000) {
+                const sign = v < 0 ? "-" : "";
+                return sign + "$" + Math.abs(v).toExponential(1);
+              }
+              return money(v);
+            }}
           />
           <Tooltip
             contentStyle={{ background: "#FFFDF6", border: "2px solid #211A12", borderRadius: 12, fontFamily: "var(--font-mono)" }}
@@ -116,6 +129,15 @@ export function WealthChart({
           ))}
         </LineChart>
       </ResponsiveContainer>
+    </div>
+    <div className="flex justify-start">
+      <Toggle
+        label="Log scale"
+        checked={useLogScale}
+        onChange={setUseLogScale}
+        className="w-auto gap-4"
+      />
+    </div>
     </div>
   );
 }
