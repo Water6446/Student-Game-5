@@ -258,6 +258,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
             rounds={history.rounds}
             allocations={history.allocations}
             startingWealth={session.config.starting_wealth}
+            hideToggle={true}
           />
         </section>
       </div>

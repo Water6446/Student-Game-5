@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import type { AllocationRow, PlayerRow, RoundRow } from "@/lib/game/db";
 import { money } from "@/lib/game/format";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toggle } from "@/components/ui";
 
 // Academy Arcade series palette — saturated, ink-legible on warm paper.
@@ -28,13 +28,33 @@ export function WealthChart({
   rounds,
   allocations,
   startingWealth,
+  hideToggle,
 }: {
   players: PlayerRow[];
   rounds: RoundRow[];
   allocations: AllocationRow[];
   startingWealth: number;
+  hideToggle?: boolean;
 }) {
   const [useLogScale, setUseLogScale] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("wealthChartLogScale");
+    if (stored === "true") setUseLogScale(true);
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "wealthChartLogScale") {
+        setUseLogScale(e.newValue === "true");
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const handleToggle = (v: boolean) => {
+    setUseLogScale(v);
+    localStorage.setItem("wealthChartLogScale", String(v));
+  };
 
   const data = useMemo<ChartRow[]>(() => {
     const revealed = rounds
@@ -65,12 +85,16 @@ export function WealthChart({
       players.forEach((p) => {
         const w = wealth.get(`${rn}:${p.id}`);
         if (w != null) last.set(p.id, w);
-        row[p.id] = last.get(p.id) ?? startingWealth;
+        const realVal = last.get(p.id) ?? startingWealth;
+        // Recharts log scale crashes on <= 0. Clamp to 1 for plotting.
+        const plotVal = (useLogScale && realVal <= 0) ? 1 : realVal;
+        row[p.id] = plotVal;
+        row[`${p.id}_real`] = realVal;
       });
       rows.push(row);
     }
     return rows;
-  }, [players, rounds, allocations, startingWealth]);
+  }, [players, rounds, allocations, startingWealth, useLogScale]);
 
   if (data.length === 0) {
     return (
@@ -111,7 +135,11 @@ export function WealthChart({
           <Tooltip
             contentStyle={{ background: "#FFFDF6", border: "2px solid #211A12", borderRadius: 12, fontFamily: "var(--font-mono)" }}
             labelStyle={{ color: "#6B5C40" }}
-            formatter={(value: number, _name, item) => [money(value), labelFor(players, item?.dataKey as string)]}
+            formatter={(value: number, _name: any, item: any) => {
+              const realValue = item.payload[`${item.dataKey}_real`];
+              const displayVal = realValue !== undefined ? realValue : value;
+              return [money(displayVal), labelFor(players, item?.dataKey as string)];
+            }}
             labelFormatter={(l) => `Round ${l}`}
           />
           {players.map((p, i) => (
@@ -130,14 +158,16 @@ export function WealthChart({
         </LineChart>
       </ResponsiveContainer>
     </div>
-    <div className="flex justify-start">
-      <Toggle
-        label="Log scale"
-        checked={useLogScale}
-        onChange={setUseLogScale}
-        className="w-auto gap-4"
-      />
-    </div>
+    {!hideToggle && (
+      <div className="flex justify-start">
+        <Toggle
+          label="Log scale"
+          checked={useLogScale}
+          onChange={handleToggle}
+          className="w-auto gap-4"
+        />
+      </div>
+    )}
     </div>
   );
 }
