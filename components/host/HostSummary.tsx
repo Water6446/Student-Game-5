@@ -47,6 +47,7 @@ export function HostSummary({
   );
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   // per-player luck only varies when each player draws their own market
   const independent = session.config.market_scope === "independent";
 
@@ -263,11 +264,34 @@ export function HostSummary({
           </ol>
         </Card>
 
-        {/* Round history */}
-        <Card>
-          <h2 className="mb-3 text-xl font-bold text-ink">Round history</h2>
-          <SessionHistoryTable rounds={rounds} allocations={allocations} />
-        </Card>
+        {/* Round history — collapsed: the card is absolutely positioned inside
+            its grid cell, so the Final standings card alone sets the row height
+            and the table shows as many rounds as fit (scroll for the rest).
+            Expanded: back in normal flow, every round visible. */}
+        <div className="relative">
+          <Card className={`flex flex-col ${historyOpen ? "" : "lg:absolute lg:inset-0"}`}>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(!historyOpen)}
+              className="flex w-full shrink-0 items-center justify-between text-left focus:outline-none"
+            >
+              <h2 className="text-xl font-bold text-ink">Round history</h2>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+                {historyOpen ? "Collapse" : "Show all"}
+                <ChevronDown
+                  className={`text-ink transition-transform ${historyOpen ? "rotate-180" : ""}`}
+                />
+              </span>
+            </button>
+            <div
+              className={`mt-3 border-t border-line-strong pt-3 ${
+                historyOpen ? "" : "min-h-0 max-h-96 flex-1 overflow-y-auto lg:max-h-none"
+              }`}
+            >
+              <SessionHistoryTable rounds={rounds} allocations={allocations} />
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* Luck — who drew the best markets (independent outcomes) */}
