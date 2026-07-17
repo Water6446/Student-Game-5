@@ -201,9 +201,14 @@ email_sent = 2
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
-anonymous_users = 30
+# Raised from the default 30: a whole classroom joins from ONE school NAT IP,
+# so back-to-back class periods (or one large class) trip the default within
+# the hour. Mirror this in the hosted dashboard (Auth → Rate Limits).
+anonymous_users = 500
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
-token_refresh = 150
+# Raised for the same shared-IP reason: 100+ student sessions refreshing tokens
+# behind one school IP can collide in a 5-minute window.
+token_refresh = 600
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
 sign_in_sign_ups = 30
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
