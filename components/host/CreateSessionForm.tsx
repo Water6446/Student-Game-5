@@ -36,6 +36,7 @@ const PORTFOLIO_BASE_SETUP: SessionConfig = {
   market_scope: "shared",
   num_assets: 4,
   risk_free_rate: 0,
+  correlation: 0,
   assets: null,
   add_benchmark_bots: true,
 };
@@ -195,8 +196,13 @@ export function CreateSessionForm({
       ...cfg,
       market_scope: cfg.market_mode === "manual" ? "shared" : cfg.market_scope,
       ...(portfolio
-        ? { num_assets: n, risk_free_rate: cfg.risk_free_rate ?? 0, assets: cleanedAssets }
-        : { num_assets: undefined, risk_free_rate: undefined, assets: undefined }),
+        ? {
+            num_assets: n,
+            risk_free_rate: cfg.risk_free_rate ?? 0,
+            correlation: cfg.correlation ?? 0,
+            assets: cleanedAssets,
+          }
+        : { num_assets: undefined, risk_free_rate: undefined, correlation: undefined, assets: undefined }),
     };
     const { data, error } = await supabase
       .rpc("create_session", { p_config: payload })
@@ -235,7 +241,11 @@ export function CreateSessionForm({
         cfg.payoff_mode === "extreme"
           ? "Each risky asset pays 2× if its market is good, 0× (total loss) if bad"
           : "Each risky asset pays ×1.1 if its market is good, ×0.9 if bad",
-        "Risky assets are independent",
+        (cfg.correlation ?? 0) === 0
+          ? "Risky assets are independent"
+          : (cfg.correlation ?? 0) >= 1
+            ? "Risky assets move together (ρ = 1, one market)"
+            : `Risky assets are partially correlated (ρ = ${(cfg.correlation ?? 0).toFixed(2)})`,
         `${cfg.num_rounds} rounds · ${money(cfg.starting_wealth)} starting wealth`,
         cfg.market_mode === "manual"
           ? "You pick each asset's outcome every round"
@@ -349,6 +359,42 @@ export function CreateSessionForm({
                   value={cfg.risk_free_rate ?? 0}
                   onChange={(e) => set("risk_free_rate", Number(e.target.value))}
                 />
+              </Field>
+            ) : null}
+
+            {portfolio ? (
+              <Field
+                label={`Correlation ρ = ${(cfg.correlation ?? 0).toFixed(2)}`}
+                hint="0 = independent · 1 = one market. Per-asset odds unchanged."
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={cfg.correlation ?? 0}
+                    onChange={(e) => set("correlation", Number(e.target.value))}
+                    className="w-full"
+                    aria-label="Asset correlation"
+                  />
+                </div>
+                <div className="mt-1.5 flex gap-1.5">
+                  {[0, 0.25, 0.5, 0.75, 1].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => set("correlation", v)}
+                      className={`rounded-full border px-2.5 py-0.5 font-mono text-xs font-semibold transition ${
+                        (cfg.correlation ?? 0) === v
+                          ? "border-play/30 bg-play-soft text-play"
+                          : "border-line-strong bg-paper text-ink-muted hover:border-ink-subtle"
+                      }`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
               </Field>
             ) : null}
 

@@ -1,29 +1,27 @@
 "use client";
 
-import type { PlayerRow } from "@/lib/game/db";
-import { money } from "@/lib/game/format";
+import { goodCount, luckStats, type PlayerResult } from "@/lib/game/results";
+import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Bot, Clover } from "@/components/icons";
 
 /**
  * What the Allocations panel becomes once the FINAL round is revealed: the last
  * round's amounts at risk are no longer interesting — what matters is each
- * player's final portfolio (the hero number) and how lucky their market draws
- * were (% of draws that came up GOOD). Sorted by final wealth, richest first.
+ * player's final portfolio, total return, risk-adjusted result (Sharpe) and how
+ * lucky their draws ran vs the expected odds. Pre-ranked by buildPlayerResults.
  * Mid-game reveals keep showing AllocationsBreakdown instead.
  */
 export function FinalResults({
-  players,
-  luckPctByPlayer,
+  results,
+  expected,
   independent,
 }: {
-  players: PlayerRow[];
-  /** precomputed luck % per player id (basic: per-round draws; portfolio: per-asset draws) */
-  luckPctByPlayer: Map<string, number | null>;
+  results: PlayerResult[];
+  /** benchmark GOOD rate per draw (expectedGoodRate) */
+  expected: number;
   /** per-player luck only varies when each player draws their own market */
   independent: boolean;
 }) {
-  const rows = [...players].sort((a, b) => b.current_wealth - a.current_wealth);
-
   return (
     <div className="space-y-1">
       <div className="flex items-baseline justify-between">
@@ -32,14 +30,15 @@ export function FinalResults({
         </span>
         {independent ? (
           <span className="font-editorial text-xs italic text-ink-subtle">
-            % lucky = share of draws that came up GOOD
+            ± luck vs {Math.round(expected * 100)}% expected
           </span>
         ) : null}
       </div>
 
       <ul className="divide-y divide-line">
-        {rows.map((p) => {
-          const luckPct = luckPctByPlayer.get(p.id) ?? null;
+        {results.map((r) => {
+          const p = r.player;
+          const luck = luckStats(goodCount(r.outcomes), r.outcomes.length, expected);
           return (
             <li key={p.id} className="flex items-center gap-3 py-2">
               {/* Name + bot marker */}
@@ -55,18 +54,43 @@ export function FinalResults({
                 <span className="truncate text-sm text-ink">{p.display_name}</span>
               </div>
 
-              {independent && luckPct != null ? (
+              {independent && luck ? (
                 <span
-                  className="flex shrink-0 items-center gap-1 text-xs text-ink-muted"
-                  title="share of this player's market draws that came up GOOD"
+                  className={`flex shrink-0 items-center gap-1 text-xs ${
+                    luck.delta > 0 ? "text-gain" : luck.delta < 0 ? "text-loss" : "text-ink-muted"
+                  }`}
+                  title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
                 >
-                  <Clover className="text-gain" /> {luckPct}% lucky
+                  <Clover className={luck.delta >= 0 ? "text-gain" : "text-loss"} />
+                  {signedPct(luck.delta * 100)} {luck.delta < 0 ? "unlucky" : "lucky"}
+                </span>
+              ) : null}
+
+              <span
+                className="shrink-0 font-mono text-xs text-ink-muted"
+                title="return per unit of volatility (— for all-safe)"
+              >
+                Sharpe {sharpeText(r.sharpe)}
+              </span>
+
+              {r.totalReturn != null ? (
+                <span
+                  className={`shrink-0 font-mono text-sm font-bold ${
+                    r.totalReturn > 0 ? "text-gain" : r.totalReturn < 0 ? "text-loss" : "text-ink-muted"
+                  }`}
+                  title={
+                    r.perRoundReturn != null
+                      ? `total return (${signedPct(r.perRoundReturn * 100, 1)}/round geometric)`
+                      : "total return"
+                  }
+                >
+                  {signedPct(r.totalReturn * 100)}
                 </span>
               ) : null}
 
               {/* Final portfolio — the hero number */}
               <span className="shrink-0 text-right font-mono text-xl font-black text-ink">
-                {money(p.current_wealth)}
+                {money(r.finalWealth)}
               </span>
             </li>
           );

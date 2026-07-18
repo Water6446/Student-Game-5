@@ -19,6 +19,13 @@ Use the semantic Tailwind classes (`bg-surface`, `text-ink`, `border-ink`,
 never gold text on white. When starting a brand-new game, copy the foundation
 files listed in DESIGN.md §11 and build from the `ui.tsx` primitives.
 
+## Mechanics
+
+**[MECHANICS.md](./MECHANICS.md)** is the master reference for how every game
+number works (luck, Sharpe, returns, correlation ρ, counterfactuals, standings).
+Keep in-UI explanations SHORT — one line max — and put the detailed workings in
+MECHANICS.md instead. Update it whenever a mechanic changes.
+
 ## Notable
 
 - `app/globals.css` body has a tiled-dot background; some headless screenshot

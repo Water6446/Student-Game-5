@@ -6,19 +6,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
 import {
   buildPlayerResults,
+  expectedGoodRate,
   goodCount,
-  goodCountMatrix,
-  portfolioOutcomeMatrix,
+  luckStats,
   type PlayerResult,
 } from "@/lib/game/results";
 import { edgeFraction } from "@/lib/game/counterfactual";
-import {
-  allPortfolioStrategyOutcomes,
-  assetName,
-  type PortfolioStrategyKey,
-} from "@/lib/game/portfolio";
+import { assetName } from "@/lib/game/portfolio";
 import { isPortfolio } from "@/lib/game/types";
-import { money, ordinal, signedMoney } from "@/lib/game/format";
+import { money, ordinal, sharpeText, signedMoney, signedPct } from "@/lib/game/format";
 import { Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { Trophy, ArrowLeft, Clover } from "@/components/icons";
@@ -34,8 +30,6 @@ export function StudentFinished({
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [result, setResult] = useState<PlayerResult | null>(null);
-  const [pfCf, setPfCf] = useState<Record<PortfolioStrategyKey, number> | null>(null);
-  const [pfLuck, setPfLuck] = useState<{ good: number; total: number } | null>(null);
 
   const portfolio = isPortfolio(session.config);
 
@@ -67,36 +61,28 @@ export function StudentFinished({
         allocs = (allocData as AllocationRow[]) ?? [];
       }
       if (!active) return;
-      if (portfolio) {
-        const matrix = portfolioOutcomeMatrix(session, rounds, allocs, me.id);
-        setPfCf(
-          allPortfolioStrategyOutcomes(session.config, session.config.starting_wealth, matrix),
-        );
-        setPfLuck(goodCountMatrix(matrix));
-      } else {
-        const [res] = buildPlayerResults(session, [me], rounds, allocs);
-        setResult(res ?? null);
-      }
+      // one path for both games: PlayerResult carries the counterfactuals,
+      // flattened outcomes, wealth series and the derived return/Sharpe stats
+      const [res] = buildPlayerResults(session, [me], rounds, allocs);
+      setResult(res ?? null);
     })();
 
     return () => {
       active = false;
     };
-  }, [supabase, session, me, portfolio]);
+  }, [supabase, session, me]);
 
   const cf = result?.counterfactual;
+  const pfCf = result?.portfolioCounterfactual;
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
 
   const topThree = rank ? rank.rank <= 3 : false;
 
-  // how lucky were *my* market draws? (portfolio: across every asset draw)
-  const good = portfolio ? pfLuck?.good ?? 0 : result ? goodCount(result.outcomes) : 0;
-  const totalOutcomes = portfolio
-    ? pfLuck?.total ?? 0
-    : result
-      ? result.outcomes.length
-      : 0;
-  const luckPct = totalOutcomes > 0 ? Math.round((good / totalOutcomes) * 100) : null;
+  // how lucky were *my* draws vs the expected odds? (portfolio: per asset draw)
+  const expected = expectedGoodRate(session.config);
+  const myLuck = result
+    ? luckStats(goodCount(result.outcomes), result.outcomes.length, expected)
+    : null;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-6 py-8">
@@ -114,7 +100,27 @@ export function StudentFinished({
             Final wealth
           </div>
           <div className="font-mono text-4xl font-black">{money(me.current_wealth)}</div>
+          {result?.totalReturn != null ? (
+            <div className="mt-1 font-mono text-sm font-bold text-white/90">
+              {signedPct(result.totalReturn * 100)} total
+              {result.perRoundReturn != null
+                ? ` · ${signedPct(result.perRoundReturn * 100, 1)}/round`
+                : ""}
+            </div>
+          ) : null}
         </div>
+
+        {result ? (
+          <div className="mt-3 text-sm text-ink-muted">
+            Sharpe ratio:{" "}
+            <span className="font-mono font-bold text-ink">
+              {sharpeText(result.sharpe)}
+            </span>
+            <div className="font-editorial text-xs italic text-ink-subtle">
+              return per unit of risk taken{result.sharpe == null ? " (— = no risk)" : ""}
+            </div>
+          </div>
+        ) : null}
 
         {rank ? (
           <div className="mt-4 text-lg text-ink">
@@ -123,11 +129,18 @@ export function StudentFinished({
           </div>
         ) : null}
 
-        {luckPct != null ? (
+        {myLuck ? (
           <div className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
-            <Clover className="text-gain" />
-            You drew {good}/{totalOutcomes} good {portfolio ? "asset markets" : "markets"} —{" "}
-            <span className="font-bold text-gain">{luckPct}% lucky</span>
+            <Clover className={myLuck.delta >= 0 ? "text-gain" : "text-loss"} />
+            You drew {myLuck.good}/{myLuck.total} good ·{" "}
+            <span
+              className={`font-bold ${
+                myLuck.delta > 0 ? "text-gain" : myLuck.delta < 0 ? "text-loss" : "text-ink-muted"
+              }`}
+              title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
+            >
+              {signedPct(myLuck.delta * 100)} vs {Math.round(expected * 100)}% expected
+            </span>
           </div>
         ) : null}
 

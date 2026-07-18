@@ -12,10 +12,17 @@ import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useSessionHistory } from "@/components/use-session-history";
 import { useShowBots } from "@/components/use-show-bots";
 import { WealthChart } from "@/components/host/WealthChart";
-import { playerDeltaChipsMap, playerOutcomesMap } from "@/lib/game/results";
+import {
+  bustRoundByPlayer,
+  classLuckSoFar,
+  compareStandings,
+  playerDeltaChipsMap,
+  playerOutcomesMap,
+} from "@/lib/game/results";
+import { condenseRanked } from "@/lib/game/condense";
 import { assetName } from "@/lib/game/portfolio";
 import { isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
-import { money } from "@/lib/game/format";
+import { money, signedPct } from "@/lib/game/format";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, Coins, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
 
@@ -180,13 +187,23 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     [portfolio, session, players, history.rounds, history.allocations],
   );
 
+  // $0-tied players order by when they busted (first to bust sits last)
+  const bust = useMemo(
+    () => bustRoundByPlayer(history.rounds, history.allocations),
+    [history.rounds, history.allocations],
+  );
   const ranked = useMemo(
-    () => [...visiblePlayers].sort((a, b) => b.current_wealth - a.current_wealth),
-    [visiblePlayers],
+    () => [...visiblePlayers].sort((a, b) => compareStandings(a, b, bust)),
+    [visiblePlayers, bust],
   );
 
   const status = round?.status ?? "open";
   const shared = session.config.market_scope === "shared";
+  // shared scope: everyone faces the same draws, so luck is one class-level line
+  const classLuck = useMemo(
+    () => (shared ? classLuckSoFar(session.config, history.rounds) : null),
+    [shared, session.config, history.rounds],
+  );
 
   // Reveal takeover: fire once per round when it flips to "revealed".
   const [revealFor, setRevealFor] = useState<string | null>(null);
@@ -265,9 +282,24 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
 
       {/* Leaderboard */}
       <section className="rounded-3xl border-2 border-ink bg-surface p-6 shadow-card sm:p-8">
-        <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black uppercase tracking-tight text-ink">
+        <h2 className="mb-1 flex items-center gap-2 font-display text-2xl font-black uppercase tracking-tight text-ink">
           <Trophy className="text-ink" /> Standings so far
         </h2>
+        {classLuck ? (
+          <p className="mb-4 font-editorial text-lg italic text-ink-muted">
+            Markets: {classLuck.good}/{classLuck.total} good ·{" "}
+            <span
+              className={
+                classLuck.delta > 0 ? "text-gain" : classLuck.delta < 0 ? "text-loss" : "text-ink-muted"
+              }
+            >
+              {signedPct(classLuck.delta * 100)}
+            </span>{" "}
+            vs {Math.round(classLuck.expected * 100)}% expected
+          </p>
+        ) : (
+          <div className="mb-4" />
+        )}
         <Leaderboard ranked={ranked} outcomesByPlayer={outcomesByPlayer} />
       </section>
 
@@ -434,6 +466,8 @@ function RevealTakeover({
 function PresentFinished({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
   const players = usePlayers(supabase, session.id);
   const history = useSessionHistory(supabase, session.id);
+  // Mirrors the control screen's show/hide-bots toggle, like PresentActive.
+  const [showBots] = useShowBots(session.id);
   const outcomesByPlayer = useMemo(
     () =>
       isPortfolio(session.config)
@@ -441,9 +475,16 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
         : playerOutcomesMap(session, players, history.rounds, history.allocations),
     [session, players, history.rounds, history.allocations],
   );
+  const bust = useMemo(
+    () => bustRoundByPlayer(history.rounds, history.allocations),
+    [history.rounds, history.allocations],
+  );
   const ranked = useMemo(
-    () => [...players].sort((a, b) => b.current_wealth - a.current_wealth),
-    [players],
+    () =>
+      [...(showBots ? players : players.filter((p) => !p.is_bot))].sort((a, b) =>
+        compareStandings(a, b, bust),
+      ),
+    [players, showBots, bust],
   );
 
   return (
@@ -471,9 +512,12 @@ function Leaderboard({
   ranked: PlayerRow[];
   outcomesByPlayer: Map<string, ("good" | "bad")[]>;
 }) {
-  const CAP = 12;
-  const shown = ranked.slice(0, CAP);
-  const extra = ranked.length - shown.length;
+  // >10 players: top 5 + bottom 3, with the middle behind an expander.
+  const [showAll, setShowAll] = useState(false);
+  const items = useMemo(
+    () => (showAll ? condenseRanked(ranked, { threshold: Infinity }) : condenseRanked(ranked)),
+    [ranked, showAll],
+  );
 
   if (ranked.length === 0) {
     return <p className="text-center font-editorial text-xl italic text-ink-subtle">No players yet.</p>;
@@ -482,7 +526,23 @@ function Leaderboard({
   return (
     <div>
       <ol className="space-y-2">
-        {shown.map((p, i) => {
+        {items.map((c) => {
+          if (c.kind === "gap") {
+            return (
+              <li key="gap" className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  aria-expanded={false}
+                  className="font-editorial text-lg italic text-ink-subtle transition hover:text-ink"
+                >
+                  +{c.hidden} more players ▾
+                </button>
+              </li>
+            );
+          }
+          const p = c.item;
+          const i = c.index;
           const last = outcomesByPlayer.get(p.id)?.at(-1) ?? null;
           const top = i < 3;
           return (
@@ -518,9 +578,15 @@ function Leaderboard({
           );
         })}
       </ol>
-      {extra > 0 ? (
-        <p className="mt-3 text-center font-editorial text-lg italic text-ink-subtle">
-          +{extra} more players
+      {showAll && ranked.length > 10 ? (
+        <p className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={() => setShowAll(false)}
+            className="font-editorial text-lg italic text-ink-subtle transition hover:text-ink"
+          >
+            Show fewer ▴
+          </button>
         </p>
       ) : null}
     </div>

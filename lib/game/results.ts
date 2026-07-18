@@ -12,10 +12,13 @@ import {
 } from "./counterfactual";
 import {
   allPortfolioStrategyOutcomes,
+  assetGoodProb,
+  numAssets,
   portfolioStrategyFraction,
   PORTFOLIO_STRATEGY_KEYS,
   type PortfolioStrategyKey,
 } from "./portfolio";
+import type { SessionConfig } from "./types";
 import { toCsv } from "./csv";
 
 export interface PlayerResult {
@@ -39,6 +42,13 @@ export interface PlayerResult {
    * goodCount/length still read as the player's luck).
    */
   outcomes: MarketOutcome[];
+  /** finalWealth/startWealth − 1 (−1 when wiped out); null with no revealed rounds */
+  totalReturn: number | null;
+  /** geometric per-round rate: (finalWealth/startWealth)^(1/n) − 1; null with no revealed rounds */
+  perRoundReturn: number | null;
+  /** mean(r − rf) / population stdev(r) over per-round returns; null when <2
+   *  usable returns or stdev ≈ 0 (e.g. an all-safe player) */
+  sharpe: number | null;
   /** basic game only */
   counterfactual?: Record<StrategyKey, number>;
   /** portfolio game only */
@@ -119,6 +129,144 @@ export function goodCountMatrix(matrix: MarketOutcome[][]): { good: number; tota
     }
   }
   return { good, total };
+}
+
+/**
+ * Per-round simple returns r_i = w_i / w_{i-1} − 1 with w_0 = startWealth.
+ * A wipeout contributes its −1 and then the series STOPS (later rounds are 0/0).
+ * Note: wealthByRound carries the last value forward for rounds without an
+ * allocation row, so a missed round reads as a 0% return.
+ */
+export function perRoundReturns(startWealth: number, wealthByRound: number[]): number[] {
+  if (!(startWealth > 0)) return [];
+  const returns: number[] = [];
+  let prev = startWealth;
+  for (const w of wealthByRound) {
+    returns.push(w / prev - 1);
+    if (w <= 0) break;
+    prev = w;
+  }
+  return returns;
+}
+
+/**
+ * Sharpe ratio of a per-round return series: mean(r − riskFree) / popStdev(r).
+ * Null when fewer than 2 returns or the returns don't vary (all-safe player).
+ * Unannualized — rounds are the natural period of the game.
+ */
+export function sharpeRatio(returns: number[], riskFree = 0): number | null {
+  if (returns.length < 2) return null;
+  const n = returns.length;
+  const mean = returns.reduce((s, r) => s + r, 0) / n;
+  const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / n;
+  const sd = Math.sqrt(variance);
+  if (sd < 1e-12) return null;
+  return (mean - riskFree) / sd;
+}
+
+/**
+ * Expected GOOD probability per draw — the luck benchmark. Basic: good_prob.
+ * Portfolio: the mean of each asset's good_prob (every revealed round faces one
+ * draw per asset, so this is exactly the expected rate of the draws faced).
+ */
+export function expectedGoodRate(config: SessionConfig): number {
+  if (!isPortfolio(config)) return config.good_prob ?? 0.6;
+  const n = numAssets(config);
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += assetGoodProb(config, i);
+  return n > 0 ? sum / n : config.good_prob ?? 0.6;
+}
+
+export interface LuckStats {
+  good: number;
+  total: number;
+  /** good/total */
+  observed: number;
+  /** the benchmark rate (expectedGoodRate) */
+  expected: number;
+  /** observed − expected, signed fraction ("+0.12 lucky" / "−0.14") */
+  delta: number;
+  /** ±1σ binomial band on the observed rate: sqrt(expected·(1−expected)/total) */
+  sigma: number;
+}
+
+/** Signed luck vs the benchmark. Null when there are no draws yet. */
+export function luckStats(good: number, total: number, expected: number): LuckStats | null {
+  if (total <= 0) return null;
+  const observed = good / total;
+  return {
+    good,
+    total,
+    observed,
+    expected,
+    delta: observed - expected,
+    sigma: Math.sqrt((expected * (1 - expected)) / total),
+  };
+}
+
+/**
+ * Class-level luck so far from the SHARED draws (basic: one per revealed round;
+ * portfolio: one per asset per round). Null in independent scope (rounds carry
+ * no shared outcome there) or before any reveal.
+ */
+export function classLuckSoFar(config: SessionConfig, rounds: RoundRow[]): LuckStats | null {
+  let good = 0;
+  let total = 0;
+  for (const r of revealedRounds(rounds)) {
+    if (r.market_outcomes) {
+      for (const o of r.market_outcomes) {
+        total += 1;
+        if (o === "good") good += 1;
+      }
+    } else if (r.market_outcome) {
+      total += 1;
+      if (r.market_outcome === "good") good += 1;
+    }
+  }
+  return luckStats(good, total, expectedGoodRate(config));
+}
+
+/**
+ * The round number each player busted (first revealed round ending at $0),
+ * for ordering $0-tied players in standings. Host screens only — students
+ * can't read other players' allocations.
+ */
+export function bustRoundByPlayer(
+  rounds: RoundRow[],
+  allocations: AllocationRow[],
+): Map<string, number> {
+  const byRound = new Map<string, AllocationRow[]>();
+  for (const a of allocations) {
+    const list = byRound.get(a.round_id) ?? [];
+    list.push(a);
+    byRound.set(a.round_id, list);
+  }
+  const bust = new Map<string, number>();
+  for (const r of revealedRounds(rounds)) {
+    for (const a of byRound.get(r.id) ?? []) {
+      if (a.resulting_wealth != null && Number(a.resulting_wealth) <= 0 && !bust.has(a.player_id)) {
+        bust.set(a.player_id, r.round_number);
+      }
+    }
+  }
+  return bust;
+}
+
+const NEVER_BUSTED = Number.MAX_SAFE_INTEGER;
+
+/**
+ * Standings comparator: wealth descending; players tied at the same wealth
+ * (busted at $0) order by WHEN they busted — the later you busted, the higher
+ * you rank; the first to bust sits last.
+ */
+export function compareStandings(
+  a: { id: string; current_wealth: number | string },
+  b: { id: string; current_wealth: number | string },
+  bust: Map<string, number>,
+): number {
+  const dw = Number(b.current_wealth) - Number(a.current_wealth);
+  if (Math.abs(dw) > 1e-9) return dw;
+  return (bust.get(b.id) ?? NEVER_BUSTED) - (bust.get(a.id) ?? NEVER_BUSTED);
 }
 
 /**
@@ -215,14 +363,21 @@ export function buildPlayerResults(
       if (a?.resulting_wealth != null) last = Number(a.resulting_wealth);
       wealthByRound.push(last);
     }
+    const finalWealth = Number(p.current_wealth);
+    const nRounds = wealthByRound.length;
+    const rf = session.config.risk_free_rate ?? 0;
     return {
       player: p,
       rank: 0,
-      finalWealth: Number(p.current_wealth),
+      finalWealth,
       startWealth,
       wealthByRound,
       riskByRound,
       avgBet: betRounds > 0 ? betSum / betRounds : 0,
+      totalReturn: nRounds > 0 ? finalWealth / startWealth - 1 : null,
+      perRoundReturn:
+        nRounds > 0 ? Math.pow(Math.max(finalWealth, 0) / startWealth, 1 / nRounds) - 1 : null,
+      sharpe: sharpeRatio(perRoundReturns(startWealth, wealthByRound), rf),
       outcomes,
       counterfactual: portfolio
         ? undefined
@@ -347,6 +502,8 @@ export function buildResultsCsv(
   results: PlayerResult[],
   rounds: RoundRow[],
   portfolio = false,
+  /** benchmark GOOD rate (expectedGoodRate) — adds a signed "Luck vs expected %" column */
+  expectedRate?: number,
 ): string {
   const revealed = revealedRounds(rounds);
   const header: (string | number)[] = [
@@ -357,6 +514,10 @@ export function buildResultsCsv(
     portfolio ? "Total draws" : "Total rounds",
     "Good %",
     "Avg bet",
+    "Total return %",
+    "Per-round %",
+    "Sharpe",
+    ...(expectedRate != null ? ["Luck vs expected %"] : []),
     ...revealed.flatMap((r) => [`R${r.round_number} $`, `R${r.round_number} risk %`]),
   ];
   const rows: (string | number)[][] = [header];
@@ -375,6 +536,12 @@ export function buildResultsCsv(
       total,
       total ? Math.round((100 * good) / total) : 0,
       round2(res.avgBet),
+      res.totalReturn == null ? "" : Math.round(res.totalReturn * 1000) / 10,
+      res.perRoundReturn == null ? "" : Math.round(res.perRoundReturn * 1000) / 10,
+      res.sharpe == null ? "" : round2(res.sharpe),
+      ...(expectedRate != null
+        ? [total ? Math.round((good / total - expectedRate) * 100) : ""]
+        : []),
       ...perRound,
     ]);
   }

@@ -38,6 +38,9 @@ export interface SessionConfig {
   num_assets?: number;
   /** portfolio only: per-round interest on the safe bucket (0 = flat, like basic) */
   risk_free_rate?: number;
+  /** portfolio only: ρ — how much assets move together. 0 = independent
+   *  (default), 1 = one market (the basic game). Marginal odds are unaffected. */
+  correlation?: number;
   /** portfolio only: optional per-asset overrides, length = num_assets */
   assets?: AssetConfig[] | null;
 }

@@ -10,6 +10,7 @@ import { useRoundAllocations } from "@/components/use-round-allocations";
 import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
+import { condenseRanked } from "@/lib/game/condense";
 import { Banner, Button, Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, Lock, Check } from "@/components/icons";
@@ -340,31 +341,76 @@ function Reveal({
           </div>
         ) : null}
 
-        {board ? (
-          <ol className="space-y-1 text-left">
-            {board.map((r) => (
-              <li
-                key={r.player_id}
-                className={`flex justify-between rounded-lg px-3 py-1.5 text-sm ${
-                  r.is_me
-                    ? "bg-play-soft font-semibold text-ink ring-1 ring-play/30"
-                    : "bg-paper-2 text-ink-muted"
-                }`}
-              >
-                <span>
-                  {r.rank}. {r.display_name}
-                  {r.is_me ? " (you)" : ""}
-                </span>
-                <span className="font-mono">{money(Number(r.current_wealth))}</span>
-              </li>
-            ))}
-          </ol>
-        ) : null}
+        {board ? <StudentBoard board={board} /> : null}
 
         <p className="flex items-center justify-center gap-2 text-sm text-ink-subtle">
           <Check className="text-gain" /> Waiting for the next round…
         </p>
       </Card>
     </main>
+  );
+}
+
+/**
+ * The post-reveal leaderboard. Big classes condense to top 5 + bottom 3 with an
+ * expander for the middle; the student's own row always stays visible. Rank
+ * numbers come from the server's `rank` field, so they never renumber across
+ * the gap.
+ */
+function StudentBoard({ board }: { board: LeaderboardRow[] }) {
+  const [showAll, setShowAll] = useState(false);
+  const myIdx = board.findIndex((r) => r.is_me);
+  const items = showAll
+    ? condenseRanked(board, { threshold: Infinity })
+    : condenseRanked(board, { keepIndices: myIdx >= 0 ? [myIdx] : [] });
+
+  return (
+    <div>
+      <ol className="space-y-1 text-left">
+        {items.map((c, idx) => {
+          if (c.kind === "gap") {
+            return (
+              <li key={`gap-${idx}`} className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  className="font-editorial text-xs italic text-ink-subtle transition hover:text-ink"
+                >
+                  +{c.hidden} more ▾
+                </button>
+              </li>
+            );
+          }
+          const r = c.item;
+          return (
+            <li
+              key={r.player_id}
+              className={`flex justify-between rounded-lg px-3 py-1.5 text-sm ${
+                r.is_me
+                  ? "bg-play-soft font-semibold text-ink ring-1 ring-play/30"
+                  : "bg-paper-2 text-ink-muted"
+              }`}
+            >
+              <span>
+                {r.rank}. {r.display_name}
+                {r.is_me ? " (you)" : ""}
+              </span>
+              <span className="font-mono">{money(Number(r.current_wealth))}</span>
+            </li>
+          );
+        })}
+      </ol>
+      {showAll && board.length > 10 ? (
+        <p className="mt-1 text-center">
+          <button
+            type="button"
+            onClick={() => setShowAll(false)}
+            className="font-editorial text-xs italic text-ink-subtle transition hover:text-ink"
+          >
+            Show fewer ▴
+          </button>
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -16,19 +16,28 @@ import { WealthChart } from "@/components/host/WealthChart";
 import { SessionHistoryTable } from "@/components/host/SessionHistoryTable";
 import { OutcomeChips } from "@/components/OutcomeChips";
 import {
+  buildPlayerResults,
+  bustRoundByPlayer,
+  classLuckSoFar,
+  compareStandings,
+  expectedGoodRate,
   goodCount,
   goodCountMatrix,
+  luckStats,
   playerDeltaChipsMap,
   playerOutcomesMap,
   portfolioOutcomeMatrix,
+  type LuckStats,
 } from "@/lib/game/results";
+import { condenseRanked } from "@/lib/game/condense";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { isPortfolio } from "@/lib/game/types";
-import { money } from "@/lib/game/format";
+import { money, signedPct } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 import { useShowBots } from "@/components/use-show-bots";
+import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
-import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Bot, Monitor, Sliders, ChevronDown, Flag } from "@/components/icons";
+import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Monitor, Sliders, ChevronDown, Flag, Clover } from "@/components/icons";
 
 export function HostRoundControl({
   supabase,
@@ -81,9 +90,21 @@ export function HostRoundControl({
     () => (showBots ? players : players.filter((p) => !p.is_bot)),
     [players, showBots],
   );
+  // $0-tied players order by when they busted (first to bust sits last)
+  const bust = useMemo(
+    () => bustRoundByPlayer(history.rounds, history.allocations),
+    [history.rounds, history.allocations],
+  );
   const standings = useMemo(
-    () => [...visiblePlayers].sort((a, b) => b.current_wealth - a.current_wealth),
-    [visiblePlayers],
+    () => [...visiblePlayers].sort((a, b) => compareStandings(a, b, bust)),
+    [visiblePlayers, bust],
+  );
+  // >10 players: top 5 + bottom 3, middle behind an expander
+  const [showAllStandings, setShowAllStandings] = useState(false);
+  const standingItems = useMemo(
+    () =>
+      showAllStandings ? condenseRanked(standings, { threshold: Infinity }) : condenseRanked(standings),
+    [standings, showAllStandings],
   );
   // each player's market sequence, computed once (cheap to read per row)
   const outcomesByPlayer = useMemo(
@@ -165,24 +186,50 @@ export function HostRoundControl({
     [portfolioGame, history.rounds, history.allocations],
   );
 
-  // Luck per player for the end-of-game panel (only meaningful when draws are
-  // independent): share of GOOD draws — per round (basic) or per asset (portfolio).
-  const luckPctByPlayer = useMemo(() => {
-    const m = new Map<string, number | null>();
-    if (!gameOver) return m;
+  // benchmark GOOD rate per draw (portfolio: mean of per-asset odds)
+  const expected = expectedGoodRate(session.config);
+
+  // Live signed luck per player (only meaningful when draws are independent):
+  // observed GOOD rate minus the benchmark, updated as rounds reveal.
+  const luckByPlayer = useMemo(() => {
+    const m = new Map<string, LuckStats | null>();
+    if (!independent) return m;
     for (const p of players) {
       if (portfolioGame) {
         const { good, total } = goodCountMatrix(
           portfolioOutcomeMatrix(session, history.rounds, history.allocations, p.id),
         );
-        m.set(p.id, total ? Math.round((good / total) * 100) : null);
+        m.set(p.id, luckStats(good, total, expected));
       } else {
         const outs = outcomesByPlayer.get(p.id) ?? [];
-        m.set(p.id, outs.length ? Math.round((goodCount(outs) / outs.length) * 100) : null);
+        m.set(p.id, luckStats(goodCount(outs), outs.length, expected));
       }
     }
     return m;
-  }, [gameOver, players, portfolioGame, session, history.rounds, history.allocations, outcomesByPlayer]);
+  }, [independent, players, portfolioGame, session, history.rounds, history.allocations, outcomesByPlayer, expected]);
+
+  // Shared scope: everyone faces the same draws — one class-level luck line.
+  const classLuck = useMemo(
+    () => (independent ? null : classLuckSoFar(session.config, history.rounds)),
+    [independent, session.config, history.rounds],
+  );
+
+  // Full per-player stats for the end-of-game panel (returns, Sharpe, luck),
+  // with $0 ties re-ordered by bust round.
+  const finalResults = useMemo(
+    () =>
+      gameOver
+        ? buildPlayerResults(session, visiblePlayers, history.rounds, history.allocations).sort(
+            (a, b) =>
+              compareStandings(
+                { id: a.player.id, current_wealth: a.finalWealth },
+                { id: b.player.id, current_wealth: b.finalWealth },
+                bust,
+              ),
+          )
+        : [],
+    [gameOver, session, visiblePlayers, history.rounds, history.allocations, bust],
+  );
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -409,11 +456,7 @@ export function HostRoundControl({
                   except after the FINAL round, where the last round's bets are
                   no longer interesting: show final portfolios + luck instead */}
               {gameOver ? (
-                <FinalResults
-                  players={visiblePlayers}
-                  luckPctByPlayer={luckPctByPlayer}
-                  independent={independent}
-                />
+                <FinalResults results={finalResults} expected={expected} independent={independent} />
               ) : (
                 <AllocationsBreakdown
                   players={visiblePlayers}
@@ -432,44 +475,69 @@ export function HostRoundControl({
             <h2 className="text-xl font-bold text-ink">
               {gameOver ? "Final standings" : "Standings"}
             </h2>
-            {hasBots ? (
-              <button
-                type="button"
-                onClick={() => setShowBots(!showBots)}
-                aria-pressed={showBots}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                  showBots
-                    ? "border-play/30 bg-play-soft text-play"
-                    : "border-line-strong bg-paper text-ink-muted hover:border-ink-subtle"
-                }`}
-                title="Toggle benchmark bots in the standings, chart and allocations"
-              >
-                <Bot />
-                {showBots ? "Bots shown" : "Bots hidden"}
-              </button>
-            ) : null}
+            {hasBots ? <BotToggle showBots={showBots} onToggle={setShowBots} /> : null}
           </div>
           <p className="mb-3 text-xs text-ink-subtle">
             {portfolioGame
               ? "Last 5 rounds per player (up = gained, down = lost)"
-              : "Last 5 markets shown per player"}
+              : "Last 5 markets per player"}
+            {independent ? " · ± = luck vs expected odds" : ""}
             {hasBots && !showBots ? " · bots hidden" : ""}.
           </p>
+          {classLuck ? (
+            <p className="mb-3 font-editorial text-sm italic text-ink-muted">
+              Markets: {classLuck.good}/{classLuck.total} good ·{" "}
+              <span
+                className={
+                  classLuck.delta > 0 ? "text-gain" : classLuck.delta < 0 ? "text-loss" : "text-ink-muted"
+                }
+              >
+                {signedPct(classLuck.delta * 100)}
+              </span>{" "}
+              vs {Math.round(classLuck.expected * 100)}% expected
+            </p>
+          ) : null}
           <ol className="space-y-1">
-            {standings.map((p, i) => {
+            {standingItems.map((c) => {
+              if (c.kind === "gap") {
+                return (
+                  <li key="gap" className="py-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowAllStandings(true)}
+                      className="font-editorial text-sm italic text-ink-subtle transition hover:text-ink"
+                    >
+                      +{c.hidden} more ▾
+                    </button>
+                  </li>
+                );
+              }
+              const p = c.item;
               const last5 = (
                 (portfolioGame ? deltaChipsByPlayer?.get(p.id) : outcomesByPlayer.get(p.id)) ?? []
               ).slice(-5);
+              const rowLuck = luckByPlayer.get(p.id) ?? null;
               return (
                 <li
                   key={p.id}
                   className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2"
                 >
                   <span className="text-ink">
-                    <span className="mr-2 font-mono text-ink-subtle">{i + 1}.</span>
+                    <span className="mr-2 font-mono text-ink-subtle">{c.index + 1}.</span>
                     {p.display_name}
                   </span>
                   <span className="flex items-center gap-3">
+                    {rowLuck ? (
+                      <span
+                        className={`flex items-center gap-1 text-xs ${
+                          rowLuck.delta > 0 ? "text-gain" : rowLuck.delta < 0 ? "text-loss" : "text-ink-muted"
+                        }`}
+                        title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
+                      >
+                        <Clover className={rowLuck.delta >= 0 ? "text-gain" : "text-loss"} />
+                        {signedPct(rowLuck.delta * 100)}
+                      </span>
+                    ) : null}
                     <OutcomeChips outcomes={last5} />
                     <span className="font-mono text-lg font-bold text-gain">
                       {money(p.current_wealth)}
@@ -479,6 +547,17 @@ export function HostRoundControl({
               );
             })}
           </ol>
+          {showAllStandings && standings.length > 10 ? (
+            <p className="mt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setShowAllStandings(false)}
+                className="font-editorial text-sm italic text-ink-subtle transition hover:text-ink"
+              >
+                Show fewer ▴
+              </button>
+            </p>
+          ) : null}
         </Card>
       </div>
 

@@ -14,13 +14,17 @@ import {
   buildResultsCsv,
   classCounterfactual,
   classPortfolioCounterfactual,
+  expectedGoodRate,
   goodCount,
+  luckStats,
 } from "@/lib/game/results";
 import { edgeFraction, type StrategyKey } from "@/lib/game/counterfactual";
 import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/portfolio";
 import { isPortfolio } from "@/lib/game/types";
-import { money } from "@/lib/game/format";
+import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
+import { useShowBots } from "@/components/use-show-bots";
+import { BotToggle } from "@/components/host/BotToggle";
 import { ArrowLeft, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
 
 export function HostSummary({
@@ -34,38 +38,63 @@ export function HostSummary({
   const { rounds, allocations } = useSessionHistory(supabase, session.id);
 
   const portfolio = isPortfolio(session.config);
+  // `results` keeps EVERYONE (the strategy benchmark cards read bot finals from
+  // it); `visibleResults` is what the lists/chart show, honoring the bot toggle.
   const results = useMemo(
     () => buildPlayerResults(session, players, rounds, allocations),
     [session, players, rounds, allocations],
   );
+  const [showBots, setShowBots] = useShowBots(session.id);
+  const visibleResults = useMemo(() => {
+    if (showBots) return results;
+    // re-rank after filtering so hidden bots don't leave gaps (1,2,2,4…)
+    let rank = 0;
+    let prev = Number.POSITIVE_INFINITY;
+    return results
+      .filter((r) => !r.player.is_bot)
+      .map((r, i) => {
+        if (r.finalWealth < prev - 1e-9) {
+          rank = i + 1;
+          prev = r.finalWealth;
+        }
+        return { ...r, rank };
+      });
+  }, [results, showBots]);
+  const visiblePlayers = useMemo(
+    () => (showBots ? players : players.filter((p) => !p.is_bot)),
+    [players, showBots],
+  );
   const cf = useMemo(
     () =>
       portfolio
-        ? classPortfolioCounterfactual(session, results)
-        : classCounterfactual(session, results),
-    [portfolio, session, results],
+        ? classPortfolioCounterfactual(session, visibleResults)
+        : classCounterfactual(session, visibleResults),
+    [portfolio, session, visibleResults],
   );
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
   const [openId, setOpenId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   // per-player luck only varies when each player draws their own market
   const independent = session.config.market_scope === "independent";
+  // benchmark GOOD rate per draw (portfolio: mean of per-asset odds)
+  const expected = expectedGoodRate(session.config);
 
-  // "Luck": who drew the most good markets (outcomes are independent per player)
+  // "Luck": who drew the most good markets, signed against the benchmark
   const luck = useMemo(
     () =>
-      results
-        .map((r) => {
-          const good = goodCount(r.outcomes);
-          const total = r.outcomes.length;
-          return { id: r.player.id, name: r.player.display_name, good, total, rate: total ? good / total : 0 };
-        })
-        .sort((a, b) => b.rate - a.rate || b.total - a.total),
-    [results],
+      visibleResults
+        .map((r) => ({
+          id: r.player.id,
+          name: r.player.display_name,
+          stats: luckStats(goodCount(r.outcomes), r.outcomes.length, expected),
+        }))
+        .sort((a, b) => (b.stats?.delta ?? -Infinity) - (a.stats?.delta ?? -Infinity)),
+    [visibleResults, expected],
   );
 
   function downloadCsv() {
-    const csv = buildResultsCsv(results, rounds, portfolio);
+    // the CSV always exports EVERYONE, regardless of the bot toggle
+    const csv = buildResultsCsv(results, rounds, portfolio, expected);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -95,12 +124,13 @@ export function HostSummary({
     botByStrategy.get(k) ?? (cf.strategy as Record<string, number>)[k];
   const avgLabel = cf.isAverage ? "class avg" : "everyone";
 
-  // expected number of good draws (luck baseline): goodProb × draws made —
+  // expected number of good draws (luck baseline): benchmark rate × draws made —
   // one per round (basic) or one per round × asset (portfolio)
-  const goodProb = session.config.good_prob ?? 0.6;
   const numRevealed = rounds.filter((r) => r.status === "revealed").length;
   const totalDraws = numRevealed * (portfolio ? numAssets(session.config) : 1);
-  const expectedGood = goodProb * totalDraws;
+  const expectedGood = expected * totalDraws;
+  // ±1σ binomial band on the observed rate — the "this spread is normal" line
+  const sigma = totalDraws > 0 ? Math.sqrt((expected * (1 - expected)) / totalDraws) : 0;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -116,11 +146,21 @@ export function HostSummary({
             <Trophy className="text-ink" /> Game finished
           </h1>
           <p className="font-editorial italic text-ink-muted">
-            {session.config.num_rounds} rounds · {results.length} players · started at{" "}
+            {session.config.num_rounds} rounds · {visibleResults.length} players · started at{" "}
             {money(session.config.starting_wealth)}
+            {portfolio && (session.config.correlation ?? 0) > 0
+              ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`
+              : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {hasBots ? (
+            <BotToggle
+              showBots={showBots}
+              onToggle={setShowBots}
+              title="Toggle benchmark bots in the standings, luck and chart (CSV always includes them)"
+            />
+          ) : null}
           <Link
             href={`/host/${session.id}/present`}
             target="_blank"
@@ -213,12 +253,10 @@ export function HostSummary({
           <h2 className="mb-1 text-xl font-bold text-ink">Final standings</h2>
           <p className="mb-3 text-xs text-ink-subtle">Click a player to see every market they faced.</p>
           <ol className="space-y-1">
-            {results.map((r) => {
+            {visibleResults.map((r) => {
               const open = openId === r.player.id;
               const good = goodCount(r.outcomes);
-              const luckPct = r.outcomes.length
-                ? Math.round((good / r.outcomes.length) * 100)
-                : null;
+              const rowLuck = luckStats(good, r.outcomes.length, expected);
               return (
                 <li key={r.player.id} className="overflow-hidden rounded-lg border border-line bg-paper-2">
                   <button
@@ -236,12 +274,25 @@ export function HostSummary({
                       />
                     </span>
                     <span className="flex items-center gap-3">
-                      {independent && luckPct != null ? (
+                      {independent && rowLuck ? (
                         <span
-                          className="flex items-center gap-1 text-xs text-ink-muted"
-                          title="share of rounds this player drew a GOOD market"
+                          className={`flex items-center gap-1 text-xs ${
+                            rowLuck.delta > 0 ? "text-gain" : rowLuck.delta < 0 ? "text-loss" : "text-ink-muted"
+                          }`}
+                          title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
                         >
-                          <Clover className="text-gain" /> {luckPct}% lucky
+                          <Clover className={rowLuck.delta >= 0 ? "text-gain" : "text-loss"} />
+                          {signedPct(rowLuck.delta * 100)} {rowLuck.delta < 0 ? "unlucky" : "lucky"}
+                        </span>
+                      ) : null}
+                      {r.totalReturn != null ? (
+                        <span
+                          className={`font-mono text-xs font-bold ${
+                            r.totalReturn > 0 ? "text-gain" : r.totalReturn < 0 ? "text-loss" : "text-ink-muted"
+                          }`}
+                          title="total return on starting wealth"
+                        >
+                          {signedPct(r.totalReturn * 100)}
                         </span>
                       ) : null}
                       <span className="font-mono text-2xl font-black text-ink">
@@ -253,7 +304,21 @@ export function HostSummary({
                     <div className="border-t border-line px-4 py-2">
                       <div className="mb-1 text-xs text-ink-subtle">
                         {good}/{r.outcomes.length} good {portfolio ? "draws" : "markets"} · avg bet{" "}
-                        {money(r.avgBet)} · full match{portfolio ? " (round by round, per asset)" : ""}:
+                        {money(r.avgBet)}
+                        {r.totalReturn != null ? (
+                          <>
+                            {" "}
+                            · total return {signedPct(r.totalReturn * 100)}
+                            {r.perRoundReturn != null
+                              ? ` (${signedPct(r.perRoundReturn * 100, 1)}/round)`
+                              : ""}
+                          </>
+                        ) : null}{" "}
+                        · Sharpe{" "}
+                        <span title="return per unit of volatility (see MECHANICS.md)">
+                          {sharpeText(r.sharpe)}
+                        </span>{" "}
+                        · full match{portfolio ? " (round by round, per asset)" : ""}:
                       </div>
                       <OutcomeChips outcomes={r.outcomes} empty="no rounds" />
                     </div>
@@ -301,15 +366,19 @@ export function HostSummary({
           <Clover className="text-gain" /> Luck
         </h2>
         <p className="mb-3 mt-1 text-sm text-ink-muted">
-          {independent
-            ? "Outcomes are independent per player, so some drew better markets than others."
-            : "Everyone faced the same draws, so luck is identical across the class."}{" "}
-          Most good {portfolio ? "draws" : "markets"} first. At {Math.round(goodProb * 100)}% odds,
-          the expected count is{" "}
+          ± = GOOD-draw rate vs the expected {Math.round(expected * 100)}%. Expected{" "}
           <span className="font-semibold text-gain">
             ~{expectedGood.toFixed(1)} of {totalDraws}
           </span>{" "}
-          good.
+          good
+          {sigma > 0 ? (
+            <>
+              {" "}
+              · <span className="font-semibold text-ink">±{Math.round(sigma * 100)}%</span> spread
+              is normal chance
+            </>
+          ) : null}
+          .{!independent ? " Everyone faced the same draws." : ""}
         </p>
         <ol className="space-y-1">
           {luck.map((l, i) => (
@@ -329,10 +398,18 @@ export function HostSummary({
               </span>
               <span className="flex items-baseline gap-3 text-sm">
                 <span className="text-ink-muted">
-                  {l.good}/{l.total} good
+                  {l.stats ? `${l.stats.good}/${l.stats.total} good` : "no draws"}
                 </span>
-                <span className="w-12 text-right font-mono font-bold text-gain">
-                  {Math.round(l.rate * 100)}%
+                <span
+                  className={`w-14 text-right font-mono font-bold ${
+                    !l.stats || l.stats.delta === 0
+                      ? "text-ink-muted"
+                      : l.stats.delta > 0
+                        ? "text-gain"
+                        : "text-loss"
+                  }`}
+                >
+                  {l.stats ? signedPct(l.stats.delta * 100) : "—"}
                 </span>
               </span>
             </li>
@@ -344,7 +421,7 @@ export function HostSummary({
       <Card className="mt-6">
         <h2 className="mb-3 text-xl font-bold text-ink">Wealth over rounds</h2>
         <WealthChart
-          players={players}
+          players={visiblePlayers}
           rounds={rounds}
           allocations={allocations}
           startingWealth={session.config.starting_wealth}

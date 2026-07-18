@@ -12,6 +12,24 @@ export function signedMoney(n: number | string): string {
   return `${sign}${money(Math.abs(v))}`;
 }
 
+/**
+ * Signed percentage from PERCENTAGE POINTS: signedPct(12) → "+12%",
+ * signedPct(-14) → "−14%" (U+2212, matching signedMoney), signedPct(0) → "0%".
+ */
+export function signedPct(pctPoints: number | string, digits = 0): string {
+  const v = typeof pctPoints === "string" ? Number(pctPoints) : pctPoints;
+  const n = Number.isFinite(v) ? v : 0;
+  const sign = n > 0 ? "+" : n < 0 ? "−" : "";
+  return `${sign}${Math.abs(n).toFixed(digits)}%`;
+}
+
+/** Sharpe ratio for display: "1.24" / "−0.33" (U+2212) / "—" when undefined. */
+export function sharpeText(sharpe: number | null): string {
+  if (sharpe == null) return "—";
+  const s = sharpe.toFixed(2);
+  return s.startsWith("-") ? `−${s.slice(1)}` : s;
+}
+
 export function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;

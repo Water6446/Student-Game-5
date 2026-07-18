@@ -92,6 +92,9 @@ export function StudentWaiting({
         </p>
         <p className="mt-1 font-mono text-xs text-ink-subtle">
           {session.config.num_rounds} rounds · {session.config.payoff_mode} payoffs
+          {(session.config.correlation ?? 0) > 0
+            ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`
+            : ""}
         </p>
       </Card>
     </main>
