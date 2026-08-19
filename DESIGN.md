@@ -343,6 +343,7 @@ components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti
 components/host/HostPresent.tsx   projector/present-mode reference implementation
 components/use-show-bots.ts       cross-tab preference pattern (localStorage + storage event)
+components/use-round-phase.ts     the round phase a screen should DISPLAY (gates stale rounds, swallows transient locks)
 ```
 
 **Starting a new game:** copy `globals.css`, `tailwind.config.ts`, the

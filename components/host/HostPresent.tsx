@@ -8,6 +8,7 @@ import type { PlayerRow, SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
 import { usePlayers } from "@/components/use-players";
 import { useRound } from "@/components/use-round";
+import { useRoundPhase } from "@/components/use-round-phase";
 import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useSessionHistory } from "@/components/use-session-history";
 import { useShowBots } from "@/components/use-show-bots";
@@ -154,7 +155,10 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
 /* ── Active: status panel + live leaderboard, with a reveal takeover ────────── */
 function PresentActive({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
   const players = usePlayers(supabase, session.id);
-  const round = useRound(supabase, session.id, session.current_round);
+  const loadedRound = useRound(supabase, session.id, session.current_round);
+  // What to DISPLAY: gates a stale round row after "Next round" and swallows the
+  // transient "locked" state of the one-click auto flow. See use-round-phase.ts.
+  const { phase, round } = useRoundPhase(loadedRound, session.current_round);
   const history = useSessionHistory(supabase, session.id);
   // Live allocations for the current round so the "submitted" counter updates the
   // instant a student locks in (history only refetches on round status changes).
@@ -197,7 +201,6 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     [visiblePlayers, bust],
   );
 
-  const status = round?.status ?? "open";
   const shared = session.config.market_scope === "shared";
   // shared scope: everyone faces the same draws, so luck is one class-level line
   const classLuck = useMemo(
@@ -209,14 +212,16 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
   const [revealFor, setRevealFor] = useState<string | null>(null);
   const shownRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!round) return;
-    if (round.status === "revealed" && shownRef.current !== round.id) {
+    // Gate on the displayed phase, not the raw status, so the takeover can never
+    // fire off a stale round id mid round-change.
+    if (!round || phase !== "revealed") return;
+    if (shownRef.current !== round.id) {
       shownRef.current = round.id;
       setRevealFor(round.id);
       const t = setTimeout(() => setRevealFor(null), 5000);
       return () => clearTimeout(t);
     }
-  }, [round]);
+  }, [round, phase]);
 
   return (
     <div className="grid flex-1 gap-6 py-4 lg:grid-cols-[1fr_1.1fr]">
@@ -227,7 +232,13 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
             Round {session.current_round} / {session.config.num_rounds}
           </p>
 
-          {status === "open" ? (
+          {phase === "loading" ? (
+            /* One fetch round-trip while the next round loads. Showing the
+               previous round's outcome under a new round number is the bug. */
+            <p className="mt-6 animate-pulse-soft font-editorial text-3xl italic text-ink-muted">
+              Getting round {session.current_round} ready…
+            </p>
+          ) : phase === "open" ? (
             <>
               <p className="mt-6 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
                 Place your bets
@@ -240,7 +251,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
                 locked in
               </p>
             </>
-          ) : status === "locked" ? (
+          ) : phase === "locked" ? (
             <>
               <p className="mt-6 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
                 Bets are locked

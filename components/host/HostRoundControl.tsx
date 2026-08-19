@@ -8,6 +8,7 @@ import type { SessionRow } from "@/lib/game/db";
 import type { MarketOutcome } from "@/lib/game/types";
 import { usePlayers } from "@/components/use-players";
 import { useRound } from "@/components/use-round";
+import { useRoundPhase, type RoundPhase } from "@/components/use-round-phase";
 import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useSessionHistory } from "@/components/use-session-history";
 import { MarketOddsControl } from "@/components/host/MarketOddsControl";
@@ -48,7 +49,10 @@ export function HostRoundControl({
 }) {
   const router = useRouter();
   const players = usePlayers(supabase, session.id);
-  const round = useRound(supabase, session.id, session.current_round);
+  const loadedRound = useRound(supabase, session.id, session.current_round);
+  // What to DISPLAY: gates a stale round row after "Next round" and swallows the
+  // transient "locked" state of the one-click auto flow. See use-round-phase.ts.
+  const { phase, round } = useRoundPhase(loadedRound, session.current_round);
   const allocs = useRoundAllocations(supabase, round?.id ?? null);
   const history = useSessionHistory(supabase, session.id);
 
@@ -170,10 +174,9 @@ export function HostRoundControl({
     void finish();
   }
 
-  const status = round?.status ?? "open";
   // Post-final-round state: the game is effectively over, the host just hasn't
   // clicked "Finish game" yet — show final results, not last-round minutiae.
-  const gameOver = isLastRound && status === "revealed";
+  const gameOver = isLastRound && phase === "revealed";
   const independent = session.config.market_scope === "independent";
   const picksComplete = Array.from({ length: nAssets }, (_, i) => picks[i]).every(
     (p) => p === "good" || p === "bad",
@@ -247,7 +250,7 @@ export function HostRoundControl({
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <StatusBadge status={status} />
+          <StatusBadge phase={phase} />
           <Link
             href={`/host/${session.id}/present`}
             target="_blank"
@@ -282,7 +285,20 @@ export function HostRoundControl({
           {/* Primary action — pinned to the top of the panel so it stays in the
               same place across open → reveal → next. In auto mode the host can
               click "Lock & reveal" then "Next round" without moving the cursor. */}
-          {status === "open" &&
+          {phase === "loading" && (
+            <>
+              {/* One fetch round-trip after "Next round" lands. The panel keeps
+                  its shape and the action stays pinned but disabled — showing
+                  the previous round's body here is the bug this fixes. */}
+              <Button disabled className="w-full text-lg">
+                Loading round {session.current_round}…
+              </Button>
+              <p className="text-center font-editorial text-sm italic text-ink-subtle">
+                Syncing with the server…
+              </p>
+            </>
+          )}
+          {phase === "open" &&
             (isManual ? (
               <Button onClick={lock} disabled={busy} className="w-full text-lg">
                 Lock allocations
@@ -292,7 +308,7 @@ export function HostRoundControl({
                 Lock &amp; reveal
               </Button>
             ))}
-          {status === "locked" && (
+          {phase === "locked" && (
             <Button
               onClick={reveal}
               disabled={busy || (isManual && (portfolioGame ? !picksComplete : !pick))}
@@ -301,7 +317,7 @@ export function HostRoundControl({
               Reveal results
             </Button>
           )}
-          {status === "revealed" &&
+          {phase === "revealed" &&
             (isLastRound ? (
               <Button onClick={finish} disabled={busy} variant="danger" className="w-full text-lg">
                 Finish game
@@ -315,7 +331,7 @@ export function HostRoundControl({
           {error ? <Banner kind="error">{error}</Banner> : null}
 
           {/* Supporting context for each phase, below the pinned action. */}
-          {status === "open" && (
+          {phase === "open" && (
             <>
               <div className="text-center">
                 <div className="font-mono text-6xl font-black text-gain">
@@ -345,7 +361,7 @@ export function HostRoundControl({
             </>
           )}
 
-          {status === "locked" && (
+          {phase === "locked" && (
             <>
               <div className="flex items-center justify-center gap-2 rounded-xl border-2 border-ink bg-brand-soft px-4 py-2 text-sm font-display font-extrabold uppercase tracking-tight text-ink shadow-card">
                 <Lock /> Bets locked in — review, then reveal
@@ -415,7 +431,7 @@ export function HostRoundControl({
             </>
           )}
 
-          {status === "revealed" && (
+          {phase === "revealed" && (
             <>
               {portfolioGame && round?.market_outcomes ? (
                 <div className="rounded-xl border-2 border-ink bg-paper-2 p-3 shadow-card">
@@ -605,17 +621,18 @@ function OddsDisclosure({
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
+function StatusBadge({ phase }: { phase: RoundPhase }) {
+  const styles: Record<RoundPhase, string> = {
+    loading: "bg-paper-2 text-ink-subtle",
     open: "bg-gain-soft text-gain",
     locked: "bg-brand-soft text-ink",
     revealed: "bg-play-soft text-play",
   };
   return (
     <span
-      className={`rounded-full border-2 border-ink px-4 py-1.5 text-sm font-display font-extrabold capitalize shadow-card ${styles[status] ?? ""}`}
+      className={`rounded-full border-2 border-ink px-4 py-1.5 text-sm font-display font-extrabold capitalize shadow-card ${styles[phase]}`}
     >
-      {status}
+      {phase === "loading" ? "…" : phase}
     </span>
   );
 }

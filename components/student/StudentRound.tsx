@@ -7,6 +7,7 @@ import { isPortfolio, type MarketOutcome } from "@/lib/game/types";
 import { riskyMultiplier } from "@/lib/game/math";
 import { assetName, assetPayoffMode, numAssets } from "@/lib/game/portfolio";
 import { useRoundAllocations } from "@/components/use-round-allocations";
+import { useRoundPhase } from "@/components/use-round-phase";
 import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
@@ -26,7 +27,10 @@ export function StudentRound({
   me: PlayerRow;
   round: RoundRow;
 }) {
-  const myAllocs = useRoundAllocations(supabase, round.id);
+  // What to DISPLAY, not the raw row status: hides round N-1 while the new round
+  // loads and swallows the transient lock of the host's one-click auto reveal.
+  const { phase, round: liveRound } = useRoundPhase(round, session.current_round);
+  const myAllocs = useRoundAllocations(supabase, liveRound?.id ?? null);
   const mine = myAllocs.find((a) => a.player_id === me.id) ?? null;
   const portfolio = isPortfolio(session.config);
   const n = numAssets(session.config);
@@ -46,10 +50,26 @@ export function StudentRound({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id, n]);
 
+  // resolve_round writes an allocation row for EVERY active player, so the
+  // reveal always has a result to show — but the rounds UPDATE can land before
+  // ours does, and rendering then would headline a $0 "Flat round" for a player
+  // who actually gained. Wait for our row, with a bound so a dropped realtime
+  // message can't strand the student on the waiting card.
+  const revealPending = phase === "revealed" && mine?.resulting_wealth == null;
+  const [revealTimedOut, setRevealTimedOut] = useState(false);
+  useEffect(() => {
+    if (!revealPending) {
+      setRevealTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setRevealTimedOut(true), 1500);
+    return () => clearTimeout(t);
+  }, [revealPending, liveRound?.id]);
+
   const touched = portfolio ? amounts.some((a) => a !== null) : risky !== null;
 
   async function submit() {
-    if (!touched) return;
+    if (!touched || !liveRound) return;
     setBusy(true);
     setError(null);
     // All writes go through SECURITY DEFINER RPCs. The server validates the
@@ -57,20 +77,20 @@ export function StudentRound({
     // derives the safe remainder. Students have no direct write grant.
     const { error } = portfolio
       ? await supabase.rpc("submit_portfolio_allocation", {
-          p_round_id: round.id,
+          p_round_id: liveRound.id,
           p_amounts: amounts.map((a) => Math.round((a ?? 0) * 100) / 100),
         })
       : await supabase.rpc("submit_allocation", {
-          p_round_id: round.id,
+          p_round_id: liveRound.id,
           p_risky_amount: Math.round((risky ?? 0) * 100) / 100,
         });
     setBusy(false);
     if (error) setError(error.message);
   }
 
-  if (round.status === "open") {
+  if (phase === "open" && liveRound) {
     return (
-      <Shell wealth={me.current_wealth} round={round} session={session}>
+      <Shell wealth={me.current_wealth} roundNumber={session.current_round} session={session}>
         {portfolio ? (
           <PortfolioAllocationInput
             config={session.config}
@@ -107,15 +127,20 @@ export function StudentRound({
     );
   }
 
-  if (round.status === "locked") {
+  // "loading" shares the locked card: it is the honest "something is happening"
+  // state and is what the student was already looking at.
+  if (phase !== "revealed" || !liveRound || (revealPending && !revealTimedOut)) {
     return (
-      <Shell wealth={me.current_wealth} round={round} session={session}>
+      <Shell wealth={me.current_wealth} roundNumber={session.current_round} session={session}>
         <div className="rounded-xl border-2 border-ink bg-brand-soft p-5 text-center shadow-card">
           <div className="flex items-center justify-center gap-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
             <Lock /> Nice. Now we wait.
           </div>
           <p className="mt-1 font-editorial text-sm italic text-ink-muted">Waiting for the reveal…</p>
-          {mine ? (
+          {/* While the next round is still loading our allocations are empty,
+              which is not the same thing as not having submitted — say nothing
+              rather than accuse the student of missing the round. */}
+          {phase === "loading" ? null : mine ? (
             <p className="mt-3 font-mono text-ink">
               {portfolio
                 ? `Invested ${money(Number(mine.risky_amount))} across ${n} assets · safe ${money(Number(mine.safe_amount))}`
@@ -140,19 +165,19 @@ export function StudentRound({
     );
   }
 
-  // revealed
-  return <Reveal supabase={supabase} session={session} me={me} round={round} mine={mine} />;
+  return <Reveal supabase={supabase} session={session} me={me} round={liveRound} mine={mine} />;
 }
 
 function Shell({
   children,
   wealth,
-  round,
+  roundNumber,
   session,
 }: {
   children: React.ReactNode;
   wealth: number;
-  round: RoundRow;
+  /** always the session's current round — never a stale row's number */
+  roundNumber: number;
   session: SessionRow;
 }) {
   // hide the odds line when assets have custom per-asset odds (one number
@@ -168,7 +193,7 @@ function Shell({
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
       <div className="mb-4 flex items-center justify-between">
         <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-sm font-bold uppercase text-paper">
-          Round {round.round_number} / {session.config.num_rounds}
+          Round {roundNumber} / {session.config.num_rounds}
         </span>
         <span className="text-right">
           <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
