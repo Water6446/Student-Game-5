@@ -10,6 +10,11 @@ import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
 import { Banner, Button, Card } from "@/components/ui";
 import { Users, Monitor } from "@/components/icons";
+import { CondensedList } from "@/components/CondensedList";
+
+// The lobby is a live roster, not a ranking, so every name stays visible until
+// the list is long enough that ~100 animated rows become a real jank source.
+const LOBBY_CONDENSE = { threshold: 24 };
 
 export function HostLobby({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
   const router = useRouter();
@@ -106,22 +111,30 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
             </span>
           </div>
 
-          <ul className="mt-4 max-h-[42vh] flex-1 space-y-2 overflow-y-auto pr-1">
-            {players.length === 0 ? (
+          {players.length === 0 ? (
+            <ul className="mt-4 max-h-[42vh] flex-1 space-y-2 overflow-y-auto pr-1">
               <li className="font-editorial italic text-ink-subtle">Waiting for players to join…</li>
-            ) : (
-              players.map((p, i) => (
+            </ul>
+          ) : (
+            <CondensedList
+              items={players}
+              keyOf={(p) => p.id}
+              as="ul"
+              options={LOBBY_CONDENSE}
+              className="mt-4 max-h-[42vh] flex-1 space-y-2 overflow-y-auto pr-1"
+              gapClassName="font-editorial text-sm italic text-ink-subtle hover:text-ink"
+              toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+              renderItem={(p, i) => (
                 <li
-                  key={p.id}
                   className={`animate-pop-in rounded-lg border-2 border-ink px-4 py-2 text-lg font-semibold text-ink shadow-card ${
                     ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-loss-soft"][i % 4]
                   }`}
                 >
                   {p.display_name}
                 </li>
-              ))
-            )}
-          </ul>
+              )}
+            />
+          )}
 
           {error ? (
             <div className="mt-4">

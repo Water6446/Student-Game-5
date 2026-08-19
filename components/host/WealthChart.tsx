@@ -96,6 +96,17 @@ export const WealthChart = memo(function WealthChart({
     return rows;
   }, [players, rounds, allocations, startingWealth, useLogScale]);
 
+  // 100 students is 100 overlapping lines in a 12-colour palette: illegible and
+  // slow. Above the palette size, only the top 8 and bottom 2 by final wealth
+  // keep a colour and a tooltip entry; everyone else becomes quiet ink.
+  const featured = useMemo<Set<string> | null>(() => {
+    if (players.length <= COLORS.length || data.length === 0) return null;
+    const last = data[data.length - 1];
+    const finalOf = (id: string) => Number(last[`${id}_real`] ?? last[id] ?? 0);
+    const ranked = [...players].sort((a, b) => finalOf(b.id) - finalOf(a.id));
+    return new Set([...ranked.slice(0, 8), ...ranked.slice(-2)].map((p) => p.id));
+  }, [players, data]);
+
   if (data.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-xl border-2 border-ink bg-paper-2 font-editorial text-sm italic text-ink-subtle">
@@ -135,6 +146,9 @@ export const WealthChart = memo(function WealthChart({
           <Tooltip
             contentStyle={{ background: "#FFFDF6", border: "2px solid #211A12", borderRadius: 12, fontFamily: "var(--font-mono)" }}
             labelStyle={{ color: "#6B5C40" }}
+            // Only swap in a custom body when there is something to filter out,
+            // so the ordinary chart keeps Recharts' default tooltip exactly.
+            content={featured ? <NamedTooltip players={players} featured={featured} /> : undefined}
             formatter={(value: number, _name: any, item: any) => {
               const realValue = item.payload[`${item.dataKey}_real`];
               const displayVal = realValue !== undefined ? realValue : value;
@@ -142,22 +156,31 @@ export const WealthChart = memo(function WealthChart({
             }}
             labelFormatter={(l) => `Round ${l}`}
           />
-          {players.map((p, i) => (
-            <Line
-              key={p.id}
-              type="monotone"
-              dataKey={p.id}
-              name={p.display_name}
-              stroke={COLORS[i % COLORS.length]}
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false}
-              connectNulls
-            />
-          ))}
+          {players.map((p, i) => {
+            const named = featured == null || featured.has(p.id);
+            return (
+              <Line
+                key={p.id}
+                type="monotone"
+                dataKey={p.id}
+                name={p.display_name}
+                stroke={named ? COLORS[i % COLORS.length] : "#211A12"}
+                strokeOpacity={named ? 1 : 0.12}
+                strokeWidth={2}
+                dot={false}
+                isAnimationActive={false}
+                connectNulls
+              />
+            );
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>
+    {featured ? (
+      <p className="text-center font-editorial text-xs italic text-ink-subtle">
+        Showing the top 8 and bottom 2 by name; the rest are shown in grey.
+      </p>
+    ) : null}
     {!hideToggle && (
       <div className="flex justify-start">
         <Toggle
@@ -174,4 +197,50 @@ export const WealthChart = memo(function WealthChart({
 
 function labelFor(players: PlayerRow[], id: string): string {
   return players.find((p) => p.id === id)?.display_name ?? id;
+}
+
+/**
+ * Tooltip body for the crowded case: the grey "rest of the class" lines carry no
+ * entry, so hovering a 100-player chart lists 10 names instead of 100. Styling
+ * mirrors the default contentStyle/labelStyle above.
+ */
+function NamedTooltip({
+  players,
+  featured,
+  active,
+  payload,
+  label,
+}: {
+  players: PlayerRow[];
+  featured: Set<string>;
+  active?: boolean;
+  payload?: { dataKey?: string | number; value?: number; color?: string; payload?: ChartRow }[];
+  label?: number | string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const rows = payload.filter((e) => featured.has(String(e.dataKey)));
+  if (rows.length === 0) return null;
+  return (
+    <div
+      style={{
+        background: "#FFFDF6",
+        border: "2px solid #211A12",
+        borderRadius: 12,
+        fontFamily: "var(--font-mono)",
+        padding: "10px 12px",
+        fontSize: 12,
+      }}
+    >
+      <div style={{ color: "#6B5C40", marginBottom: 4 }}>Round {label}</div>
+      {rows.map((e) => {
+        const key = String(e.dataKey);
+        const real = e.payload?.[`${key}_real`];
+        return (
+          <div key={key} style={{ color: e.color }}>
+            {labelFor(players, key)} : {money(real !== undefined ? real : e.value ?? 0)}
+          </div>
+        );
+      })}
+    </div>
+  );
 }

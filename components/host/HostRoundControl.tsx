@@ -31,7 +31,7 @@ import {
   submittedHumanCount,
   type LuckStats,
 } from "@/lib/game/results";
-import { condenseRanked } from "@/lib/game/condense";
+import { CondensedList } from "@/components/CondensedList";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { isPortfolio } from "@/lib/game/types";
 import { money, signedPct } from "@/lib/game/format";
@@ -40,6 +40,10 @@ import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
 import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Monitor, Sliders, ChevronDown, Flag, Clover } from "@/components/icons";
+
+// The submitted checklist exists to spot who HASN'T submitted, so pending
+// players sort first and the collapse keeps them in the visible top slice.
+const CHECKLIST_CONDENSE = { top: 5, bottom: 3 };
 
 export function HostRoundControl({
   supabase,
@@ -94,6 +98,13 @@ export function HostRoundControl({
   // submission counter — see submittedHumanCount.
   const humanPlayers = useMemo(() => players.filter((p) => !p.is_bot), [players]);
   const submitted = useMemo(() => submittedHumanCount(players, allocs), [players, allocs]);
+  const checklist = useMemo(
+    () => [
+      ...humanPlayers.filter((p) => !submittedIds.has(p.id)),
+      ...humanPlayers.filter((p) => submittedIds.has(p.id)),
+    ],
+    [humanPlayers, submittedIds],
+  );
   const hasBots = useMemo(() => players.some((p) => p.is_bot), [players]);
   // What the standings / chart / allocations show, honoring the show-bots toggle.
   const visiblePlayers = useMemo(
@@ -108,13 +119,6 @@ export function HostRoundControl({
   const standings = useMemo(
     () => [...visiblePlayers].sort((a, b) => compareStandings(a, b, bust)),
     [visiblePlayers, bust],
-  );
-  // >10 players: top 5 + bottom 3, middle behind an expander
-  const [showAllStandings, setShowAllStandings] = useState(false);
-  const standingItems = useMemo(
-    () =>
-      showAllStandings ? condenseRanked(standings, { threshold: Infinity }) : condenseRanked(standings),
-    [standings, showAllStandings],
   );
   // each player's market sequence, computed once (cheap to read per row)
   const outcomesByPlayer = useMemo(
@@ -349,10 +353,16 @@ export function HostRoundControl({
                 <div className="text-sm font-medium text-ink-muted">submitted</div>
               </div>
               {!isManual ? <OddsDisclosure supabase={supabase} session={session} /> : null}
-              <ul className="grid max-h-44 grid-cols-2 gap-1 overflow-y-auto text-sm">
-                {humanPlayers.map((p) => (
+              <CondensedList
+                items={checklist}
+                keyOf={(p) => p.id}
+                as="ul"
+                options={CHECKLIST_CONDENSE}
+                className="grid grid-cols-2 gap-1 text-sm"
+                gapClassName="font-editorial text-sm italic text-ink-subtle hover:text-ink"
+                toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+                renderItem={(p) => (
                   <li
-                    key={p.id}
                     className={`flex items-center gap-2 rounded px-2 py-1 ${
                       submittedIds.has(p.id) ? "font-medium text-gain" : "text-ink-subtle"
                     }`}
@@ -364,8 +374,8 @@ export function HostRoundControl({
                     )}
                     <span className="truncate">{p.display_name}</span>
                   </li>
-                ))}
-              </ul>
+                )}
+              />
             </>
           )}
 
@@ -521,33 +531,21 @@ export function HostRoundControl({
               vs {Math.round(classLuck.expected * 100)}% expected
             </p>
           ) : null}
-          <ol className="space-y-1">
-            {standingItems.map((c) => {
-              if (c.kind === "gap") {
-                return (
-                  <li key="gap" className="py-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowAllStandings(true)}
-                      className="font-editorial text-sm italic text-ink-subtle transition hover:text-ink"
-                    >
-                      +{c.hidden} more ▾
-                    </button>
-                  </li>
-                );
-              }
-              const p = c.item;
+          <CondensedList
+            items={standings}
+            keyOf={(p) => p.id}
+            className="space-y-1"
+            gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+            toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+            renderItem={(p, index) => {
               const last5 = (
                 (portfolioGame ? deltaChipsByPlayer?.get(p.id) : outcomesByPlayer.get(p.id)) ?? []
               ).slice(-5);
               const rowLuck = luckByPlayer.get(p.id) ?? null;
               return (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2"
-                >
+                <li className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2">
                   <span className="text-ink">
-                    <span className="mr-2 font-mono text-ink-subtle">{c.index + 1}.</span>
+                    <span className="mr-2 font-mono text-ink-subtle">{index + 1}.</span>
                     {p.display_name}
                   </span>
                   <span className="flex items-center gap-3">
@@ -569,19 +567,8 @@ export function HostRoundControl({
                   </span>
                 </li>
               );
-            })}
-          </ol>
-          {showAllStandings && standings.length > 10 ? (
-            <p className="mt-2 text-center">
-              <button
-                type="button"
-                onClick={() => setShowAllStandings(false)}
-                className="font-editorial text-sm italic text-ink-subtle transition hover:text-ink"
-              >
-                Show fewer ▴
-              </button>
-            </p>
-          ) : null}
+            }}
+          />
         </Card>
       </div>
 

@@ -21,7 +21,7 @@ import {
   playerOutcomesMap,
   submittedHumanCount,
 } from "@/lib/game/results";
-import { condenseRanked } from "@/lib/game/condense";
+import { CondensedList } from "@/components/CondensedList";
 import { assetName } from "@/lib/game/portfolio";
 import { isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
 import { money, signedPct } from "@/lib/game/format";
@@ -528,41 +528,24 @@ function Leaderboard({
   outcomesByPlayer: Map<string, ("good" | "bad")[]>;
 }) {
   // >10 players: top 5 + bottom 3, with the middle behind an expander.
-  const [showAll, setShowAll] = useState(false);
-  const items = useMemo(
-    () => (showAll ? condenseRanked(ranked, { threshold: Infinity }) : condenseRanked(ranked)),
-    [ranked, showAll],
-  );
-
   if (ranked.length === 0) {
     return <p className="text-center font-editorial text-xl italic text-ink-subtle">No players yet.</p>;
   }
 
   return (
     <div>
-      <ol className="space-y-2">
-        {items.map((c) => {
-          if (c.kind === "gap") {
-            return (
-              <li key="gap" className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  aria-expanded={false}
-                  className="font-editorial text-lg italic text-ink-subtle transition hover:text-ink"
-                >
-                  +{c.hidden} more players ▾
-                </button>
-              </li>
-            );
-          }
-          const p = c.item;
-          const i = c.index;
+      <CondensedList
+        items={ranked}
+        keyOf={(p) => p.id}
+        moreNoun="players"
+        className="space-y-2"
+        gapClassName="font-editorial text-lg italic text-ink-subtle hover:text-ink"
+        toggleClassName="mt-3 font-editorial text-lg italic text-ink-subtle hover:text-ink"
+        renderItem={(p, i) => {
           const last = outcomesByPlayer.get(p.id)?.at(-1) ?? null;
           const top = i < 3;
           return (
             <li
-              key={p.id}
               className={`flex items-center justify-between gap-3 rounded-2xl border-2 border-ink px-5 py-3 shadow-card ${
                 i === 0 ? "bg-brand-soft" : top ? "bg-surface" : "bg-paper-2"
               }`}
@@ -591,19 +574,8 @@ function Leaderboard({
               </span>
             </li>
           );
-        })}
-      </ol>
-      {showAll && ranked.length > 10 ? (
-        <p className="mt-3 text-center">
-          <button
-            type="button"
-            onClick={() => setShowAll(false)}
-            className="font-editorial text-lg italic text-ink-subtle transition hover:text-ink"
-          >
-            Show fewer ▴
-          </button>
-        </p>
-      ) : null}
+        }}
+      />
     </div>
   );
 }

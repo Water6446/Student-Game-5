@@ -7,6 +7,7 @@ import { submittedHumanCount } from "@/lib/game/results";
 import { portfolioStrategyFraction } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { Bot } from "@/components/icons";
+import { CondensedList } from "@/components/CondensedList";
 
 /**
  * Per-student breakdown of how much each player put at risk this round. Shown to
@@ -115,12 +116,20 @@ export function AllocationsBreakdown({
         <span className="ml-auto">% = share at risk</span>
       </div>
 
-      <ul className="divide-y divide-line">
-        {rows.map((r) => {
+      {/* Sorted biggest gambler first, so the top/bottom split reads as
+          "biggest … smallest" — the same cut the standings use. */}
+      <CondensedList
+        items={rows}
+        keyOf={(r) => r.id}
+        as="ul"
+        className="divide-y divide-line"
+        gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+        toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+        renderItem={(r) => {
           const pct = r.pct == null ? null : Math.round(r.pct * 100);
           const safeVal = r.safe == null ? r.wealth : r.safe;
           return (
-            <li key={r.id} className="flex items-center gap-3 py-2">
+            <li className="flex items-center gap-3 py-2">
               {/* Name + status */}
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 {r.isBot ? (
@@ -158,8 +167,8 @@ export function AllocationsBreakdown({
               </div>
             </li>
           );
-        })}
-      </ul>
+        }}
+      />
     </div>
   );
 }

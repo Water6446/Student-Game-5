@@ -23,6 +23,7 @@ import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/port
 import { isPortfolio } from "@/lib/game/types";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
+import { CondensedList } from "@/components/CondensedList";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { ArrowLeft, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
@@ -91,6 +92,12 @@ export function HostSummary({
         .sort((a, b) => (b.stats?.delta ?? -Infinity) - (a.stats?.delta ?? -Infinity)),
     [visibleResults, expected],
   );
+
+  // An expanded row must survive the list collapsing around it.
+  const openIndices = useMemo(() => {
+    const i = visibleResults.findIndex((r) => r.player.id === openId);
+    return i >= 0 ? [i] : [];
+  }, [visibleResults, openId]);
 
   function downloadCsv() {
     // the CSV always exports EVERYONE, regardless of the bot toggle
@@ -252,13 +259,19 @@ export function HostSummary({
         <Card>
           <h2 className="mb-1 text-xl font-bold text-ink">Final standings</h2>
           <p className="mb-3 text-xs text-ink-subtle">Click a player to see every market they faced.</p>
-          <ol className="space-y-1">
-            {visibleResults.map((r) => {
+          <CondensedList
+            items={visibleResults}
+            keyOf={(r) => r.player.id}
+            keepIndices={openIndices}
+            className="space-y-1"
+            gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+            toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+            renderItem={(r) => {
               const open = openId === r.player.id;
               const good = goodCount(r.outcomes);
               const rowLuck = luckStats(good, r.outcomes.length, expected);
               return (
-                <li key={r.player.id} className="overflow-hidden rounded-lg border border-line bg-paper-2">
+                <li className="overflow-hidden rounded-lg border border-line bg-paper-2">
                   <button
                     type="button"
                     onClick={() => setOpenId(open ? null : r.player.id)}
@@ -325,8 +338,8 @@ export function HostSummary({
                   ) : null}
                 </li>
               );
-            })}
-          </ol>
+            }}
+          />
         </Card>
 
         {/* Round history — collapsed shows a bounded, scrollable window; "Show
@@ -380,12 +393,14 @@ export function HostSummary({
           ) : null}
           .{!independent ? " Everyone faced the same draws." : ""}
         </p>
-        <ol className="space-y-1">
-          {luck.map((l, i) => (
-            <li
-              key={l.id}
-              className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2"
-            >
+        <CondensedList
+          items={luck}
+          keyOf={(l) => l.id}
+          className="space-y-1"
+          gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+          toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+          renderItem={(l, i) => (
+            <li className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2">
               <span className="flex items-center gap-2 text-ink">
                 <span className="flex w-7 justify-center">
                   {i === 0 ? (
@@ -413,8 +428,8 @@ export function HostSummary({
                 </span>
               </span>
             </li>
-          ))}
-        </ol>
+          )}
+        />
       </Card>
 
       {/* Wealth chart */}

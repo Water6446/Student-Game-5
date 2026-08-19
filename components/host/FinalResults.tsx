@@ -3,6 +3,7 @@
 import { goodCount, luckStats, type PlayerResult } from "@/lib/game/results";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Bot, Clover } from "@/components/icons";
+import { CondensedList } from "@/components/CondensedList";
 
 /**
  * What the Allocations panel becomes once the FINAL round is revealed: the last
@@ -35,12 +36,18 @@ export function FinalResults({
         ) : null}
       </div>
 
-      <ul className="divide-y divide-line">
-        {results.map((r) => {
+      <CondensedList
+        items={results}
+        keyOf={(r) => r.player.id}
+        as="ul"
+        className="divide-y divide-line"
+        gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+        toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+        renderItem={(r) => {
           const p = r.player;
           const luck = luckStats(goodCount(r.outcomes), r.outcomes.length, expected);
           return (
-            <li key={p.id} className="flex items-center gap-3 py-2">
+            <li className="flex items-center gap-3 py-2">
               {/* Name + bot marker */}
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 {p.is_bot ? (
@@ -94,8 +101,8 @@ export function FinalResults({
               </span>
             </li>
           );
-        })}
-      </ul>
+        }}
+      />
     </div>
   );
 }

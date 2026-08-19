@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LeaderboardRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
 import { isPortfolio, type MarketOutcome } from "@/lib/game/types";
@@ -11,7 +11,7 @@ import { useRoundPhase } from "@/components/use-round-phase";
 import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
-import { condenseRanked } from "@/lib/game/condense";
+import { CondensedList } from "@/components/CondensedList";
 import { Banner, Button, Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, Lock, Check } from "@/components/icons";
@@ -383,59 +383,34 @@ function Reveal({
  * the gap.
  */
 function StudentBoard({ board }: { board: LeaderboardRow[] }) {
-  const [showAll, setShowAll] = useState(false);
   const myIdx = board.findIndex((r) => r.is_me);
-  const items = showAll
-    ? condenseRanked(board, { threshold: Infinity })
-    : condenseRanked(board, { keepIndices: myIdx >= 0 ? [myIdx] : [] });
+  const keepIndices = useMemo(() => (myIdx >= 0 ? [myIdx] : []), [myIdx]);
 
   return (
     <div>
-      <ol className="space-y-1 text-left">
-        {items.map((c, idx) => {
-          if (c.kind === "gap") {
-            return (
-              <li key={`gap-${idx}`} className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  className="font-editorial text-xs italic text-ink-subtle transition hover:text-ink"
-                >
-                  +{c.hidden} more ▾
-                </button>
-              </li>
-            );
-          }
-          const r = c.item;
-          return (
-            <li
-              key={r.player_id}
-              className={`flex justify-between rounded-lg px-3 py-1.5 text-sm ${
-                r.is_me
-                  ? "bg-play-soft font-semibold text-ink ring-1 ring-play/30"
-                  : "bg-paper-2 text-ink-muted"
-              }`}
-            >
-              <span>
-                {r.rank}. {r.display_name}
-                {r.is_me ? " (you)" : ""}
-              </span>
-              <span className="font-mono">{money(Number(r.current_wealth))}</span>
-            </li>
-          );
-        })}
-      </ol>
-      {showAll && board.length > 10 ? (
-        <p className="mt-1 text-center">
-          <button
-            type="button"
-            onClick={() => setShowAll(false)}
-            className="font-editorial text-xs italic text-ink-subtle transition hover:text-ink"
+      <CondensedList
+        items={board}
+        keyOf={(r) => r.player_id}
+        keepIndices={keepIndices}
+        className="space-y-1 text-left"
+        gapClassName="font-editorial text-xs italic text-ink-subtle hover:text-ink"
+        toggleClassName="mt-1 font-editorial text-xs italic text-ink-subtle hover:text-ink"
+        renderItem={(r) => (
+          <li
+            className={`flex justify-between rounded-lg px-3 py-1.5 text-sm ${
+              r.is_me
+                ? "bg-play-soft font-semibold text-ink ring-1 ring-play/30"
+                : "bg-paper-2 text-ink-muted"
+            }`}
           >
-            Show fewer ▴
-          </button>
-        </p>
-      ) : null}
+            <span>
+              {r.rank}. {r.display_name}
+              {r.is_me ? " (you)" : ""}
+            </span>
+            <span className="font-mono">{money(Number(r.current_wealth))}</span>
+          </li>
+        )}
+      />
     </div>
   );
 }
