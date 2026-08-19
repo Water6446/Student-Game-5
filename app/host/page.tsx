@@ -26,8 +26,8 @@ export default function HostPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <header className="mb-8 flex items-center justify-between">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link
             href="/"

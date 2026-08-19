@@ -245,8 +245,8 @@ export function HostRoundControl({
   );
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <header className="mb-6 flex items-center justify-between">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-y-3">
         <div>
           <Link
             href="/host"
@@ -264,25 +264,29 @@ export function HostRoundControl({
           <Link
             href={`/host/${session.id}/present`}
             target="_blank"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink shadow-card transition hover:border-brand"
+            aria-label="Present — open the projector view in a new tab"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink shadow-card transition hover:border-brand sm:min-h-0 sm:min-w-0"
             title="Open the projector view in a new tab"
           >
-            <Monitor /> Present
+            {/* Below sm the labels drop and the icons carry the meaning — the
+                header has to fit a 375px viewport without wrapping to three rows. */}
+            <Monitor /> <span className="hidden sm:inline">Present</span>
           </Link>
           <button
             type="button"
             onClick={finishEarly}
             disabled={busy}
+            aria-label="Finish early — end the game now and jump to the final summary"
             title="End the game now and jump to the final summary"
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50 sm:min-h-0 sm:min-w-0"
           >
-            <Flag /> Finish early
+            <Flag /> <span className="hidden sm:inline">Finish early</span>
           </button>
           <button
             type="button"
             onClick={deleteSession}
             disabled={busy}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-loss transition hover:bg-loss-soft disabled:opacity-50"
+            className="min-h-[44px] rounded-lg px-3 py-1.5 text-sm font-semibold text-loss transition hover:bg-loss-soft disabled:opacity-50 sm:min-h-0"
           >
             Delete
           </button>
@@ -358,7 +362,7 @@ export function HostRoundControl({
                 keyOf={(p) => p.id}
                 as="ul"
                 options={CHECKLIST_CONDENSE}
-                className="grid grid-cols-2 gap-1 text-sm"
+                className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2"
                 gapClassName="font-editorial text-sm italic text-ink-subtle hover:text-ink"
                 toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
                 renderItem={(p) => (
@@ -543,12 +547,17 @@ export function HostRoundControl({
               ).slice(-5);
               const rowLuck = luckByPlayer.get(p.id) ?? null;
               return (
-                <li className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2">
-                  <span className="text-ink">
+                // Below sm this wraps to two lines — name + money, then luck and
+                // the market chips — instead of overflowing a 375px viewport.
+                <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-paper-2 px-4 py-2">
+                  <span className="min-w-0 flex-1 truncate text-ink">
                     <span className="mr-2 font-mono text-ink-subtle">{index + 1}.</span>
                     {p.display_name}
                   </span>
-                  <span className="flex items-center gap-3">
+                  <span className="order-2 font-mono text-lg font-bold text-gain sm:order-3">
+                    {money(p.current_wealth)}
+                  </span>
+                  <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
                     {rowLuck ? (
                       <span
                         className={`flex items-center gap-1 text-xs ${
@@ -561,9 +570,6 @@ export function HostRoundControl({
                       </span>
                     ) : null}
                     <OutcomeChips outcomes={last5} />
-                    <span className="font-mono text-lg font-bold text-gain">
-                      {money(p.current_wealth)}
-                    </span>
                   </span>
                 </li>
               );

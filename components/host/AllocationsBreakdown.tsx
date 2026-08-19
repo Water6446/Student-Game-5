@@ -155,7 +155,7 @@ export function AllocationsBreakdown({
               </div>
 
               {/* Numbers: % is the hero; exact dollars sit quietly beneath */}
-              <div className="w-[88px] shrink-0 text-right">
+              <div className="w-20 shrink-0 text-right sm:w-[88px]">
                 <div className="font-mono text-sm font-bold text-ink">
                   {pct == null ? "—" : `${pct}%`}
                 </div>

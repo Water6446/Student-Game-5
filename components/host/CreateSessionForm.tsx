@@ -443,7 +443,9 @@ export function CreateSessionForm({
               />
               {customAssets ? (
                 <div className="space-y-2 rounded-xl border-2 border-ink bg-paper-2 p-3 shadow-card">
-                  <div className="grid grid-cols-[1fr_110px_150px] gap-2 text-xs font-bold uppercase tracking-wide text-ink-subtle">
+                  {/* Three columns need ~450px; below sm the fields stack and
+                      carry their own labels instead. */}
+                  <div className="hidden gap-2 text-xs font-bold uppercase tracking-wide text-ink-subtle sm:grid sm:grid-cols-[1fr_110px_150px]">
                     <span>Name</span>
                     <span>Good prob</span>
                     <span>Payoff</span>
@@ -451,12 +453,13 @@ export function CreateSessionForm({
                   {Array.from({ length: n }, (_, i) => {
                     const a = cfg.assets?.[i] ?? {};
                     return (
-                      <div key={i} className="grid grid-cols-[1fr_110px_150px] gap-2">
+                      <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_110px_150px]">
                         <TextInput
                           placeholder={assetName({ ...cfg, assets: null }, i)}
                           value={a.name ?? ""}
                           onChange={(e) => setAsset(i, { name: e.target.value })}
-                          className="px-3 py-2 text-sm"
+                          aria-label={`Name for asset ${i + 1}`}
+                          className="min-w-0 px-3 py-2 text-sm"
                         />
                         <TextInput
                           type="number"
@@ -464,6 +467,7 @@ export function CreateSessionForm({
                           max={1}
                           step={0.05}
                           placeholder={String(cfg.good_prob)}
+                          aria-label={`Good probability for asset ${i + 1}`}
                           value={a.good_prob ?? ""}
                           onChange={(e) =>
                             setAsset(i, {
@@ -471,9 +475,10 @@ export function CreateSessionForm({
                                 e.target.value === "" ? undefined : Number(e.target.value),
                             })
                           }
-                          className="px-3 py-2 text-sm"
+                          className="min-w-0 px-3 py-2 text-sm"
                         />
                         <Select
+                          aria-label={`Payoff mode for asset ${i + 1}`}
                           value={a.payoff_mode ?? ""}
                           onChange={(e) =>
                             setAsset(i, {
@@ -483,7 +488,7 @@ export function CreateSessionForm({
                                   : (e.target.value as AssetConfig["payoff_mode"]),
                             })
                           }
-                          className="px-3 py-2 text-sm"
+                          className="min-w-0 px-3 py-2 text-sm"
                         >
                           <option value="">Game default</option>
                           <option value="moderate">Moderate (1.1)</option>

@@ -93,7 +93,9 @@ export function SessionHistoryTable({
       {/* One scroll container for BOTH axes so the sticky header sticks to it
           (a nested overflow-x box would capture the vertical scroll instead). */}
       <div className={`overflow-auto rounded-xl border-2 border-ink ${scrollClassName ?? ""}`}>
-        <table className="w-full text-sm">
+        {/* min-w keeps six columns readable on a phone by scrolling INSIDE the
+            container instead of squashing them or widening the page. */}
+        <table className="w-full min-w-[32rem] text-sm">
         <thead>
           <tr className="sticky top-0 z-10 bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper">
             <th className="px-2 py-2">Round</th>

@@ -67,7 +67,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Projectable join panel — dark ink block */}
         <div className="flex flex-col items-center rounded-2xl border-2 border-ink bg-ink p-6 text-center text-[#F6EFDD] shadow-lift">
@@ -78,8 +78,12 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
             {session.join_code}
           </p>
 
+          {/* The SVG scales to its wrapper, so the card interior still fits at
+              375px without a second QR size. */}
           <div className="my-6 rounded-2xl border-2 border-ink bg-white p-4 shadow-card">
-            <QRCodeSVG value={link} size={220} fgColor="#211A12" />
+            <div className="w-[180px] sm:w-[220px]">
+              <QRCodeSVG value={link} size={220} fgColor="#211A12" className="h-auto w-full" />
+            </div>
           </div>
 
           <p className="break-all font-editorial italic text-[#F6EFDD]/75">join at {link}</p>

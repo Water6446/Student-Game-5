@@ -37,6 +37,17 @@ export const WealthChart = memo(function WealthChart({
   hideToggle?: boolean;
 }) {
   const [useLogScale, setUseLogScale] = useState(false);
+  // A 72px Y axis eats a fifth of a 375px viewport. Narrow it on phones only —
+  // false on the server and on first paint, so desktop renders unchanged.
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setCompact(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem("wealthChartLogScale");
@@ -117,7 +128,7 @@ export const WealthChart = memo(function WealthChart({
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="h-72 w-full">
+      <div className="h-56 w-full sm:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#211A12" strokeOpacity={0.12} />
@@ -134,7 +145,7 @@ export const WealthChart = memo(function WealthChart({
             stroke="#211A12"
             fontSize={12}
             fontFamily="var(--font-mono)"
-            width={72}
+            width={compact ? 52 : 72}
             tickFormatter={(v: number) => {
               if (Math.abs(v) >= 1_000_000) {
                 const sign = v < 0 ? "-" : "";

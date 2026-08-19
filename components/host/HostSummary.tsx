@@ -140,7 +140,7 @@ export function HostSummary({
   const sigma = totalDraws > 0 ? Math.sqrt((expected * (1 - expected)) / totalDraws) : 0;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link
@@ -274,21 +274,27 @@ export function HostSummary({
               const rowLuck = luckStats(good, r.outcomes.length, expected);
               return (
                 <li className="overflow-hidden rounded-lg border border-line bg-paper-2">
+                  {/* Below sm this wraps to two lines — rank + name + final
+                      wealth, then the stats — instead of overflowing a 375px
+                      viewport with six items on one row. */}
                   <button
                     type="button"
                     onClick={() => setOpenId(open ? null : r.player.id)}
-                    className="flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-line/40"
+                    className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2 text-left transition hover:bg-line/40"
                   >
-                    <span className="flex items-center gap-2 text-ink">
-                      <span className="w-7 text-center font-mono font-bold text-ink-subtle">
+                    <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
+                      <span className="w-7 shrink-0 text-center font-mono font-bold text-ink-subtle">
                         {r.rank}
                       </span>
-                      {r.player.display_name}
+                      <span className="truncate">{r.player.display_name}</span>
                       <ChevronDown
-                        className={`text-ink-subtle transition-transform ${open ? "rotate-180" : ""}`}
+                        className={`shrink-0 text-ink-subtle transition-transform ${open ? "rotate-180" : ""}`}
                       />
                     </span>
-                    <span className="flex items-center gap-3">
+                    <span className="order-2 font-mono text-xl font-black text-ink sm:order-3 sm:text-2xl">
+                      {money(r.finalWealth)}
+                    </span>
+                    <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
                       {independent && rowLuck ? (
                         <span
                           className={`flex items-center gap-1 text-xs ${
@@ -319,9 +325,6 @@ export function HostSummary({
                           {signedPct(r.totalReturn * 100)}
                         </span>
                       ) : null}
-                      <span className="font-mono text-2xl font-black text-ink">
-                        {money(r.finalWealth)}
-                      </span>
                     </span>
                   </button>
                   {open ? (
@@ -411,16 +414,16 @@ export function HostSummary({
           gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           renderItem={(l, i) => (
-            <li className="flex items-center justify-between rounded-lg border border-line bg-paper-2 px-4 py-2">
-              <span className="flex items-center gap-2 text-ink">
-                <span className="flex w-7 justify-center">
+            <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-paper-2 px-4 py-2">
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
+                <span className="flex w-7 shrink-0 justify-center">
                   {i === 0 ? (
                     <Clover className="text-gain" />
                   ) : (
                     <span className="font-mono text-ink-subtle">{i + 1}</span>
                   )}
                 </span>
-                {l.name}
+                <span className="truncate">{l.name}</span>
               </span>
               <span className="flex items-baseline gap-3 text-sm">
                 <span className="text-ink-muted">
