@@ -258,7 +258,9 @@ export function HostSummary({
         {/* Final standings — click a player to see their whole-match outcomes */}
         <Card>
           <h2 className="mb-1 text-xl font-bold text-ink">Final standings</h2>
-          <p className="mb-3 text-xs text-ink-subtle">Click a player to see every market they faced.</p>
+          <p className="mb-3 text-xs text-ink-subtle">
+            S = Sharpe (return per unit of risk). Click a player to see every market they faced.
+          </p>
           <CondensedList
             items={visibleResults}
             keyOf={(r) => r.player.id}
@@ -298,6 +300,15 @@ export function HostSummary({
                           {signedPct(rowLuck.delta * 100)} {rowLuck.delta < 0 ? "unlucky" : "lucky"}
                         </span>
                       ) : null}
+                      {/* Permanent column — matches FinalResults so the two host
+                          panels read identically. The fuller sentence stays in
+                          the expanded panel below. */}
+                      <span
+                        className="shrink-0 font-mono text-xs text-ink-muted"
+                        title="Sharpe ratio — return per unit of risk taken (see MECHANICS.md)"
+                      >
+                        S {sharpeText(r.sharpe)}
+                      </span>
                       {r.totalReturn != null ? (
                         <span
                           className={`font-mono text-xs font-bold ${

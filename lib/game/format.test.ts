@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { signedPct } from "./format";
+import { sharpeText, signedPct } from "./format";
+
+describe("sharpeText", () => {
+  it("renders two decimals", () => {
+    expect(sharpeText(1.238)).toBe("1.24");
+  });
+
+  it("uses U+2212 minus, like signedMoney/signedPct", () => {
+    expect(sharpeText(-0.33)).toBe("−0.33");
+    expect(sharpeText(-0.33)).not.toContain("-"); // never a hyphen-minus
+  });
+
+  it("renders an em dash when undefined (all-safe, or fewer than 2 rounds)", () => {
+    expect(sharpeText(null)).toBe("—");
+  });
+});
 
 describe("signedPct", () => {
   it("signs positive values", () => {

@@ -11,6 +11,7 @@ import {
   sharpeRatio,
   submittedHumanCount,
 } from "./results";
+import { sharpeText } from "./format";
 import { DEFAULT_CONFIG } from "./types";
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
 
@@ -24,6 +25,20 @@ function session(): SessionRow {
     current_round: 3,
     config: { ...DEFAULT_CONFIG, payoff_mode: "extreme", market_scope: "independent" },
     created_at: "",
+  };
+}
+
+/** Portfolio variant: the only game type that carries a risk-free rate. */
+function portfolioSession(riskFree: number): SessionRow {
+  return {
+    ...session(),
+    config: {
+      ...DEFAULT_CONFIG,
+      game_type: "portfolio",
+      num_assets: 2,
+      market_scope: "shared",
+      risk_free_rate: riskFree,
+    },
   };
 }
 
@@ -208,6 +223,101 @@ describe("returns + sharpe on PlayerResult", () => {
     expect(res.perRoundReturn).toBe(-1);
     // returns [0.1, −1] → mean −0.45, popStdev 0.55 → ≈ −0.818
     expect(res.sharpe).toBeCloseTo(-0.45 / 0.55, 10);
+  });
+});
+
+describe("sharpe ratio audit", () => {
+  // Series [0.2, 0, -0.1]: mean 1/30, sum of squared deviations 7/150.
+  // Population variance 7/450 → sd 0.124721…; the SAMPLE answer would use 7/300.
+  const series = [0.2, 0, -0.1];
+
+  it("divides by n (population stdev), not n−1", () => {
+    expect(sharpeRatio(series)!).toBeCloseTo(1 / 30 / Math.sqrt(7 / 450), 12);
+    expect(sharpeRatio(series)!).toBeCloseTo(0.2672612, 6);
+    // the sample-stdev answer is materially different — lock the right one
+    expect(sharpeRatio(series)!).not.toBeCloseTo(1 / 30 / Math.sqrt(7 / 300), 3);
+  });
+
+  it("matches the documented wipeout example: +10% then −100% → ≈ −0.82", () => {
+    // MECHANICS.md § Sharpe ratio: mean −0.45, stdev 0.55
+    expect(sharpeRatio([0.1, -1])!).toBeCloseTo(-0.818, 3);
+  });
+
+  it("portfolio: an all-safe player earning exactly the risk-free rate is '—'", () => {
+    // rf = 2%/round and nothing at risk → every return is exactly 0.02 → no
+    // variance → undefined, not 0.
+    const human = player("stu", 104.04);
+    const rounds = [round("r1", 1), round("r2", 2)];
+    const allocations = [
+      alloc("r1", "stu", 0, 100, "good", 102),
+      alloc("r2", "stu", 0, 102, "good", 104.04),
+    ];
+    const [res] = buildPlayerResults(portfolioSession(0.02), [human], rounds, allocations);
+    expect(res.sharpe).toBeNull();
+    expect(sharpeText(res.sharpe)).toBe("—");
+  });
+
+  it("basic: the config carries no risk_free_rate, so rf is 0", () => {
+    // CreateSessionForm sends risk_free_rate: undefined for basic games, JSON
+    // drops undefined keys, and create_session's defaults never add it.
+    const s = session();
+    expect("risk_free_rate" in s.config).toBe(false);
+
+    const human = player("stu", 108);
+    const rounds = [round("r1", 1), round("r2", 2), round("r3", 3)];
+    const allocations = [
+      alloc("r1", "stu", 100, 0, "good", 120), // +20%
+      alloc("r2", "stu", 0, 120, "bad", 120), // 0%
+      alloc("r3", "stu", 120, 0, "bad", 108), // −10%
+    ];
+    const [res] = buildPlayerResults(s, [human], rounds, allocations);
+    expect(res.wealthByRound).toEqual([120, 120, 108]);
+    // equals sharpeRatio(series, 0); any non-zero rf would shift it
+    expect(res.sharpe).toBeCloseTo(sharpeRatio(series, 0)!, 12);
+  });
+
+  it("a 1-round game is null, not 0", () => {
+    const human = player("stu", 150);
+    const rounds = [round("r1", 1)];
+    const allocations = [alloc("r1", "stu", 50, 50, "good", 150)];
+    const [res] = buildPlayerResults(session(), [human], rounds, allocations);
+    expect(res.wealthByRound).toEqual([150]);
+    expect(res.sharpe).toBeNull();
+  });
+
+  it("a late joiner's missed rounds count as 0% returns", () => {
+    // wealthByRound carries the last value forward, so a round with no
+    // allocation reads as flat and drags the stdev down. Documented behaviour —
+    // asserted so it cannot change silently.
+    const human = player("late", 120);
+    const rounds = [round("r1", 1), round("r2", 2), round("r3", 3)];
+    const allocations = [
+      alloc("r2", "late", 100, 0, "good", 120),
+      alloc("r3", "late", 0, 120, "bad", 120),
+    ];
+    const [res] = buildPlayerResults(session(), [human], rounds, allocations);
+    expect(res.wealthByRound).toEqual([100, 120, 120]);
+    expect(perRoundReturns(100, res.wealthByRound)).toEqual([
+      0,
+      expect.closeTo(0.2, 10),
+      0,
+    ]);
+    expect(res.sharpe).toBeCloseTo(sharpeRatio([0, 0.2, 0])!, 12);
+  });
+
+  it("CSV: blank Sharpe cell for an all-safe player, at a stable column", () => {
+    const human = player("safe", 100);
+    const rounds = [round("r1", 1), round("r2", 2)];
+    const allocations = [
+      alloc("r1", "safe", 0, 100, "bad", 100),
+      alloc("r2", "safe", 0, 100, "bad", 100),
+    ];
+    const results = buildPlayerResults(session(), [human], rounds, allocations);
+    const csv = buildResultsCsv(results, rounds, false, 0.6);
+    const [header, row] = csv.split("\r\n");
+    const h = header.split(",");
+    expect(h.indexOf("Sharpe")).toBe(9);
+    expect(row.split(",")[h.indexOf("Sharpe")]).toBe("");
   });
 });
 

@@ -116,7 +116,8 @@ Sharpe = (mean(rᵢ) − rf) / stdev(rᵢ)
 - **Wipeout**: the −100% round is included, then the series stops (0/0 is
   undefined once wealth is $0). Example: +10% then −100% → mean −0.45,
   stdev 0.55 → Sharpe ≈ **−0.82**.
-- A missed round reads as a 0% return (wealth carries forward).
+- A missed round reads as a 0% return (wealth carries forward) — so a late
+  joiner's leading rounds count as 0% returns and pull their stdev down.
 - Code: `perRoundReturns`, `sharpeRatio` in [lib/game/results.ts](lib/game/results.ts).
 
 ## Correlation ρ (portfolio)
