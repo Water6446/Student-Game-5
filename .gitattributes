@@ -1,0 +1,9 @@
+# Normalise every text file to LF in the repository. Without this, Windows
+# checkouts (core.autocrlf=true) flip whole files between CRLF and LF and every
+# diff becomes unreviewable.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
