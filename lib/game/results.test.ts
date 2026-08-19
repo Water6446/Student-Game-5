@@ -9,6 +9,7 @@ import {
   luckStats,
   perRoundReturns,
   sharpeRatio,
+  submittedHumanCount,
 } from "./results";
 import { DEFAULT_CONFIG } from "./types";
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
@@ -63,6 +64,43 @@ function alloc(
     submitted_at: "",
   };
 }
+
+describe("submittedHumanCount", () => {
+  it("excludes bots from BOTH sides even when they have allocation rows", () => {
+    // resolve_round writes bot rows at reveal, which is what made the counter
+    // read "5 / 1" for one network round-trip after the previous round resolved.
+    const players = [
+      player("stu", 100),
+      player("bot1", 100, "all_safe"),
+      player("bot2", 100, "all_risky"),
+    ];
+    const allocations = [
+      alloc("r1", "stu", 10, 90, "good", 110),
+      alloc("r1", "bot1", 0, 100, "good", 100),
+      alloc("r1", "bot2", 100, 0, "good", 200),
+    ];
+    expect(submittedHumanCount(players, allocations)).toEqual({ submitted: 1, total: 1 });
+  });
+
+  it("counts humans without a row toward the total only", () => {
+    const players = [player("a", 100), player("b", 100), player("c", 100)];
+    const allocations = [alloc("r1", "a", 10, 90, "good", 110)];
+    expect(submittedHumanCount(players, allocations)).toEqual({ submitted: 1, total: 3 });
+  });
+
+  it("never double-counts a player with more than one row", () => {
+    const players = [player("a", 100)];
+    const allocations = [
+      alloc("r1", "a", 10, 90, "good", 110),
+      { ...alloc("r1", "a", 20, 80, "good", 120), id: "dupe" },
+    ];
+    expect(submittedHumanCount(players, allocations)).toEqual({ submitted: 1, total: 1 });
+  });
+
+  it("is 0/0 with no players", () => {
+    expect(submittedHumanCount([], [])).toEqual({ submitted: 0, total: 0 });
+  });
+});
 
 describe("buildPlayerResults riskByRound", () => {
   it("keeps a wiped-out all-risky bot at 100% risk, not 0%", () => {

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { AllocationRow, PlayerRow } from "@/lib/game/db";
 import { strategyFraction } from "@/lib/game/counterfactual";
+import { submittedHumanCount } from "@/lib/game/results";
 import { portfolioStrategyFraction } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { Bot } from "@/components/icons";
@@ -84,8 +85,12 @@ export function AllocationsBreakdown({
       .sort((x, y) => (y.risky ?? -1) - (x.risky ?? -1));
   }, [players, allocations, goodProb, portfolio]);
 
-  const humans = rows.filter((r) => !r.isBot);
-  const submittedHumans = humans.filter((r) => r.submitted).length;
+  // Same "who has actually submitted" rule as both host counters — one helper so
+  // the three surfaces can't drift apart.
+  const { submitted: submittedHumans, total: totalHumans } = useMemo(
+    () => submittedHumanCount(players, allocations),
+    [players, allocations],
+  );
   const totalRisky = rows.reduce((s, r) => s + (r.risky ?? 0), 0);
 
   return (
@@ -93,7 +98,7 @@ export function AllocationsBreakdown({
       <div className="flex items-baseline justify-between">
         <span className="text-sm font-semibold text-ink">Allocations</span>
         <span className="text-xs text-ink-subtle">
-          {submittedHumans}/{humans.length} in · <span className="font-mono">{money(totalRisky)}</span>{" "}
+          {submittedHumans}/{totalHumans} in · <span className="font-mono">{money(totalRisky)}</span>{" "}
           at risk
         </span>
       </div>

@@ -8,18 +8,27 @@ import type { AllocationRow } from "@/lib/game/db";
  * Live allocations for a round. RLS scopes what each caller sees: the host gets
  * every allocation in the round (for the submission counter), while a student
  * gets only their own row. Reused by both.
+ *
+ * The rows are cleared the instant `roundId` changes. Serving the previous
+ * round's rows under the new round is what made the host's submission counter
+ * briefly read "5 / 1": round N-1 is revealed, so it has a row for every player
+ * (bots included), and that set outlived the round change. `loading` lets a
+ * caller render "unknown" instead of a number it cannot trust yet.
  */
 export function useRoundAllocations(
   supabase: SupabaseClient,
   roundId: string | null,
-): AllocationRow[] {
-  const [allocs, setAllocs] = useState<AllocationRow[]>([]);
+): { allocations: AllocationRow[]; loading: boolean } {
+  const [allocations, setAllocs] = useState<AllocationRow[]>([]);
+  const [loading, setLoading] = useState(roundId != null);
 
   useEffect(() => {
+    setAllocs([]);
     if (!roundId) {
-      setAllocs([]);
+      setLoading(false);
       return;
     }
+    setLoading(true);
     let active = true;
 
     supabase
@@ -27,7 +36,17 @@ export function useRoundAllocations(
       .select("*")
       .eq("round_id", roundId)
       .then(({ data }) => {
-        if (active) setAllocs((data as AllocationRow[]) ?? []);
+        if (!active) return;
+        // Merge rather than replace: a realtime row can land before this
+        // initial fetch resolves, and it is the fresher of the two.
+        const fetched = (data as AllocationRow[]) ?? [];
+        setAllocs((prev) => {
+          if (prev.length === 0) return fetched;
+          const byId = new Map(fetched.map((a) => [a.id, a]));
+          for (const a of prev) byId.set(a.id, a);
+          return [...byId.values()];
+        });
+        setLoading(false);
       });
 
     const channel = supabase
@@ -54,5 +73,5 @@ export function useRoundAllocations(
     };
   }, [supabase, roundId]);
 
-  return allocs;
+  return { allocations, loading };
 }

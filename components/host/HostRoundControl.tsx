@@ -28,6 +28,7 @@ import {
   playerDeltaChipsMap,
   playerOutcomesMap,
   portfolioOutcomeMatrix,
+  submittedHumanCount,
   type LuckStats,
 } from "@/lib/game/results";
 import { condenseRanked } from "@/lib/game/condense";
@@ -53,7 +54,10 @@ export function HostRoundControl({
   // What to DISPLAY: gates a stale round row after "Next round" and swallows the
   // transient "locked" state of the one-click auto flow. See use-round-phase.ts.
   const { phase, round } = useRoundPhase(loadedRound, session.current_round);
-  const allocs = useRoundAllocations(supabase, round?.id ?? null);
+  const { allocations: allocs, loading: allocsLoading } = useRoundAllocations(
+    supabase,
+    round?.id ?? null,
+  );
   const history = useSessionHistory(supabase, session.id);
 
   const [busy, setBusy] = useState(false);
@@ -86,8 +90,10 @@ export function HostRoundControl({
   const portfolioGame = isPortfolio(session.config);
   const nAssets = numAssets(session.config);
   const submittedIds = useMemo(() => new Set(allocs.map((a) => a.player_id)), [allocs]);
-  // bots auto-play and never "submit", so they're excluded from the submission counter
+  // bots auto-play and never "submit", so they're excluded from BOTH sides of the
+  // submission counter — see submittedHumanCount.
   const humanPlayers = useMemo(() => players.filter((p) => !p.is_bot), [players]);
+  const submitted = useMemo(() => submittedHumanCount(players, allocs), [players, allocs]);
   const hasBots = useMemo(() => players.some((p) => p.is_bot), [players]);
   // What the standings / chart / allocations show, honoring the show-bots toggle.
   const visiblePlayers = useMemo(
@@ -335,8 +341,10 @@ export function HostRoundControl({
             <>
               <div className="text-center">
                 <div className="font-mono text-6xl font-black text-gain">
-                  {submittedIds.size}
-                  <span className="text-line-strong"> / {humanPlayers.length}</span>
+                  {/* "—" while the fetch is in flight: an unknown numerator is
+                      honest, a stale one is a lie. */}
+                  {allocsLoading ? "—" : submitted.submitted}
+                  <span className="text-line-strong"> / {submitted.total}</span>
                 </div>
                 <div className="text-sm font-medium text-ink-muted">submitted</div>
               </div>

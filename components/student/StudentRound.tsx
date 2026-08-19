@@ -30,7 +30,7 @@ export function StudentRound({
   // What to DISPLAY, not the raw row status: hides round N-1 while the new round
   // loads and swallows the transient lock of the host's one-click auto reveal.
   const { phase, round: liveRound } = useRoundPhase(round, session.current_round);
-  const myAllocs = useRoundAllocations(supabase, liveRound?.id ?? null);
+  const { allocations: myAllocs } = useRoundAllocations(supabase, liveRound?.id ?? null);
   const mine = myAllocs.find((a) => a.player_id === me.id) ?? null;
   const portfolio = isPortfolio(session.config);
   const n = numAssets(session.config);
@@ -234,7 +234,7 @@ function Reveal({
   session: SessionRow;
   me: PlayerRow;
   round: RoundRow;
-  mine: ReturnType<typeof useRoundAllocations>[number] | null;
+  mine: ReturnType<typeof useRoundAllocations>["allocations"][number] | null;
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [board, setBoard] = useState<LeaderboardRow[] | null>(null);

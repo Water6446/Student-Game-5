@@ -65,6 +65,24 @@ export function revealedRounds(rounds: RoundRow[]): RoundRow[] {
     .sort((a, b) => a.round_number - b.round_number);
 }
 
+/**
+ * Human players who have an allocation row this round. Bots never "submit":
+ * resolve_round writes their rows at reveal time, so counting them would show a
+ * full counter the instant the previous round resolved. Non-submitting humans
+ * count toward the total only.
+ */
+export function submittedHumanCount(
+  players: PlayerRow[],
+  allocations: AllocationRow[],
+): { submitted: number; total: number } {
+  const humanIds = new Set(players.filter((p) => !p.is_bot).map((p) => p.id));
+  const submitted = new Set<string>();
+  for (const a of allocations) {
+    if (humanIds.has(a.player_id)) submitted.add(a.player_id);
+  }
+  return { submitted: submitted.size, total: humanIds.size };
+}
+
 /** Count of GOOD outcomes in a sequence. */
 export function goodCount(outcomes: MarketOutcome[]): number {
   return outcomes.reduce((n, o) => (o === "good" ? n + 1 : n), 0);

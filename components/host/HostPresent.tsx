@@ -19,6 +19,7 @@ import {
   compareStandings,
   playerDeltaChipsMap,
   playerOutcomesMap,
+  submittedHumanCount,
 } from "@/lib/game/results";
 import { condenseRanked } from "@/lib/game/condense";
 import { assetName } from "@/lib/game/portfolio";
@@ -162,18 +163,19 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
   const history = useSessionHistory(supabase, session.id);
   // Live allocations for the current round so the "submitted" counter updates the
   // instant a student locks in (history only refetches on round status changes).
-  const allocs = useRoundAllocations(supabase, round?.id ?? null);
+  const { allocations: allocs, loading: allocsLoading } = useRoundAllocations(
+    supabase,
+    round?.id ?? null,
+  );
   // Mirrors the control screen's show/hide-bots toggle across tabs.
   const [showBots] = useShowBots(session.id);
 
-  const humanIds = useMemo(
-    () => new Set(players.filter((p) => !p.is_bot).map((p) => p.id)),
-    [players],
-  );
-  const humanCount = humanIds.size;
-  const submitted = useMemo(
-    () => new Set(allocs.filter((a) => humanIds.has(a.player_id)).map((a) => a.player_id)).size,
-    [allocs, humanIds],
+  // Bots never "submit" — resolve_round writes their rows at reveal time — so
+  // they are excluded from both sides of the counter. Shared with the control
+  // screen so the two surfaces can't drift.
+  const { submitted, total: humanCount } = useMemo(
+    () => submittedHumanCount(players, allocs),
+    [players, allocs],
   );
 
   const visiblePlayers = useMemo(
@@ -244,7 +246,9 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
                 Place your bets
               </p>
               <div className="mt-8 font-mono text-[clamp(4rem,12vw,9rem)] font-black leading-none text-ink">
-                {submitted}
+                {/* "—" while the fetch is in flight: an unknown numerator is
+                    honest, a stale one is a lie. */}
+                {allocsLoading ? "—" : submitted}
                 <span className="text-ink-muted">/{humanCount}</span>
               </div>
               <p className="mt-2 font-display text-2xl font-extrabold uppercase tracking-wide text-ink-muted">
