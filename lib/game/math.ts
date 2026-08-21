@@ -6,6 +6,15 @@
 import type { MarketOutcome, PayoffMode } from "./types";
 
 /**
+ * Round to whole cents. Money in this game is dollars-and-cents, and repeated
+ * multiplication leaves float dust that shows up as $84.38000000000001 in a
+ * field or a CSV cell. The one home for that rounding.
+ */
+export function roundCents(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
  * Risky-asset multiplier for a given payoff mode and market outcome.
  *  - moderate: good x1.1, bad x0.9
  *  - extreme:  good x2,   bad x0

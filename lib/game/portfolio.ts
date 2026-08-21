@@ -2,7 +2,7 @@
 // supabase/migrations/0010_portfolio.sql (resolve_round). Used only for
 // previews, benchmarks/counterfactuals and tests; the SQL is authoritative.
 
-import { riskyMultiplier } from "./math";
+import { riskyMultiplier, roundCents } from "./math";
 import type { MarketOutcome, PayoffMode, SessionConfig } from "./types";
 
 /** Default asset labels: "Asset A", "Asset B", … (overridable per asset). */
@@ -88,10 +88,6 @@ export const PORTFOLIO_STRATEGY_KEYS: PortfolioStrategyKey[] = [
   "diversified",
 ];
 
-function cents(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 /**
  * Split `wealth` evenly across `n` assets in whole cents without ever
  * exceeding it: the first n−1 assets get the rounded share, the LAST asset
@@ -99,12 +95,12 @@ function cents(n: number): number {
  */
 export function equalSplitAmounts(wealth: number, n: number): number[] {
   if (n <= 0 || wealth <= 0) return Array.from({ length: Math.max(n, 0) }, () => 0);
-  let share = cents(wealth / n);
-  let last = cents(wealth - share * (n - 1));
+  let share = roundCents(wealth / n);
+  let last = roundCents(wealth - share * (n - 1));
   if (last < 0) {
     // pathological micro-wealth (rounded share overshoots): floor the share
     share = Math.floor((wealth * 100) / n) / 100;
-    last = cents(wealth - share * (n - 1));
+    last = roundCents(wealth - share * (n - 1));
   }
   return Array.from({ length: n }, (_, i) => (i === n - 1 ? last : share));
 }

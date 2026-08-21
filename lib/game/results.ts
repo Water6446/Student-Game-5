@@ -20,6 +20,7 @@ import {
 } from "./portfolio";
 import type { SessionConfig } from "./types";
 import { toCsv } from "./csv";
+import { roundCents } from "./math";
 
 export interface PlayerResult {
   player: PlayerRow;
@@ -53,10 +54,6 @@ export interface PlayerResult {
   counterfactual?: Record<StrategyKey, number>;
   /** portfolio game only */
   portfolioCounterfactual?: Record<PortfolioStrategyKey, number>;
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 export function revealedRounds(rounds: RoundRow[]): RoundRow[] {
@@ -544,19 +541,19 @@ export function buildResultsCsv(
     const total = res.outcomes.length;
     const perRound = revealed.flatMap((_, i) => {
       const risk = res.riskByRound[i];
-      return [round2(res.wealthByRound[i]), risk == null ? "" : Math.round(risk * 100)];
+      return [roundCents(res.wealthByRound[i]), risk == null ? "" : Math.round(risk * 100)];
     });
     rows.push([
       res.rank,
       res.player.display_name,
-      round2(res.finalWealth),
+      roundCents(res.finalWealth),
       good,
       total,
       total ? Math.round((100 * good) / total) : 0,
-      round2(res.avgBet),
+      roundCents(res.avgBet),
       res.totalReturn == null ? "" : Math.round(res.totalReturn * 1000) / 10,
       res.perRoundReturn == null ? "" : Math.round(res.perRoundReturn * 1000) / 10,
-      res.sharpe == null ? "" : round2(res.sharpe),
+      res.sharpe == null ? "" : roundCents(res.sharpe),
       ...(expectedRate != null
         ? [total ? Math.round((good / total - expectedRate) * 100) : ""]
         : []),

@@ -4,11 +4,7 @@ import { useState } from "react";
 import { clsx } from "@/components/clsx";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { money } from "@/lib/game/format";
-
-/** Round to cents to avoid float dust in the submitted amount. */
-function cents(n: number): number {
-  return Math.round(n * 100) / 100;
-}
+import { roundCents } from "@/lib/game/math";
 
 export function AllocationInput({
   wealth,
@@ -27,7 +23,7 @@ export function AllocationInput({
   // `r` is the numeric stand-in only for laying out the (empty) slider track.
   const has = risky !== null;
   const r = risky ?? 0;
-  const safe = cents(wealth - r);
+  const safe = roundCents(wealth - r);
   const pct = wealth > 0 ? (r / wealth) * 100 : 0;
   const riskyPct = Math.round(pct);
   const safePct = wealth > 0 ? Math.round((safe / wealth) * 100) : 0;
@@ -35,7 +31,7 @@ export function AllocationInput({
   function clamp(n: number): number {
     if (!Number.isFinite(n) || n < 0) return 0;
     if (n > wealth) return wealth;
-    return cents(n);
+    return roundCents(n);
   }
 
   // Arrow keys nudge the risky share by 5% of wealth for the handful of students

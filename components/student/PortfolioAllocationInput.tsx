@@ -4,11 +4,7 @@ import type { SessionConfig } from "@/lib/game/types";
 import { assetName, equalSplitAmounts, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { ArrowDown, ArrowUp } from "@/components/icons";
-
-/** Round to cents to avoid float dust in the submitted amounts. */
-function cents(n: number): number {
-  return Math.round(n * 100) / 100;
-}
+import { roundCents } from "@/lib/game/math";
 
 /**
  * Per-asset allocation for the portfolio game: one $ field per risky asset,
@@ -31,8 +27,8 @@ export function PortfolioAllocationInput({
 }) {
   const n = numAssets(config);
   const values = Array.from({ length: n }, (_, i) => amounts[i] ?? null);
-  const invested = cents(values.reduce<number>((s, a) => s + (a ?? 0), 0));
-  const safe = cents(wealth - invested);
+  const invested = roundCents(values.reduce<number>((s, a) => s + (a ?? 0), 0));
+  const safe = roundCents(wealth - invested);
   const investedPct = wealth > 0 ? Math.round((invested / wealth) * 100) : 0;
   const touched = values.some((a) => a !== null);
   
@@ -47,7 +43,7 @@ export function PortfolioAllocationInput({
     } else {
       const others = values.reduce<number>((s, a, j) => (j === i ? s : s + (a ?? 0)), 0);
       const clamped = Math.max(0, Math.min(Number.isFinite(raw) ? raw : 0, wealth - others));
-      next[i] = cents(clamped);
+      next[i] = roundCents(clamped);
     }
     onChange(next);
   }

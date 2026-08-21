@@ -5,6 +5,7 @@ import {
   riskyMultiplier,
   rollMarket,
   defaultRisky,
+  roundCents,
   InvalidAllocationError,
 } from "./math";
 
@@ -109,5 +110,23 @@ describe("rollMarket", () => {
     for (let i = 0; i < n; i++) if (rollMarket(0.6, lcg) === "good") good++;
     expect(good / n).toBeGreaterThan(0.57);
     expect(good / n).toBeLessThan(0.63);
+  });
+});
+
+describe("roundCents", () => {
+  it("rounds to whole cents", () => {
+    expect(roundCents(84.375)).toBe(84.38);
+    expect(roundCents(84.374)).toBe(84.37);
+    expect(roundCents(100)).toBe(100);
+  });
+
+  it("clears the float dust repeated multiplication leaves behind", () => {
+    expect(roundCents(0.1 + 0.2)).toBe(0.3);
+    expect(roundCents(337.5 / 4)).toBe(84.38);
+  });
+
+  it("keeps the sign of negative amounts", () => {
+    expect(roundCents(-1.005)).toBe(-1);
+    expect(roundCents(-1.006)).toBe(-1.01);
   });
 });

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LeaderboardRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
 import { isPortfolio, type MarketOutcome } from "@/lib/game/types";
-import { riskyMultiplier } from "@/lib/game/math";
+import { riskyMultiplier, roundCents } from "@/lib/game/math";
 import { assetName, assetPayoffMode, numAssets } from "@/lib/game/portfolio";
 import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useRoundPhase } from "@/components/use-round-phase";
@@ -87,11 +87,11 @@ export function StudentRound({
     const { error } = portfolio
       ? await supabase.rpc("submit_portfolio_allocation", {
           p_round_id: liveRound.id,
-          p_amounts: amounts.map((a) => Math.round((a ?? 0) * 100) / 100),
+          p_amounts: amounts.map((a) => roundCents(a ?? 0)),
         })
       : await supabase.rpc("submit_allocation", {
           p_round_id: liveRound.id,
-          p_risky_amount: Math.round((risky ?? 0) * 100) / 100,
+          p_risky_amount: roundCents(risky ?? 0),
         });
     setBusy(false);
     if (error) setError(error.message);
