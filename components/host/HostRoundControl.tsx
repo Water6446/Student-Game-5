@@ -36,7 +36,7 @@ import { LuckChip } from "@/components/LuckChip";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { isPortfolio } from "@/lib/game/types";
 import { money, signedPct } from "@/lib/game/format";
-import { Banner, Button, Card, Kbd } from "@/components/ui";
+import { Banner, Button, Card } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
@@ -71,7 +71,11 @@ export function HostRoundControl({
   const loadedRound = useRound(supabase, session.id, session.current_round);
   // What to DISPLAY: gates a stale round row after "Next round" and swallows the
   // transient "locked" state of the one-click auto flow. See use-round-phase.ts.
-  const { phase, round } = useRoundPhase(loadedRound, session.current_round);
+  const { phase, round, settling } = useRoundPhase(loadedRound, session.current_round, {
+    // Auto mode: one click fires lock_round then resolve_round, so the locked
+    // panel is a transient nobody asked to see.
+    holdLocked: session.config.market_mode === "auto",
+  });
   const { allocations: allocs, loading: allocsLoading } = useRoundAllocations(
     supabase,
     round?.id ?? null,
@@ -228,7 +232,9 @@ export function HostRoundControl({
       : phase === "open"
         ? isManual
           ? { label: "Lock allocations", run: lock, disabled: busy }
-          : { label: "Lock & reveal", run: lockAndReveal, disabled: busy }
+          // `settling` = the row is already locked while we still show the open
+          // panel, so the action must not fire a second time.
+          : { label: "Lock & reveal", run: lockAndReveal, disabled: busy || settling }
         : phase === "locked"
           ? {
               label: "Reveal results",
@@ -391,23 +397,6 @@ export function HostRoundControl({
             </>
           )}
 
-          {/* Discoverability, not a modal — and only the keys that apply right
-              now. Hidden below sm: phones have no keyboard and need the space. */}
-          {primaryReady || canSetMarket ? (
-            <p className="hidden items-center justify-center gap-1.5 text-center font-mono text-xs text-ink-subtle sm:flex">
-              {primaryReady ? (
-                <>
-                  <Kbd>Space</Kbd> — {primaryAction!.label.toLowerCase()}
-                </>
-              ) : null}
-              {primaryReady && canSetMarket ? <span aria-hidden="true">·</span> : null}
-              {canSetMarket ? (
-                <>
-                  <Kbd>G</Kbd> / <Kbd>B</Kbd> — set the market
-                </>
-              ) : null}
-            </p>
-          ) : null}
 
           {error ? <Banner kind="error">{error}</Banner> : null}
 

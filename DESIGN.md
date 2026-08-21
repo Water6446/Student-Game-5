@@ -250,9 +250,6 @@ gets `border-2 border-ink` + `shadow-card` + the press shift.
   ring. Use semantic input `type`/`inputMode`.
 - **`Toggle`** — switch with `role="switch"`; ink `border-2`, track on = `bg-play`
   (blue), knob white with a thin ink border.
-- **`Kbd`** — a keycap for shortcut legends: `border-2 border-ink rounded-lg
-  bg-surface font-mono shadow-kbd` (the card shadow at 2px). Legends are a
-  reminder, never the only way to reach an action.
 - **`Banner`** — `kind`: `error` (loss), `info` (play/blue), `success` (gain);
   `rounded-xl border-2 border-ink shadow-card`, soft-tint fill + matching text,
   `role="alert"`.
@@ -355,8 +352,8 @@ components/CondensedList.tsx      top-N + "+N more" + bottom-M collapse for ever
 components/LuckChip.tsx           signed luck vs the expected GOOD rate (clover + ± percentage)
 components/use-synced-preference.ts  cross-tab preference pattern (localStorage + storage event)
 components/use-show-bots.ts       the bot toggle, built on use-synced-preference
-components/use-round-phase.ts     the round phase a screen should DISPLAY (gates stale rounds, swallows transient locks)
-components/use-hotkeys.ts         window keyboard shortcuts, guarded against typing and browser/OS keys
+components/use-round-phase.ts     the round phase a screen should DISPLAY (gates stale rounds, swallows the auto-mode lock)
+components/use-hotkeys.ts         window keyboard shortcuts, guarded against typing and browser/OS keys (deliberately unadvertised — no legend UI)
 ```
 
 **Starting a new game:** copy `globals.css`, `tailwind.config.ts`, the

@@ -160,7 +160,9 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
   const loadedRound = useRound(supabase, session.id, session.current_round);
   // What to DISPLAY: gates a stale round row after "Next round" and swallows the
   // transient "locked" state of the one-click auto flow. See use-round-phase.ts.
-  const { phase, round } = useRoundPhase(loadedRound, session.current_round);
+  const { phase, round } = useRoundPhase(loadedRound, session.current_round, {
+    holdLocked: session.config.market_mode === "auto",
+  });
   const history = useSessionHistory(supabase, session.id);
   // Live allocations for the current round so the "submitted" counter updates the
   // instant a student locks in (history only refetches on round status changes).

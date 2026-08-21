@@ -124,15 +124,6 @@ export function Toggle({
   );
 }
 
-/** A keycap, for the shortcut legends. The card treatment at a smaller scale. */
-export function Kbd({ children }: { children: ReactNode }) {
-  return (
-    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded-lg border-2 border-ink bg-surface px-1.5 py-0.5 font-mono text-[11px] font-bold text-ink shadow-kbd">
-      {children}
-    </kbd>
-  );
-}
-
 export function Banner({ kind, children }: { kind: "error" | "info" | "success"; children: ReactNode }) {
   const styles = {
     error: "bg-loss-soft text-loss",

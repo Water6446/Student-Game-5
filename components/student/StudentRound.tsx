@@ -30,7 +30,9 @@ export function StudentRound({
 }) {
   // What to DISPLAY, not the raw row status: hides round N-1 while the new round
   // loads and swallows the transient lock of the host's one-click auto reveal.
-  const { phase, round: liveRound } = useRoundPhase(round, session.current_round);
+  const { phase, round: liveRound, settling } = useRoundPhase(round, session.current_round, {
+    holdLocked: session.config.market_mode === "auto",
+  });
   const { allocations: myAllocs } = useRoundAllocations(supabase, liveRound?.id ?? null);
   const mine = myAllocs.find((a) => a.player_id === me.id) ?? null;
   const portfolio = isPortfolio(session.config);
@@ -74,7 +76,10 @@ export function StudentRound({
   // than weakening its typing guard.
   useHotkeys(
     { enter: () => void submit() },
-    { enabled: phase === "open" && touched && !busy, allowWhileTyping: ["enter"] },
+    {
+      enabled: phase === "open" && touched && !busy && !settling,
+      allowWhileTyping: ["enter"],
+    },
   );
 
   async function submit() {
@@ -117,7 +122,14 @@ export function StudentRound({
           />
         )}
         {error ? <Banner kind="error">{error}</Banner> : null}
-        <Button variant="gold" onClick={submit} disabled={busy || !touched} className="w-full text-lg shadow-pop">
+        {/* `settling` = the host has locked the round but we are still showing
+            the open screen, so a submit now would bounce off a locked round. */}
+        <Button
+          variant="gold"
+          onClick={submit}
+          disabled={busy || !touched || settling}
+          className="w-full text-lg shadow-pop"
+        >
           {busy ? "Saving…" : mine ? "Update allocation" : portfolio ? "Lock in my portfolio" : "Lock in my bet"}
         </Button>
         {mine ? (
