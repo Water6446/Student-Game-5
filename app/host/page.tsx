@@ -9,8 +9,9 @@ import { Instructions } from "@/components/Instructions";
 import { Button, Card } from "@/components/ui";
 import { ArrowLeft } from "@/components/icons";
 
-// Off unless explicitly enabled. See .env.example.
-const ALLOW_ANON_HOST = process.env.NEXT_PUBLIC_ALLOW_ANON_HOST === "true";
+// ON unless explicitly disabled. Still in testing — set
+// NEXT_PUBLIC_ALLOW_ANON_HOST=false to turn the bypass off. See .env.example.
+const ALLOW_ANON_HOST = process.env.NEXT_PUBLIC_ALLOW_ANON_HOST !== "false";
 
 export default function HostPage() {
   const { supabase, user, loading } = useSupabaseUser();
@@ -21,8 +22,8 @@ export default function HostPage() {
     );
   }
 
-  // Hosting requires a real, verified account. Anonymous "skip email" sessions
-  // only get through when the testing flag is explicitly on.
+  // Hosting requires a real, verified account — except that anonymous "skip
+  // email" sessions are let through while the testing flag is on (the default).
   if (!user || (isAnonymous(user) && !ALLOW_ANON_HOST)) {
     return <HostSignIn supabase={supabase} />;
   }

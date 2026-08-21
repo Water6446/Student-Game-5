@@ -6,8 +6,9 @@ import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
 import { Instructions } from "@/components/Instructions";
 import { siteUrl } from "@/lib/game/db";
 
-// Off unless explicitly enabled. See .env.example.
-const ALLOW_ANON_HOST = process.env.NEXT_PUBLIC_ALLOW_ANON_HOST === "true";
+// ON unless explicitly disabled. Still in testing — set
+// NEXT_PUBLIC_ALLOW_ANON_HOST=false to turn the bypass off. See .env.example.
+const ALLOW_ANON_HOST = process.env.NEXT_PUBLIC_ALLOW_ANON_HOST !== "false";
 
 export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
   const [email, setEmail] = useState("");
@@ -27,7 +28,7 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
     else setSent(true);
   }
 
-  // Testing only, behind NEXT_PUBLIC_ALLOW_ANON_HOST: skip the email magic link
+  // Testing bypass, behind NEXT_PUBLIC_ALLOW_ANON_HOST: skip the email magic link
   // and sign in anonymously, because Supabase's email quota is rate-limited. The
   // magic-link flow above is the real one and is left fully intact.
   async function skipEmailForTesting() {

@@ -30,10 +30,12 @@ MECHANICS.md instead. Update it whenever a mechanic changes.
 
 - `app/globals.css` body has a tiled-dot background; some headless screenshot
   tools hang on it (renders fine in real browsers).
-- The host **"Skip email — sign in for testing"** bypass is gated behind
-  `NEXT_PUBLIC_ALLOW_ANON_HOST`, which defaults to **off**: with the flag unset,
-  the button is not rendered and anonymous users are bounced off `/host`. Set it
-  to `true` in `.env.local` to test without burning Supabase's email quota.
-  Note the **server** side is still relaxed independently by
-  `supabase/migrations/0008_temp_allow_anon_host.sql`; that needs its own
-  migration before any public deploy.
+- The host **"Skip email — sign in for testing"** bypass is **live and wanted**
+  — the game is still in its testing phase. It sits behind
+  `NEXT_PUBLIC_ALLOW_ANON_HOST`, which defaults to **on**, so the button renders
+  and anonymous hosts reach `/host` without any env setup. Do not remove or
+  disable it without being asked.
+  **Pre-deploy checklist** (two coupled changes, do both):
+  set `NEXT_PUBLIC_ALLOW_ANON_HOST=false`, and add a migration reverting
+  `supabase/migrations/0008_temp_allow_anon_host.sql`, which relaxes the
+  **server** side independently of the flag.
