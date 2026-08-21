@@ -23,6 +23,10 @@ files listed in DESIGN.md §11 and build from the `ui.tsx` primitives.
 
 **[MECHANICS.md](./MECHANICS.md)** is the master reference for how every game
 number works (luck, Sharpe, returns, correlation ρ, counterfactuals, standings).
+
+There are **three game types**: `basic` (one risky bet), `portfolio` (N risky
+assets) and `manager` (active vs. passive — continuous normal returns, fees,
+leverage, and a secret alpha held in `session_secrets`; each round is a year).
 Keep in-UI explanations SHORT — one line max — and put the detailed workings in
 MECHANICS.md instead. Update it whenever a mechanic changes.
 

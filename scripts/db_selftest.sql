@@ -335,4 +335,174 @@ begin
   raise notice 'PASS: extreme/good 50/50 -> 150';
 end $$;
 
+
+-- =============================================================================
+-- MANAGER GAME — the secrecy model. The whole module rests on students being
+-- unable to see alpha, so these are security assertions, not feature tests.
+-- =============================================================================
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select id as m_id, join_code as m_code from public.create_session(
+  '{"game_type":"manager","num_rounds":3,"starting_wealth":100,
+    "show_full_leaderboard_to_students":true}'::jsonb) \gset
+reset role;
+
+select set_config('app.m_id', :'m_id', false);
+
+-- ---- sessions.config must carry NO true parameters --------------------------
+do $$
+declare c text;
+begin
+  select config::text into c from public.sessions where id = current_setting('app.m_id')::uuid;
+  if position('alpha' in c) > 0 then
+    raise exception 'SECURITY FAIL: sessions.config leaks alpha';
+  end if;
+  if position('tracking_error' in c) > 0 then
+    raise exception 'SECURITY FAIL: sessions.config leaks tracking_error';
+  end if;
+  if position('"beta"' in c) > 0 then
+    raise exception 'SECURITY FAIL: sessions.config leaks beta';
+  end if;
+  if position('track_record' in c) = 0 then
+    raise exception 'FAIL: manager config is missing the public track records';
+  end if;
+  raise notice 'PASS: manager config carries public data only';
+end $$;
+
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+select id as m_p1 from public.join_session(:'m_code', 'Alice') \gset
+reset role;
+
+-- ---- NEGATIVE: a student may NOT read session_secrets -----------------------
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+do $$
+begin
+  perform 1 from public.session_secrets;
+  raise exception 'SECURITY FAIL: student read session_secrets';
+exception when others then
+  if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+  raise notice 'PASS: session_secrets is unreadable by students (%)', sqlerrm;
+end $$;
+reset role;
+
+-- ---- NEGATIVE: a student may NOT get the truth mid-game ---------------------
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+do $$
+begin
+  perform public.get_manager_truth(current_setting('app.m_id')::uuid);
+  raise exception 'SECURITY FAIL: student read manager truth before the game ended';
+exception when others then
+  if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+  raise notice 'PASS: get_manager_truth refuses students mid-game (%)', sqlerrm;
+end $$;
+reset role;
+
+-- ---- POSITIVE: the host may read the truth at any status --------------------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+do $$
+declare t jsonb;
+begin
+  t := public.get_manager_truth(current_setting('app.m_id')::uuid);
+  if jsonb_array_length(t->'managers') <> 5 then
+    raise exception 'FAIL: expected 5 managers in the truth, got %',
+      jsonb_array_length(t->'managers');
+  end if;
+  if not (t->'managers'->0 ? 'alpha') then
+    raise exception 'FAIL: manager truth is missing alpha';
+  end if;
+  raise notice 'PASS: host reads manager truth while the game is live';
+end $$;
+reset role;
+
+-- ---- Leverage + fees round-trip through resolve_round -----------------------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select public.start_round(:'m_id');
+reset role;
+
+select current_round as m_r1 from public.sessions where id = :'m_id' \gset
+select id as m_r1_id from public.rounds
+  where session_id = :'m_id' and round_number = :'m_r1' \gset
+
+select set_config('app.m_r1_id', :'m_r1_id', false);
+
+-- Alice levers 1.5x: $150 across the 5 managers on $100 of wealth.
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+select public.submit_manager_allocation(:'m_r1_id', array[30,30,30,30,30]::numeric[]);
+reset role;
+
+-- ---- NEGATIVE: past the leverage cap is rejected ----------------------------
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+do $$
+begin
+  perform public.submit_manager_allocation(
+    current_setting('app.m_r1_id')::uuid, array[100,100,100,0,0]::numeric[]);
+  raise exception 'SECURITY FAIL: allocation above the leverage cap was accepted';
+exception when others then
+  if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+  raise notice 'PASS: leverage cap enforced server-side (%)', sqlerrm;
+end $$;
+reset role;
+
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select public.lock_round(:'m_id', :'m_r1');
+select public.resolve_round(:'m_id', :'m_r1');
+reset role;
+
+select set_config('app.m_p1', :'m_p1', false);
+do $$
+declare a public.allocations%rowtype; r public.rounds%rowtype;
+begin
+  select * into r from public.rounds where id = current_setting('app.m_r1_id')::uuid;
+  if r.market_return is null then
+    raise exception 'FAIL: resolve_round did not write market_return';
+  end if;
+  if jsonb_array_length(r.manager_returns) <> 5 then
+    raise exception 'FAIL: expected 5 manager returns';
+  end if;
+
+  select * into a from public.allocations
+    where round_id = r.id and player_id = current_setting('app.m_p1')::uuid;
+  -- levered 1.5x: safe_amount is NEGATIVE and is the borrowing
+  if a.safe_amount >= 0 then
+    raise exception 'FAIL: levered allocation should carry a negative safe_amount, got %',
+      a.safe_amount;
+  end if;
+  if round(a.risky_amount + a.safe_amount, 4) <> 100 then
+    raise exception 'FAIL: risky + safe must equal starting wealth, got %',
+      a.risky_amount + a.safe_amount;
+  end if;
+  if a.fees_paid is null or a.fees_paid <= 0 then
+    raise exception 'FAIL: a fully invested year must charge management fees, got %',
+      a.fees_paid;
+  end if;
+  raise notice 'PASS: manager year resolved — levered, fee-charged, invariant held';
+end $$;
+
+-- ---- POSITIVE: once finished, students may read the truth -------------------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select public.finish_session(:'m_id');
+reset role;
+
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+do $$
+declare t jsonb;
+begin
+  t := public.get_manager_truth(current_setting('app.m_id')::uuid);
+  if jsonb_array_length(t->'managers') <> 5 then
+    raise exception 'FAIL: finished-game truth is malformed';
+  end if;
+  raise notice 'PASS: students read the manager truth once the game is finished';
+end $$;
+reset role;
+
 select '*** ALL STAGE-1 SELF-TESTS PASSED ***' as result;

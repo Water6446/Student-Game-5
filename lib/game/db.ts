@@ -21,7 +21,9 @@ export interface PlayerRow {
   current_wealth: number;
   is_active: boolean;
   is_bot: boolean;
-  strategy: string | null; // 'all_safe' | 'edge' | 'fifty_fifty' | 'all_risky' for bots
+  // 'all_safe' | 'edge' | 'fifty_fifty' | 'all_risky' | portfolio keys, or
+  // 'index' — the manager game's lone benchmark
+  strategy: string | null;
   joined_at: string;
 }
 
@@ -33,6 +35,10 @@ export interface RoundRow {
   market_outcome: MarketOutcome | null;
   /** portfolio, shared scope: one outcome per asset (written at reveal) */
   market_outcomes?: MarketOutcome[] | null;
+  /** manager game: the year's index return (written at reveal) */
+  market_return?: number | null;
+  /** manager game: [r0..rn-1] GROSS manager returns (written at reveal) */
+  manager_returns?: number[] | null;
   revealed_at: string | null;
 }
 
@@ -48,6 +54,10 @@ export interface AllocationRow {
   risky_breakdown?: number[] | null;
   /** portfolio, independent scope: this player's per-asset outcomes */
   asset_outcomes?: MarketOutcome[] | null;
+  /** manager game: total fees charged this year, in dollars */
+  fees_paid?: number | null;
+  /** manager game: [{mgmt, perf}, ...] dollars per manager */
+  fee_breakdown?: { mgmt: number; perf: number }[] | null;
   resulting_wealth: number | null;
   submitted_at: string;
 }

@@ -12,7 +12,7 @@ import {
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { Button, Banner, Card, Field, Select, TextInput, Toggle } from "@/components/ui";
-import { ArrowLeft, Coins, TrendUp } from "@/components/icons";
+import { ArrowLeft, Coins, TrendUp, Trophy } from "@/components/icons";
 
 // "Base setup": the recommended one-click default per game. The professor's
 // basic game is the extreme 2×/0× payoff with an INDEPENDENT outcome per
@@ -26,6 +26,27 @@ const BASE_SETUP: SessionConfig = {
   market_scope: "independent",
   // The 4 fixed-strategy benchmark students ship on by default so every game
   // has baselines to compare against.
+  add_benchmark_bots: true,
+};
+
+// The manager game: 25 YEARS, a risk-free asset and 5 managers, 2x leverage
+// available, scored against an index you cannot buy. Skill is real but tiny; the
+// defaults are calibrated so the lesson lands without the host touching a dial.
+const MANAGER_BASE_SETUP: SessionConfig = {
+  ...DEFAULT_CONFIG,
+  game_type: "manager",
+  market_scope: "shared",
+  market_mode: "auto",
+  num_rounds: 25,
+  num_managers: 5,
+  market_mean: 0.08,
+  market_sd: 0.16,
+  risk_free_rate: 0.03,
+  borrow_spread: 0.05,
+  leverage_cap: 2,
+  shuffle_skill: true,
+  manager_preset: "default",
+  // one synthetic competitor: 'The Index'
   add_benchmark_bots: true,
 };
 
@@ -79,6 +100,17 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
             ]}
             icon={<TrendUp />}
             onClick={() => setGameType("portfolio")}
+          />
+          <GameCard
+            title="The Manager Game"
+            tagline="Active vs. passive, over a career"
+            lines={[
+              "Each round is a year — hire from 5 fund managers",
+              "Borrow up to 2× if you back your judgement",
+              "Skill is real, tiny, and nearly invisible; fees are not",
+            ]}
+            icon={<Trophy />}
+            onClick={() => setGameType("manager")}
           />
         </div>
       </Card>
@@ -139,8 +171,13 @@ export function CreateSessionForm({
 }) {
   const router = useRouter();
   const portfolio = gameType === "portfolio";
+  const manager = gameType === "manager";
   const [cfg, setCfg] = useState<SessionConfig>(
-    portfolio ? { ...PORTFOLIO_BASE_SETUP } : { ...BASE_SETUP },
+    manager
+      ? { ...MANAGER_BASE_SETUP }
+      : portfolio
+        ? { ...PORTFOLIO_BASE_SETUP }
+        : { ...BASE_SETUP },
   );
   const [advanced, setAdvanced] = useState(false);
   const [customAssets, setCustomAssets] = useState(false);
@@ -202,7 +239,12 @@ export function CreateSessionForm({
             correlation: cfg.correlation ?? 0,
             assets: cleanedAssets,
           }
-        : { num_assets: undefined, risk_free_rate: undefined, correlation: undefined, assets: undefined }),
+        : { num_assets: undefined, correlation: undefined, assets: undefined }),
+      // The manager line-up is built SERVER-side from the preset: alpha never
+      // travels through the client, and the skill shuffle has to happen in the
+      // same transaction that writes session_secrets.
+      ...(manager ? {} : { managers: undefined, num_managers: undefined }),
+      ...(portfolio || manager ? {} : { risk_free_rate: undefined }),
     };
     const { data, error } = await supabase
       .rpc("create_session", { p_config: payload })
@@ -235,7 +277,25 @@ export function CreateSessionForm({
   // tweaked things in advanced mode and then collapsed it).
   const goodPct = Math.round((cfg.good_prob ?? 0.6) * 100);
   const rfPct = Math.round((cfg.risk_free_rate ?? 0) * 100);
-  const summary = portfolio
+  const marketPct = Math.round((cfg.market_mean ?? 0.08) * 100);
+  const sdPct = Math.round((cfg.market_sd ?? 0.16) * 100);
+  const borrowPct = Math.round(
+    ((cfg.risk_free_rate ?? 0.03) + (cfg.borrow_spread ?? 0.05)) * 100,
+  );
+  const summary = manager
+    ? [
+        `Each round is a YEAR — ${cfg.num_rounds} years, ${money(cfg.starting_wealth)} starting wealth`,
+        `Split your wealth across ${cfg.num_managers ?? 5} fund managers and a ${Math.round((cfg.risk_free_rate ?? 0.03) * 100)}% risk-free asset`,
+        `The index returns ${marketPct}%/yr on average, with ${sdPct}% volatility`,
+        (cfg.leverage_cap ?? 2) > 1
+          ? `Students may borrow up to ${cfg.leverage_cap ?? 2}× their wealth at ${borrowPct}%/yr`
+          : "No leverage — students can invest at most their wealth",
+        "Managers charge fees every year, win or lose",
+        cfg.shuffle_skill === false
+          ? "Skill stays with the same manager every session"
+          : "Which manager is genuinely skilled is reshuffled each session",
+      ]
+    : portfolio
     ? [
         `Split your wealth across ${n} risky assets + a safe asset`,
         cfg.payoff_mode === "extreme"
@@ -268,9 +328,11 @@ export function CreateSessionForm({
       ];
   if (cfg.add_benchmark_bots) {
     summary.push(
-      portfolio
-        ? "Game includes four benchmark students: all-safe, one-basket, diversified, and half diversified risky & half safe"
-        : "Plus 4 benchmark students: all-safe, edge, 50/50, all-risky",
+      manager
+        ? "Plus 'The Index' — a passive competitor with no fees that students cannot buy"
+        : portfolio
+          ? "Game includes four benchmark students: all-safe, one-basket, diversified, and half diversified risky & half safe"
+          : "Plus 4 benchmark students: all-safe, edge, 50/50, all-risky",
     );
   }
 
@@ -286,7 +348,7 @@ export function CreateSessionForm({
         </button>
       ) : null}
       <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
-        {portfolio ? "New portfolio session" : "New basic session"}
+        {manager ? "New manager session" : portfolio ? "New portfolio session" : "New basic session"}
       </h2>
       <p className="mt-1 font-editorial text-sm italic text-ink-muted">
         {advanced
@@ -511,13 +573,16 @@ export function CreateSessionForm({
               checked={cfg.show_full_leaderboard_to_students}
               onChange={(v) => set("show_full_leaderboard_to_students", v)}
             />
+            {/* The manager game has no good/bad odds to show. */}
+            {manager ? null : (
+              <Toggle
+                label="Show market odds to students"
+                checked={cfg.show_odds_to_students}
+                onChange={(v) => set("show_odds_to_students", v)}
+              />
+            )}
             <Toggle
-              label="Show market odds to students"
-              checked={cfg.show_odds_to_students}
-              onChange={(v) => set("show_odds_to_students", v)}
-            />
-            <Toggle
-              label="Add 4 benchmark students (bots)"
+              label={manager ? "Add 'The Index' as a competitor" : "Add 4 benchmark students (bots)"}
               checked={cfg.add_benchmark_bots}
               onChange={(v) => set("add_benchmark_bots", v)}
             />
@@ -545,7 +610,15 @@ export function CreateSessionForm({
       )}
 
       <div className="mt-4">
-        <Toggle label="Advanced setup (change all settings)" checked={advanced} onChange={setAdvanced} />
+        {/* The manager game's advanced panel (per-manager beta/alpha/fees) is
+            Stage 5; until then the calibrated default preset is the only setup. */}
+        {manager ? null : (
+          <Toggle
+            label="Advanced setup (change all settings)"
+            checked={advanced}
+            onChange={setAdvanced}
+          />
+        )}
       </div>
 
       {error ? (

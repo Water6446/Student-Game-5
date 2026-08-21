@@ -3,14 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LeaderboardRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
-import { isPortfolio, type MarketOutcome } from "@/lib/game/types";
+import { isManager, isPortfolio, type MarketOutcome } from "@/lib/game/types";
 import { riskyMultiplier, roundCents } from "@/lib/game/math";
 import { assetName, assetPayoffMode, numAssets } from "@/lib/game/portfolio";
+import { amountsFromPercents, numManagers } from "@/lib/game/manager";
 import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useRoundPhase } from "@/components/use-round-phase";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
+import { ManagerAllocationInput } from "@/components/student/ManagerAllocationInput";
+import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
 import { Banner, Button, Card } from "@/components/ui";
@@ -36,22 +39,61 @@ export function StudentRound({
   const { allocations: myAllocs } = useRoundAllocations(supabase, liveRound?.id ?? null);
   const mine = myAllocs.find((a) => a.player_id === me.id) ?? null;
   const portfolio = isPortfolio(session.config);
-  const n = numAssets(session.config);
+  const manager = isManager(session.config);
+  const n = manager ? numManagers(session.config) : numAssets(session.config);
 
   const [risky, setRisky] = useState<number | null>(null);
   const [amounts, setAmounts] = useState<(number | null)[]>([]);
+  const [percents, setPercents] = useState<(number | null)[]>([]);
+  const [seeded, setSeeded] = useState<(number | null)[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Each new round opens blank — never pre-filled and never carrying over the
   // previous round's choice. Students must deliberately enter an amount every
   // round (even to repeat the same number), so the fields stay empty until they do.
+  // The MANAGER game deliberately inverts this: see the seeding effect below.
   useEffect(() => {
     setRisky(null);
     setAmounts(Array.from({ length: n }, () => null));
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id, n]);
+
+  // Manager game: a portfolio you did not touch this year is one you still
+  // hold, so each year opens PRE-FILLED with last year's shares — matching the
+  // server, which carries non-submitters forward instead of defaulting them to
+  // all-safe. Percentages (not dollars) are what persist, which is why the
+  // input works in percent of wealth.
+  useEffect(() => {
+    if (!manager) return;
+    let active = true;
+    supabase
+      .from("allocations")
+      .select("risky_breakdown, risky_amount, safe_amount")
+      .eq("player_id", me.id)
+      .not("risky_breakdown", "is", null)
+      .order("submitted_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (!active) return;
+        const prev = (data ?? [])[0] as
+          | { risky_breakdown: number[] | null; risky_amount: number; safe_amount: number }
+          | undefined;
+        const base = prev ? Number(prev.risky_amount) + Number(prev.safe_amount) : 0;
+        const next =
+          prev?.risky_breakdown && base > 0
+            ? Array.from({ length: n }, (_, i) =>
+                Math.round((Number(prev.risky_breakdown?.[i] ?? 0) / base) * 100),
+              )
+            : Array.from({ length: n }, () => 0);
+        setPercents(next);
+        setSeeded(next);
+      });
+    return () => {
+      active = false;
+    };
+  }, [supabase, manager, me.id, n, liveRound?.id]);
 
   // resolve_round writes an allocation row for EVERY active player, so the
   // reveal always has a result to show — but the rounds UPDATE can land before
@@ -69,7 +111,15 @@ export function StudentRound({
     return () => clearTimeout(t);
   }, [revealPending, liveRound?.id]);
 
-  const touched = portfolio ? amounts.some((a) => a !== null) : risky !== null;
+  // Manager games start pre-filled and stay submittable, so a student can
+  // confirm a held position without re-typing it.
+  const touched = manager
+    ? percents.length > 0
+    : portfolio
+      ? amounts.some((a) => a !== null)
+      : risky !== null;
+  const unchanged =
+    manager && !mine && seeded.length > 0 && percents.every((p, i) => p === seeded[i]);
 
   // Enter submits — and is the one key that must keep working while focus is in
   // an amount field, which is exactly why useHotkeys takes an allow-list rather
@@ -89,15 +139,20 @@ export function StudentRound({
     // All writes go through SECURITY DEFINER RPCs. The server validates the
     // round is open, that this is our own player, bounds every amount, and
     // derives the safe remainder. Students have no direct write grant.
-    const { error } = portfolio
-      ? await supabase.rpc("submit_portfolio_allocation", {
+    const { error } = manager
+      ? await supabase.rpc("submit_manager_allocation", {
           p_round_id: liveRound.id,
-          p_amounts: amounts.map((a) => roundCents(a ?? 0)),
+          p_amounts: amountsFromPercents(me.current_wealth, percents),
         })
-      : await supabase.rpc("submit_allocation", {
-          p_round_id: liveRound.id,
-          p_risky_amount: roundCents(risky ?? 0),
-        });
+      : portfolio
+        ? await supabase.rpc("submit_portfolio_allocation", {
+            p_round_id: liveRound.id,
+            p_amounts: amounts.map((a) => roundCents(a ?? 0)),
+          })
+        : await supabase.rpc("submit_allocation", {
+            p_round_id: liveRound.id,
+            p_risky_amount: roundCents(risky ?? 0),
+          });
     setBusy(false);
     if (error) setError(error.message);
   }
@@ -105,7 +160,15 @@ export function StudentRound({
   if (phase === "open" && liveRound) {
     return (
       <Shell wealth={me.current_wealth} roundNumber={session.current_round} session={session}>
-        {portfolio ? (
+        {manager ? (
+          <ManagerAllocationInput
+            config={session.config}
+            wealth={me.current_wealth}
+            percents={percents}
+            onChange={setPercents}
+            disabled={busy}
+          />
+        ) : portfolio ? (
           <PortfolioAllocationInput
             config={session.config}
             wealth={me.current_wealth}
@@ -130,18 +193,32 @@ export function StudentRound({
           disabled={busy || !touched || settling}
           className="w-full text-lg shadow-pop"
         >
-          {busy ? "Saving…" : mine ? "Update allocation" : portfolio ? "Lock in my portfolio" : "Lock in my bet"}
+          {busy
+            ? "Saving…"
+            : mine
+              ? "Update allocation"
+              : manager
+                ? unchanged
+                  ? "Hold this portfolio"
+                  : "Confirm my portfolio"
+                : portfolio
+                  ? "Lock in my portfolio"
+                  : "Lock in my bet"}
         </Button>
         {mine ? (
           <Banner kind="success">
             Submitted {money(Number(mine.risky_amount))}{" "}
-            {portfolio ? "invested" : "risky"} — you can still edit until it locks.
+            {portfolio || manager ? "invested" : "risky"} — you can still edit until it locks.
           </Banner>
         ) : (
           <p className="text-center font-editorial text-sm italic text-ink-subtle">
-            {portfolio
-              ? "Spread your wealth across the assets, then lock it in."
-              : "Choose how much to put at risk, then lock it in."}
+            {manager
+              ? unchanged
+                ? "Unchanged from last year — you keep this portfolio unless you change it."
+                : "Set your percentages, then confirm."
+              : portfolio
+                ? "Spread your wealth across the assets, then lock it in."
+                : "Choose how much to put at risk, then lock it in."}
           </p>
         )}
       </Shell>
@@ -214,7 +291,8 @@ function Shell({
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
       <div className="mb-4 flex items-center justify-between">
         <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-sm font-bold uppercase text-paper">
-          Round {roundNumber} / {session.config.num_rounds}
+          {isManager(session.config) ? "Year" : "Round"} {roundNumber} /{" "}
+          {session.config.num_rounds}
         </span>
         <span className="text-right">
           <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
@@ -261,6 +339,7 @@ function Reveal({
   const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
 
   const portfolio = isPortfolio(session.config);
+  const manager = isManager(session.config);
   // per-player outcome (independent scope) falls back to the shared round outcome
   const outcome = mine?.market_outcome ?? round.market_outcome;
   // portfolio: this player's per-asset outcomes (own draws or the class-wide ones)
@@ -298,7 +377,7 @@ function Reveal({
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
       {celebrate ? <Confetti /> : null}
       <div className="mb-4 text-center text-sm font-semibold text-ink-muted">
-        Round {round.round_number} / {session.config.num_rounds}
+        {manager ? "Year" : "Round"} {round.round_number} / {session.config.num_rounds}
       </div>
       <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
         <div
@@ -326,6 +405,15 @@ function Reveal({
             </>
           )}
         </div>
+
+        {manager ? (
+          <ManagerYearResult
+            config={session.config}
+            round={round}
+            allocation={mine}
+            startWealth={before}
+          />
+        ) : null}
 
         {portfolio && assetOuts.length > 0 ? (
           <ul className="space-y-1.5 text-left">

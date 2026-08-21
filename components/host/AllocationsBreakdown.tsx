@@ -5,7 +5,7 @@ import type { AllocationRow, PlayerRow } from "@/lib/game/db";
 import { strategyFraction } from "@/lib/game/counterfactual";
 import { submittedHumanCount } from "@/lib/game/results";
 import { portfolioStrategyFraction } from "@/lib/game/portfolio";
-import { money } from "@/lib/game/format";
+import { money, signedMoney } from "@/lib/game/format";
 import { Bot } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 
@@ -21,12 +21,15 @@ export function AllocationsBreakdown({
   allocations,
   goodProb,
   portfolio = false,
+  levered = false,
 }: {
   players: PlayerRow[];
   allocations: AllocationRow[];
   goodProb: number;
   /** portfolio game: bot strategies bet a different fixed share */
   portfolio?: boolean;
+  /** manager game: allocations can exceed 100% of wealth, and safe can go negative */
+  levered?: boolean;
 }) {
   const rows = useMemo(() => {
     const byPlayer = new Map(allocations.map((a) => [a.player_id, a]));
@@ -128,6 +131,10 @@ export function AllocationsBreakdown({
         renderItem={(r) => {
           const pct = r.pct == null ? null : Math.round(r.pct * 100);
           const safeVal = r.safe == null ? r.wealth : r.safe;
+          // The meter tops out at fully invested; anything past that is
+          // borrowed, and says so as a multiple rather than overflowing.
+          const barPct = Math.min(pct ?? 0, 100);
+          const isLevered = levered && pct != null && pct > 100;
           return (
             <li className="flex items-center gap-3 py-2">
               {/* Name + status */}
@@ -149,9 +156,16 @@ export function AllocationsBreakdown({
               </div>
 
               {/* Risk meter — instant read of how aggressive each player is */}
-              <div className="flex h-2.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24">
-                <div className="bg-loss" style={{ width: `${pct ?? 0}%` }} />
-                <div className="bg-gain" style={{ width: `${100 - (pct ?? 0)}%` }} />
+              <div className="flex shrink-0 items-center gap-1">
+                <div className="flex h-2.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24">
+                  <div className="bg-loss" style={{ width: `${barPct}%` }} />
+                  <div className="bg-gain" style={{ width: `${100 - barPct}%` }} />
+                </div>
+                {isLevered ? (
+                  <span className="rounded-full border border-ink bg-ink px-1.5 py-0.5 font-mono text-[10px] font-bold text-paper">
+                    {((pct ?? 0) / 100).toFixed(1)}×
+                  </span>
+                ) : null}
               </div>
 
               {/* Numbers: % is the hero; exact dollars sit quietly beneath */}
@@ -162,7 +176,13 @@ export function AllocationsBreakdown({
                 <div className="font-mono text-[11px] leading-tight text-ink-subtle">
                   <span className="text-loss/90">{r.risky == null ? "—" : money(r.risky)}</span>
                   <span className="text-line-strong"> · </span>
-                  <span className="text-gain/90">{money(safeVal)}</span>
+                  {safeVal < 0 ? (
+                    <span className="font-bold text-loss" title="borrowed">
+                      {signedMoney(safeVal)}
+                    </span>
+                  ) : (
+                    <span className="text-gain/90">{money(safeVal)}</span>
+                  )}
                 </div>
               </div>
             </li>

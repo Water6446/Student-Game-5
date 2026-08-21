@@ -34,7 +34,8 @@ import {
 import { CondensedList } from "@/components/CondensedList";
 import { LuckChip } from "@/components/LuckChip";
 import { assetName, numAssets } from "@/lib/game/portfolio";
-import { isPortfolio } from "@/lib/game/types";
+import { isManager, isPortfolio } from "@/lib/game/types";
+import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { money, signedPct } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
@@ -110,6 +111,9 @@ export function HostRoundControl({
   const isManual = session.config.market_mode === "manual";
   const isLastRound = session.current_round >= session.config.num_rounds;
   const portfolioGame = isPortfolio(session.config);
+  // The manager game has no good/bad draws, so there is nothing to be lucky in
+  // and no odds to tune. Those surfaces are suppressed, not deleted.
+  const managerGame = isManager(session.config);
   const nAssets = numAssets(session.config);
   const submittedIds = useMemo(() => new Set(allocs.map((a) => a.player_id)), [allocs]);
   // bots auto-play and never "submit", so they're excluded from BOTH sides of the
@@ -268,9 +272,14 @@ export function HostRoundControl({
 
   // Standings chips: basic shows each player's own market draws; portfolio has
   // no single outcome per round, so chips read gained/lost that round instead.
+  // The manager game has no per-round market outcome either, so it reuses the
+  // portfolio game's gained/lost chips unchanged.
   const deltaChipsByPlayer = useMemo(
-    () => (portfolioGame ? playerDeltaChipsMap(history.rounds, history.allocations) : null),
-    [portfolioGame, history.rounds, history.allocations],
+    () =>
+      portfolioGame || managerGame
+        ? playerDeltaChipsMap(history.rounds, history.allocations)
+        : null,
+    [portfolioGame, managerGame, history.rounds, history.allocations],
   );
 
   // benchmark GOOD rate per draw (portfolio: mean of per-asset odds)
@@ -280,7 +289,7 @@ export function HostRoundControl({
   // observed GOOD rate minus the benchmark, updated as rounds reveal.
   const luckByPlayer = useMemo(() => {
     const m = new Map<string, LuckStats | null>();
-    if (!independent) return m;
+    if (!independent || managerGame) return m;
     for (const p of players) {
       if (portfolioGame) {
         const { good, total } = goodCountMatrix(
@@ -293,13 +302,29 @@ export function HostRoundControl({
       }
     }
     return m;
-  }, [independent, players, portfolioGame, session, history.rounds, history.allocations, outcomesByPlayer, expected]);
+  }, [independent, managerGame, players, portfolioGame, session, history.rounds, history.allocations, outcomesByPlayer, expected]);
 
   // Shared scope: everyone faces the same draws — one class-level luck line.
   const classLuck = useMemo(
-    () => (independent ? null : classLuckSoFar(session.config, history.rounds)),
-    [independent, session.config, history.rounds],
+    () => (independent || managerGame ? null : classLuckSoFar(session.config, history.rounds)),
+    [independent, managerGame, session.config, history.rounds],
   );
+
+  // The manager game's class line is the market itself: this year's index
+  // return and the annualized rate so far.
+  const marketLine = useMemo(() => {
+    if (!managerGame) return null;
+    const revealed = history.rounds
+      .filter((r) => r.status === "revealed" && r.market_return != null)
+      .sort((a, b) => a.round_number - b.round_number);
+    if (revealed.length === 0) return null;
+    const cum = revealed.reduce((acc, r) => acc * (1 + Number(r.market_return)), 1);
+    return {
+      latest: Number(revealed[revealed.length - 1].market_return),
+      annualized: Math.pow(Math.max(cum, 0), 1 / revealed.length) - 1,
+      years: revealed.length,
+    };
+  }, [managerGame, history.rounds]);
 
   // Full per-player stats for the end-of-game panel (returns, Sharpe, luck),
   // with $0 ties re-ordered by bust round.
@@ -412,7 +437,9 @@ export function HostRoundControl({
                 </div>
                 <div className="text-sm font-medium text-ink-muted">submitted</div>
               </div>
-              {!isManual ? <OddsDisclosure supabase={supabase} session={session} /> : null}
+              {!isManual && !managerGame ? (
+                <OddsDisclosure supabase={supabase} session={session} />
+              ) : null}
               <CondensedList
                 items={checklist}
                 keyOf={(p) => p.id}
@@ -504,14 +531,24 @@ export function HostRoundControl({
                 allocations={allocs}
                 goodProb={session.config.good_prob ?? 0.6}
                 portfolio={portfolioGame}
+                levered={managerGame}
               />
-              {!isManual ? <OddsDisclosure supabase={supabase} session={session} /> : null}
+              {!isManual && !managerGame ? (
+                <OddsDisclosure supabase={supabase} session={session} />
+              ) : null}
             </>
           )}
 
           {phase === "revealed" && (
             <>
-              {portfolioGame && round?.market_outcomes ? (
+              {managerGame && round ? (
+                <ManagerYearResult
+                  config={session.config}
+                  round={round}
+                  allocation={null}
+                  startWealth={0}
+                />
+              ) : portfolioGame && round?.market_outcomes ? (
                 <div className="rounded-xl border-2 border-ink bg-paper-2 p-3 shadow-card">
                   <ul className="grid grid-cols-2 gap-1.5">
                     {round.market_outcomes.map((o, i) => (
@@ -557,6 +594,7 @@ export function HostRoundControl({
                   allocations={allocs}
                   goodProb={session.config.good_prob ?? 0.6}
                   portfolio={portfolioGame}
+                  levered={managerGame}
                 />
               )}
             </>
@@ -572,12 +610,26 @@ export function HostRoundControl({
             {hasBots ? <BotToggle showBots={showBots} onToggle={setShowBots} /> : null}
           </div>
           <p className="mb-3 text-xs text-ink-subtle">
-            {portfolioGame
-              ? "Last 5 rounds per player (up = gained, down = lost)"
-              : "Last 5 markets per player"}
+            {managerGame
+              ? "Last 5 years per player (up = gained, down = lost)"
+              : portfolioGame
+                ? "Last 5 rounds per player (up = gained, down = lost)"
+                : "Last 5 markets per player"}
             {independent ? " · ± = luck vs expected odds" : ""}
             {hasBots && !showBots ? " · bots hidden" : ""}.
           </p>
+          {marketLine ? (
+            <p className="mb-3 font-editorial text-sm italic text-ink-muted">
+              Market: <span className={marketLine.latest >= 0 ? "text-gain" : "text-loss"}>
+                {signedPct(marketLine.latest * 100, 1)}
+              </span>{" "}
+              this year ·{" "}
+              <span className={marketLine.annualized >= 0 ? "text-gain" : "text-loss"}>
+                {signedPct(marketLine.annualized * 100, 1)}
+              </span>
+              /yr over {marketLine.years} year{marketLine.years === 1 ? "" : "s"}
+            </p>
+          ) : null}
           {classLuck ? (
             <p className="mb-3 font-editorial text-sm italic text-ink-muted">
               Markets: {classLuck.good}/{classLuck.total} good ·{" "}
@@ -599,7 +651,9 @@ export function HostRoundControl({
             toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             renderItem={(p, index) => {
               const last5 = (
-                (portfolioGame ? deltaChipsByPlayer?.get(p.id) : outcomesByPlayer.get(p.id)) ?? []
+                (portfolioGame || managerGame
+                  ? deltaChipsByPlayer?.get(p.id)
+                  : outcomesByPlayer.get(p.id)) ?? []
               ).slice(-5);
               const rowLuck = luckByPlayer.get(p.id) ?? null;
               return (
