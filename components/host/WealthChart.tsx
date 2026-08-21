@@ -63,6 +63,17 @@ export const WealthChart = memo(function WealthChart({
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  // The Index bot IS the benchmark: its dashed ghost line is already drawn
+  // from rounds.market_return, which is the exact series the bot compounds. A
+  // second, solid, palette-coloured copy of the same line only duplicated it —
+  // and, worse, toggling bots re-indexed every other player's colour, so the
+  // one student on the chart flipped hue whenever the toggle moved. Solid
+  // lines are for competitors; the benchmark is always and only dashed ink.
+  const linePlayers = useMemo(
+    () => (benchmark ? players.filter((p) => p.strategy !== "index") : players),
+    [players, benchmark],
+  );
+
   const data = useMemo<ChartRow[]>(() => {
     const revealed = rounds
       .filter((r) => r.status === "revealed")
@@ -82,15 +93,15 @@ export const WealthChart = memo(function WealthChart({
     const rows: ChartRow[] = [];
     // Round 0 = everyone at the starting wealth.
     const start: ChartRow = { round: 0 };
-    players.forEach((p) => (start[p.id] = startingWealth));
+    linePlayers.forEach((p) => (start[p.id] = startingWealth));
     if (benchmark) start[BENCHMARK_KEY] = startingWealth;
     rows.push(start);
 
     // carry the last known wealth forward for players missing a round (late join).
-    const last = new Map<string, number>(players.map((p) => [p.id, startingWealth]));
+    const last = new Map<string, number>(linePlayers.map((p) => [p.id, startingWealth]));
     for (let rn = 1; rn <= maxRound; rn++) {
       const row: ChartRow = { round: rn };
-      players.forEach((p) => {
+      linePlayers.forEach((p) => {
         const w = wealth.get(`${rn}:${p.id}`);
         if (w != null) last.set(p.id, w);
         const realVal = last.get(p.id) ?? startingWealth;
@@ -107,18 +118,18 @@ export const WealthChart = memo(function WealthChart({
       rows.push(row);
     }
     return rows;
-  }, [players, rounds, allocations, startingWealth, useLogScale, benchmark]);
+  }, [linePlayers, rounds, allocations, startingWealth, useLogScale, benchmark]);
 
   // 100 students is 100 overlapping lines in a 12-colour palette: illegible and
   // slow. Above the palette size, only the top 8 and bottom 2 by final wealth
   // keep a colour and a tooltip entry; everyone else becomes quiet ink.
   const featured = useMemo<Set<string> | null>(() => {
-    if (players.length <= SERIES_COLORS.length || data.length === 0) return null;
+    if (linePlayers.length <= SERIES_COLORS.length || data.length === 0) return null;
     const last = data[data.length - 1];
     const finalOf = (id: string) => Number(last[`${id}_real`] ?? last[id] ?? 0);
-    const ranked = [...players].sort((a, b) => finalOf(b.id) - finalOf(a.id));
+    const ranked = [...linePlayers].sort((a, b) => finalOf(b.id) - finalOf(a.id));
     return new Set([...ranked.slice(0, 8), ...ranked.slice(-2)].map((p) => p.id));
-  }, [players, data]);
+  }, [linePlayers, data]);
 
   if (data.length === 0) {
     return (
@@ -185,7 +196,7 @@ export const WealthChart = memo(function WealthChart({
               ]}
               labelFormatter={(l) => `Round ${l}`}
             />
-            {players.map((p, i) => {
+            {linePlayers.map((p, i) => {
               const named = featured == null || featured.has(p.id);
               return (
                 <Line

@@ -120,6 +120,31 @@ export function HostSummary({
     };
   }, [session.config, rounds]);
 
+  // ── manager game: the index comparison that replaces the counterfactual ──
+  const managerGame = isManager(session.config);
+  const indexFinal = benchmark?.series.at(-1);
+  const classFees = useMemo(() => sumFees(allocations), [allocations]);
+  // Humans only: The Index must not be counted among the players racing it.
+  const humanResults = useMemo(
+    () => results.filter((r) => !r.player.is_bot),
+    [results],
+  );
+  const medianWealth = useMemo(() => {
+    if (humanResults.length === 0) return session.config.starting_wealth;
+    // results are already sorted by final wealth descending
+    const mid = Math.floor(humanResults.length / 2);
+    return humanResults.length % 2
+      ? humanResults[mid].finalWealth
+      : (humanResults[mid - 1].finalWealth + humanResults[mid].finalWealth) / 2;
+  }, [humanResults, session.config.starting_wealth]);
+  const beatIndex = useMemo(
+    () =>
+      indexFinal == null
+        ? 0
+        : humanResults.filter((r) => r.finalWealth > indexFinal + 1e-9).length,
+    [humanResults, indexFinal],
+  );
+
   function downloadCsv() {
     // the CSV always exports EVERYONE, regardless of the bot toggle
     const csv = buildResultsCsv(
@@ -127,8 +152,8 @@ export function HostSummary({
       rounds,
       portfolio,
       expected,
-      isManager(session.config),
-      benchmark?.series.at(-1),
+      managerGame,
+      indexFinal,
     );
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -181,7 +206,8 @@ export function HostSummary({
             <Trophy className="text-ink" /> Game finished
           </h1>
           <p className="font-editorial italic text-ink-muted">
-            {session.config.num_rounds} rounds · {visibleResults.length} players · started at{" "}
+            {session.config.num_rounds} {managerGame ? "years" : "rounds"} ·{" "}
+            {visibleResults.length} players · started at{" "}
             {money(session.config.starting_wealth)}
             {portfolio && (session.config.correlation ?? 0) > 0
               ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`
@@ -189,9 +215,7 @@ export function HostSummary({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isManager(session.config) ? (
-            <FeeCounter total={sumFees(allocations)} label="Class fees paid" />
-          ) : null}
+          {managerGame ? <FeeCounter total={classFees} label="Class fees paid" /> : null}
           {hasBots ? (
             <BotToggle
               showBots={showBots}
@@ -214,13 +238,58 @@ export function HostSummary({
       </header>
 
       {/* Who was actually skilled — the payoff of the whole module. */}
-      {isManager(session.config) ? (
+      {managerGame ? (
         <div className="mb-6">
           <ManagerReveal supabase={supabase} session={session} rounds={rounds} />
         </div>
       ) : null}
 
+      {/* The class against the index. The strategy counterfactual cannot run
+          here — it replays good/bad draws, and a manager game has none, so every
+          card came out at the starting wealth. This is what replaces it. */}
+      {managerGame ? (
+        <Card className="mb-6">
+          <h2 className="mb-1 text-xl font-bold text-ink">How the class did against the index</h2>
+          <p className="mb-4 text-sm text-ink-muted">
+            The index charges no fees and nobody could buy it. Starting wealth was{" "}
+            {money(session.config.starting_wealth)}.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StrategyCard
+              label="The Index"
+              desc="passive, no fees"
+              value={indexFinal ?? session.config.starting_wealth}
+              tone="slate"
+            />
+            <StrategyCard
+              label="Best student"
+              desc="highest final wealth"
+              value={humanResults[0]?.finalWealth ?? session.config.starting_wealth}
+              tone="emerald"
+            />
+            <StrategyCard
+              label="Class median"
+              desc="the middle student"
+              value={medianWealth}
+              tone="play"
+            />
+            <StrategyCard
+              label="Fees paid"
+              desc="to the managers, in total"
+              value={classFees}
+              tone="loss"
+            />
+          </div>
+          <p className="mt-4 text-sm text-ink">
+            <span className="font-bold text-gain">{beatIndex}</span> of {humanResults.length}{" "}
+            {humanResults.length === 1 ? "player" : "players"} beat the index
+            {indexFinal != null ? ` of ${money(indexFinal)}` : ""}.
+          </p>
+        </Card>
+      ) : null}
+
       {/* Counterfactual */}
+      {managerGame ? null : (
       <Card className="mb-6">
         <h2 className="mb-1 text-xl font-bold text-ink">If everyone had picked one strategy…</h2>
         <p className="mb-4 text-sm text-ink-muted">
@@ -291,6 +360,7 @@ export function HostSummary({
           players beat the all-safe baseline of {money(cf.strategy.all_safe)}.
         </p>
       </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Final standings — click a player to see their whole-match outcomes */}
@@ -417,7 +487,10 @@ export function HostSummary({
         </Card>
       </div>
 
-      {/* Luck — who drew the best markets (independent outcomes) */}
+      {/* Luck — who drew the best markets (independent outcomes). Suppressed for
+          manager games: there are no good/bad draws to be lucky in, so every row
+          would read "no draws". */}
+      {managerGame ? null : (
       <Card className="mt-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-ink">
           <Clover className="text-gain" /> Luck
@@ -475,6 +548,7 @@ export function HostSummary({
           )}
         />
       </Card>
+      )}
 
       {/* Wealth chart */}
       <Card className="mt-6">

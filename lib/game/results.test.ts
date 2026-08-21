@@ -500,3 +500,40 @@ describe("buildResultsCsv — manager game", () => {
     expect(h).toContain("R1 risk %");
   });
 });
+
+describe("manager games have no good/bad draws", () => {
+  it("produces empty outcomes, which makes the strategy counterfactual degenerate", () => {
+    // resolve_round writes market_outcome = null for a manager round — returns
+    // are continuous. So `outcomes` is empty, every strategy replays zero draws,
+    // and all four counterfactual cards come out at the starting wealth. That is
+    // why HostSummary suppresses the card for this game type rather than showing
+    // four identical $100s.
+    const s: SessionRow = {
+      ...session(),
+      config: { ...DEFAULT_CONFIG, game_type: "manager", market_scope: "shared" },
+    };
+    const human = player("stu", 118);
+    const rounds = [
+      { ...round("r1", 1), market_return: 0.1, manager_returns: [0.12] },
+      { ...round("r2", 2), market_return: -0.05, manager_returns: [-0.04] },
+    ];
+    const allocations = [
+      alloc("r1", "stu", 100, 0, "good", 111),
+      alloc("r2", "stu", 111, 0, "good", 118),
+    ];
+    const [res] = buildPlayerResults(s, [human], rounds, allocations);
+
+    expect(res.outcomes).toEqual([]);
+    // every strategy returns the untouched starting wealth
+    const values = Object.values(res.counterfactual ?? {});
+    expect(values).toHaveLength(4);
+    for (const v of values) expect(v).toBe(s.config.starting_wealth);
+    // meanwhile the real wealth series is fine — the game itself works
+    expect(res.wealthByRound).toEqual([111, 118]);
+    expect(res.totalReturn).toBeCloseTo(0.18, 10);
+  });
+
+  it("leaves luck undefined, so the Luck card would read 'no draws'", () => {
+    expect(luckStats(0, 0, 0.6)).toBeNull();
+  });
+});
