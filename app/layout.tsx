@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Hanken_Grotesk, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { COLOR } from "@/lib/design/colors";
 
 // Display: big bold grotesk for headlines, big numbers, button labels and names.
 // "Academy Arcade" — punchy game-show confidence over a finance classroom.
@@ -45,7 +46,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#EBE3D0",
+  themeColor: COLOR.paper,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

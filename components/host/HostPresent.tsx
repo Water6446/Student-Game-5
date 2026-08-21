@@ -22,6 +22,7 @@ import {
   submittedHumanCount,
 } from "@/lib/game/results";
 import { CondensedList } from "@/components/CondensedList";
+import { COLOR } from "@/lib/design/colors";
 import { assetName } from "@/lib/game/portfolio";
 import { isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
 import { money, signedPct } from "@/lib/game/format";
@@ -129,7 +130,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
           {session.join_code}
         </p>
         <div className="mt-8 rounded-3xl border-2 border-ink bg-white p-6 shadow-card">
-          <QRCodeSVG value={link} size={220} fgColor="#211A12" />
+          <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} />
         </div>
         <p className="mt-6 break-all font-editorial text-2xl italic text-paper-inverse/80">
           join from your phone — {link}

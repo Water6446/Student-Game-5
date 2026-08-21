@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -12,16 +12,19 @@ import {
 } from "recharts";
 import type { AllocationRow, PlayerRow, RoundRow } from "@/lib/game/db";
 import { money } from "@/lib/game/format";
-import { memo, useState, useEffect } from "react";
+import { COLOR, SERIES_COLORS } from "@/lib/design/colors";
 import { Toggle } from "@/components/ui";
-
-// Academy Arcade series palette — saturated, ink-legible on warm paper.
-const COLORS = [
-  "#2557E8", "#1F8A4C", "#F0A92B", "#DB3B2B", "#0E7490", "#7C3AED",
-  "#211A12", "#15803D", "#E0961A", "#0891B2", "#9333EA", "#DB2777",
-];
+import { useSyncedPreference } from "@/components/use-synced-preference";
 
 type ChartRow = { round: number } & Record<string, number>;
+
+/** The subset of a Recharts tooltip entry this chart reads. */
+interface TooltipEntry {
+  dataKey?: string | number;
+  value?: number;
+  color?: string;
+  payload?: ChartRow;
+}
 
 export const WealthChart = memo(function WealthChart({
   players,
@@ -36,7 +39,8 @@ export const WealthChart = memo(function WealthChart({
   startingWealth: number;
   hideToggle?: boolean;
 }) {
-  const [useLogScale, setUseLogScale] = useState(false);
+  const [useLogScale, setUseLogScale] = useSyncedPreference("wealthChartLogScale", false);
+
   // A 72px Y axis eats a fifth of a 375px viewport. Narrow it on phones only —
   // false on the server and on first paint, so desktop renders unchanged.
   const [compact, setCompact] = useState(false);
@@ -48,24 +52,6 @@ export const WealthChart = memo(function WealthChart({
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("wealthChartLogScale");
-    if (stored === "true") setUseLogScale(true);
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "wealthChartLogScale") {
-        setUseLogScale(e.newValue === "true");
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  const handleToggle = (v: boolean) => {
-    setUseLogScale(v);
-    localStorage.setItem("wealthChartLogScale", String(v));
-  };
 
   const data = useMemo<ChartRow[]>(() => {
     const revealed = rounds
@@ -111,7 +97,7 @@ export const WealthChart = memo(function WealthChart({
   // slow. Above the palette size, only the top 8 and bottom 2 by final wealth
   // keep a colour and a tooltip entry; everyone else becomes quiet ink.
   const featured = useMemo<Set<string> | null>(() => {
-    if (players.length <= COLORS.length || data.length === 0) return null;
+    if (players.length <= SERIES_COLORS.length || data.length === 0) return null;
     const last = data[data.length - 1];
     const finalOf = (id: string) => Number(last[`${id}_real`] ?? last[id] ?? 0);
     const ranked = [...players].sort((a, b) => finalOf(b.id) - finalOf(a.id));
@@ -131,83 +117,104 @@ export const WealthChart = memo(function WealthChart({
       <div className="h-56 w-full sm:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#211A12" strokeOpacity={0.12} />
-          <XAxis
-            dataKey="round"
-            stroke="#211A12"
-            fontSize={12}
-            fontFamily="var(--font-mono)"
-            label={{ value: "Round", position: "insideBottom", offset: -2, fill: "#6B5C40", fontSize: 12 }}
-          />
-          <YAxis
-            scale={useLogScale ? "log" : "linear"}
-            domain={useLogScale ? ["auto", "auto"] : [0, "auto"]}
-            stroke="#211A12"
-            fontSize={12}
-            fontFamily="var(--font-mono)"
-            width={compact ? 52 : 72}
-            tickFormatter={(v: number) => {
-              if (Math.abs(v) >= 1_000_000) {
-                const sign = v < 0 ? "-" : "";
-                return sign + "$" + Math.abs(v).toExponential(1);
-              }
-              return money(v);
-            }}
-          />
-          <Tooltip
-            contentStyle={{ background: "#FFFDF6", border: "2px solid #211A12", borderRadius: 12, fontFamily: "var(--font-mono)" }}
-            labelStyle={{ color: "#6B5C40" }}
-            // Only swap in a custom body when there is something to filter out,
-            // so the ordinary chart keeps Recharts' default tooltip exactly.
-            content={featured ? <NamedTooltip players={players} featured={featured} /> : undefined}
-            formatter={(value: number, _name: any, item: any) => {
-              const realValue = item.payload[`${item.dataKey}_real`];
-              const displayVal = realValue !== undefined ? realValue : value;
-              return [money(displayVal), labelFor(players, item?.dataKey as string)];
-            }}
-            labelFormatter={(l) => `Round ${l}`}
-          />
-          {players.map((p, i) => {
-            const named = featured == null || featured.has(p.id);
-            return (
-              <Line
-                key={p.id}
-                type="monotone"
-                dataKey={p.id}
-                name={p.display_name}
-                stroke={named ? COLORS[i % COLORS.length] : "#211A12"}
-                strokeOpacity={named ? 1 : 0.12}
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-                connectNulls
-              />
-            );
-          })}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-    {featured ? (
-      <p className="text-center font-editorial text-xs italic text-ink-subtle">
-        Showing the top 8 and bottom 2 by name; the rest are shown in grey.
-      </p>
-    ) : null}
-    {!hideToggle && (
-      <div className="flex justify-start">
-        <Toggle
-          label="Log scale"
-          checked={useLogScale}
-          onChange={handleToggle}
-          className="w-auto gap-4"
-        />
+            <CartesianGrid strokeDasharray="3 3" stroke={COLOR.ink} strokeOpacity={0.12} />
+            <XAxis
+              dataKey="round"
+              stroke={COLOR.ink}
+              fontSize={12}
+              fontFamily="var(--font-mono)"
+              label={{
+                value: "Round",
+                position: "insideBottom",
+                offset: -2,
+                fill: COLOR.inkMuted,
+                fontSize: 12,
+              }}
+            />
+            <YAxis
+              scale={useLogScale ? "log" : "linear"}
+              domain={useLogScale ? ["auto", "auto"] : [0, "auto"]}
+              stroke={COLOR.ink}
+              fontSize={12}
+              fontFamily="var(--font-mono)"
+              width={compact ? 52 : 72}
+              tickFormatter={(v: number) => {
+                if (Math.abs(v) >= 1_000_000) {
+                  const sign = v < 0 ? "-" : "";
+                  return sign + "$" + Math.abs(v).toExponential(1);
+                }
+                return money(v);
+              }}
+            />
+            <Tooltip
+              contentStyle={{
+                background: COLOR.surface,
+                border: TOOLTIP_BORDER,
+                borderRadius: 12,
+                fontFamily: "var(--font-mono)",
+              }}
+              labelStyle={{ color: COLOR.inkMuted }}
+              // Only swap in a custom body when there is something to filter out,
+              // so an ordinary chart keeps the default Recharts tooltip exactly.
+              content={featured ? <NamedTooltip players={players} featured={featured} /> : undefined}
+              formatter={(value: number, _name: string, item: TooltipEntry) => [
+                money(realValueOf(item, value)),
+                labelFor(players, String(item.dataKey)),
+              ]}
+              labelFormatter={(l) => `Round ${l}`}
+            />
+            {players.map((p, i) => {
+              const named = featured == null || featured.has(p.id);
+              return (
+                <Line
+                  key={p.id}
+                  type="monotone"
+                  dataKey={p.id}
+                  name={p.display_name}
+                  stroke={named ? SERIES_COLORS[i % SERIES_COLORS.length] : COLOR.ink}
+                  strokeOpacity={named ? 1 : 0.12}
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={false}
+                  connectNulls
+                />
+              );
+            })}
+          </LineChart>
+        </ResponsiveContainer>
       </div>
-    )}
+
+      {featured ? (
+        <p className="text-center font-editorial text-xs italic text-ink-subtle">
+          Showing the top 8 and bottom 2 by name; the rest are shown in grey.
+        </p>
+      ) : null}
+
+      {!hideToggle ? (
+        <div className="flex justify-start">
+          <Toggle
+            label="Log scale"
+            checked={useLogScale}
+            onChange={setUseLogScale}
+            className="w-auto gap-4"
+          />
+        </div>
+      ) : null}
     </div>
   );
 });
 
+/** Recharts needs a real colour string here, not a Tailwind class. */
+const TOOLTIP_BORDER = "2px solid " + COLOR.ink;
+
 function labelFor(players: PlayerRow[], id: string): string {
   return players.find((p) => p.id === id)?.display_name ?? id;
+}
+
+/** The plotted value is clamped for the log scale; the tooltip shows the real one. */
+function realValueOf(item: TooltipEntry, fallback: number): number {
+  const real = item.payload?.[`${String(item.dataKey)}_real`];
+  return real !== undefined ? real : fallback;
 }
 
 /**
@@ -225,7 +232,7 @@ function NamedTooltip({
   players: PlayerRow[];
   featured: Set<string>;
   active?: boolean;
-  payload?: { dataKey?: string | number; value?: number; color?: string; payload?: ChartRow }[];
+  payload?: TooltipEntry[];
   label?: number | string;
 }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -234,24 +241,20 @@ function NamedTooltip({
   return (
     <div
       style={{
-        background: "#FFFDF6",
-        border: "2px solid #211A12",
+        background: COLOR.surface,
+        border: TOOLTIP_BORDER,
         borderRadius: 12,
         fontFamily: "var(--font-mono)",
         padding: "10px 12px",
         fontSize: 12,
       }}
     >
-      <div style={{ color: "#6B5C40", marginBottom: 4 }}>Round {label}</div>
-      {rows.map((e) => {
-        const key = String(e.dataKey);
-        const real = e.payload?.[`${key}_real`];
-        return (
-          <div key={key} style={{ color: e.color }}>
-            {labelFor(players, key)} : {money(real !== undefined ? real : e.value ?? 0)}
-          </div>
-        );
-      })}
+      <div style={{ color: COLOR.inkMuted, marginBottom: 4 }}>Round {label}</div>
+      {rows.map((e) => (
+        <div key={String(e.dataKey)} style={{ color: e.color }}>
+          {labelFor(players, String(e.dataKey))} : {money(realValueOf(e, e.value ?? 0))}
+        </div>
+      ))}
     </div>
   );
 }

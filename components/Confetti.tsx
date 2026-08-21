@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 
+import { CONFETTI_COLORS } from "@/lib/design/colors";
+
 // Lightweight, dependency-free celebratory confetti. Pure CSS animation; hidden
 // automatically under prefers-reduced-motion (see globals.css). Render it only
 // when you want the burst (e.g. a GOOD market reveal or the finish screen).
-const COLORS = ["#F0A92B", "#2557E8", "#FFFDF6", "#1F8A4C", "#DB3B2B", "#211A12"];
 
 export function Confetti({ count = 70 }: { count?: number }) {
   const pieces = useMemo(
@@ -14,7 +15,7 @@ export function Confetti({ count = 70 }: { count?: number }) {
         left: Math.random() * 100,
         delay: Math.random() * 0.6,
         duration: 2 + Math.random() * 1.5,
-        color: COLORS[i % COLORS.length],
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
         rotate: Math.random() * 360,
         scale: 0.7 + Math.random() * 0.8,
       })),

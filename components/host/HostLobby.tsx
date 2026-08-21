@@ -11,6 +11,7 @@ import { usePlayers } from "@/components/use-players";
 import { Banner, Button, Card } from "@/components/ui";
 import { Users, Monitor } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
+import { COLOR } from "@/lib/design/colors";
 
 // The lobby is a live roster, not a ranking, so every name stays visible until
 // the list is long enough that ~100 animated rows become a real jank source.
@@ -82,7 +83,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               375px without a second QR size. */}
           <div className="my-6 rounded-2xl border-2 border-ink bg-white p-4 shadow-card">
             <div className="w-[180px] sm:w-[220px]">
-              <QRCodeSVG value={link} size={220} fgColor="#211A12" className="h-auto w-full" />
+              <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} className="h-auto w-full" />
             </div>
           </div>
 

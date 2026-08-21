@@ -349,10 +349,12 @@ app/layout.tsx           next/font wiring (Archivo / Hanken Grotesk / Fraunces i
 components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti
+lib/design/colors.ts      the tokens as literal colour strings, for Recharts and inline styles
 components/host/HostPresent.tsx   projector/present-mode reference implementation
 components/CondensedList.tsx      top-N + "+N more" + bottom-M collapse for every player list
 components/LuckChip.tsx           signed luck vs the expected GOOD rate (clover + ± percentage)
-components/use-show-bots.ts       cross-tab preference pattern (localStorage + storage event)
+components/use-synced-preference.ts  cross-tab preference pattern (localStorage + storage event)
+components/use-show-bots.ts       the bot toggle, built on use-synced-preference
 components/use-round-phase.ts     the round phase a screen should DISPLAY (gates stale rounds, swallows transient locks)
 components/use-hotkeys.ts         window keyboard shortcuts, guarded against typing and browser/OS keys
 ```
