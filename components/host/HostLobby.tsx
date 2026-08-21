@@ -11,6 +11,8 @@ import { usePlayers } from "@/components/use-players";
 import { Banner, Button, Card } from "@/components/ui";
 import { Users, Monitor } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
+import { ManagerProspectus } from "@/components/ManagerProspectus";
+import { isManager } from "@/lib/game/types";
 import { COLOR } from "@/lib/design/colors";
 
 // The lobby is a live roster, not a ranking, so every name stays visible until
@@ -172,6 +174,18 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
           </div>
         </Card>
       </div>
+
+      {isManager(session.config) ? (
+        <div className="mt-8">
+          <h2 className="mb-1 font-display text-xl font-extrabold uppercase tracking-tight text-ink">
+            The manager line-up
+          </h2>
+          <p className="mb-3 font-editorial text-sm italic text-ink-muted">
+            What your students see before they hire. Regenerated for every session.
+          </p>
+          <ManagerProspectus config={session.config} />
+        </div>
+      ) : null}
     </main>
   );
 }

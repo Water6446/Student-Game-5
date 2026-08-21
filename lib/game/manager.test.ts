@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   amountsFromPercents,
+  annualizedReturn,
   borrowRate,
   indexSeries,
   informationRatio,
@@ -181,5 +182,30 @@ describe("indexSeries as the ghost line", () => {
     for (const r of market) bot = bot * (1 + r);
     expect(line[line.length - 1]).toBeCloseTo(bot, 10);
     expect(line).toHaveLength(market.length);
+  });
+});
+
+describe("annualizedReturn — the prospectus figures", () => {
+  it("is the geometric rate that compounds to the path", () => {
+    expect(annualizedReturn([0.1, 0.1])).toBeCloseTo(0.1, 12);
+    expect(annualizedReturn([0.21, 0])!).toBeCloseTo(Math.sqrt(1.21) - 1, 12);
+  });
+
+  it("derives the 5-year figure from the LAST FIVE years, not all ten", () => {
+    // The single most likely number to get wrong: a 10-year path whose first
+    // half is terrible and second half is good must show a GOOD 5-year figure.
+    const yearly = [-0.3, -0.3, -0.3, -0.3, -0.3, 0.2, 0.2, 0.2, 0.2, 0.2];
+    expect(annualizedReturn(yearly.slice(-5))).toBeCloseTo(0.2, 12);
+    expect(annualizedReturn(yearly)).toBeLessThan(0);
+    // and the 1-year figure is the last entry, untouched
+    expect(yearly[yearly.length - 1]).toBeCloseTo(0.2, 12);
+  });
+
+  it("survives a catastrophic year instead of returning NaN", () => {
+    expect(Number.isFinite(annualizedReturn([-1.5, 0.1])!)).toBe(true);
+  });
+
+  it("is null for an empty path", () => {
+    expect(annualizedReturn([])).toBeNull();
   });
 });

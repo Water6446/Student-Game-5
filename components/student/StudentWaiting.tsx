@@ -6,6 +6,8 @@ import type { PlayerRow, SessionRow } from "@/lib/game/db";
 import { Banner, Button, Card, TextInput } from "@/components/ui";
 import { money } from "@/lib/game/format";
 import { Sparkle } from "@/components/icons";
+import { isManager } from "@/lib/game/types";
+import { ManagerProspectus } from "@/components/ManagerProspectus";
 
 export function StudentWaiting({
   supabase,
@@ -31,8 +33,14 @@ export function StudentWaiting({
     else setEditing(false);
   }
 
+  const manager = isManager(session.config);
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-6">
+    <main
+      className={`mx-auto flex min-h-dvh flex-col justify-center px-6 ${
+        manager ? "max-w-2xl py-8" : "max-w-lg"
+      }`}
+    >
       <Card className="animate-pop-in text-center">
         <div className="mx-auto flex h-16 w-16 animate-pulse-soft items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Sparkle />
@@ -91,12 +99,28 @@ export function StudentWaiting({
           Waiting for the professor to start the game…
         </p>
         <p className="mt-1 font-mono text-xs text-ink-subtle">
-          {session.config.num_rounds} rounds · {session.config.payoff_mode} payoffs
+          {manager
+            ? `${session.config.num_rounds} years · ${session.config.num_managers ?? 5} managers`
+            : `${session.config.num_rounds} rounds · ${session.config.payoff_mode} payoffs`}
           {(session.config.correlation ?? 0) > 0
             ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`
             : ""}
         </p>
       </Card>
+
+      {/* The lobby is the "read the prospectuses before the game starts" moment
+          — it is the only time a student can study the line-up unhurried. */}
+      {manager ? (
+        <div className="mt-6">
+          <h2 className="mb-1 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+            Who will you hire?
+          </h2>
+          <p className="mb-3 font-editorial text-sm italic text-ink-muted">
+            Read the prospectuses. Every figure below is net of fees.
+          </p>
+          <ManagerProspectus config={session.config} />
+        </div>
+      ) : null}
     </main>
   );
 }
