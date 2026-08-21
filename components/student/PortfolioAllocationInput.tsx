@@ -31,7 +31,7 @@ export function PortfolioAllocationInput({
   const safe = roundCents(wealth - invested);
   const investedPct = wealth > 0 ? Math.round((invested / wealth) * 100) : 0;
   const touched = values.some((a) => a !== null);
-  
+
   const customOdds = (config.assets ?? []).some((a) => a?.good_prob != null);
   const showPerAssetOdds = config.show_odds_to_students && config.market_mode === "auto" && customOdds;
 
@@ -95,7 +95,7 @@ export function PortfolioAllocationInput({
           const pct = wealth > 0 && v != null ? Math.round((v / wealth) * 100) : null;
           const prob = config.assets?.[i]?.good_prob ?? config.good_prob ?? 0.6;
           const goodPct = Math.round(prob * 100);
-          
+
           return (
             <li key={i} className="flex items-center gap-2">
               <div className="w-32 shrink-0 flex flex-col justify-center">
