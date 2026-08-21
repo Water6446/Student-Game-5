@@ -32,6 +32,7 @@ import {
   type LuckStats,
 } from "@/lib/game/results";
 import { CondensedList } from "@/components/CondensedList";
+import { LuckChip } from "@/components/LuckChip";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { isPortfolio } from "@/lib/game/types";
 import { money, signedPct } from "@/lib/game/format";
@@ -40,7 +41,19 @@ import { useHotkeys } from "@/components/use-hotkeys";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
-import { ArrowLeft, ArrowUp, ArrowDown, Lock, Check, ArrowRight, Shuffle, Monitor, Sliders, ChevronDown, Flag, Clover } from "@/components/icons";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  Flag,
+  Lock,
+  Monitor,
+  Shuffle,
+  Sliders,
+} from "@/components/icons";
 
 // The submitted checklist exists to spot who HASN'T submitted, so pending
 // players sort first and the collapse keeps them in the visible top slice.
@@ -612,17 +625,7 @@ export function HostRoundControl({
                     {money(p.current_wealth)}
                   </span>
                   <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
-                    {rowLuck ? (
-                      <span
-                        className={`flex items-center gap-1 text-xs ${
-                          rowLuck.delta > 0 ? "text-gain" : rowLuck.delta < 0 ? "text-loss" : "text-ink-muted"
-                        }`}
-                        title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
-                      >
-                        <Clover className={rowLuck.delta >= 0 ? "text-gain" : "text-loss"} />
-                        {signedPct(rowLuck.delta * 100)}
-                      </span>
-                    ) : null}
+                    <LuckChip luck={rowLuck} expected={expected} />
                     <OutcomeChips outcomes={last5} />
                   </span>
                 </li>

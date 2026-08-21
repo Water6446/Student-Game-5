@@ -2,8 +2,9 @@
 
 import { goodCount, luckStats, type PlayerResult } from "@/lib/game/results";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
-import { Bot, Clover } from "@/components/icons";
+import { Bot } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
+import { LuckChip } from "@/components/LuckChip";
 
 /**
  * What the Allocations panel becomes once the FINAL round is revealed: the last
@@ -61,17 +62,7 @@ export function FinalResults({
                 <span className="truncate text-sm text-ink">{p.display_name}</span>
               </div>
 
-              {independent && luck ? (
-                <span
-                  className={`flex shrink-0 items-center gap-1 text-xs ${
-                    luck.delta > 0 ? "text-gain" : luck.delta < 0 ? "text-loss" : "text-ink-muted"
-                  }`}
-                  title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
-                >
-                  <Clover className={luck.delta >= 0 ? "text-gain" : "text-loss"} />
-                  {signedPct(luck.delta * 100)} {luck.delta < 0 ? "unlucky" : "lucky"}
-                </span>
-              ) : null}
+              {independent ? <LuckChip luck={luck} expected={expected} withWord /> : null}
 
               <span
                 className="shrink-0 font-mono text-xs text-ink-muted"

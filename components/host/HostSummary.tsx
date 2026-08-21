@@ -24,6 +24,7 @@ import { isPortfolio } from "@/lib/game/types";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
 import { CondensedList } from "@/components/CondensedList";
+import { LuckChip } from "@/components/LuckChip";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { ArrowLeft, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
@@ -295,16 +296,8 @@ export function HostSummary({
                       {money(r.finalWealth)}
                     </span>
                     <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
-                      {independent && rowLuck ? (
-                        <span
-                          className={`flex items-center gap-1 text-xs ${
-                            rowLuck.delta > 0 ? "text-gain" : rowLuck.delta < 0 ? "text-loss" : "text-ink-muted"
-                          }`}
-                          title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
-                        >
-                          <Clover className={rowLuck.delta >= 0 ? "text-gain" : "text-loss"} />
-                          {signedPct(rowLuck.delta * 100)} {rowLuck.delta < 0 ? "unlucky" : "lucky"}
-                        </span>
+                      {independent ? (
+                        <LuckChip luck={rowLuck} expected={expected} withWord />
                       ) : null}
                       {/* Permanent column — matches FinalResults so the two host
                           panels read identically. The fuller sentence stays in
