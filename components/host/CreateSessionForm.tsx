@@ -13,6 +13,8 @@ import { assetName, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { Button, Banner, Card, Field, Select, TextInput, Toggle } from "@/components/ui";
 import { ArrowLeft, Coins, TrendUp, Trophy } from "@/components/icons";
+import { ManagerSetup } from "@/components/host/ManagerSetup";
+import { MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
 
 // "Base setup": the recommended one-click default per game. The professor's
 // basic game is the extreme 2×/0× payoff with an INDEPENDENT outcome per
@@ -66,6 +68,13 @@ const PORTFOLIO_BASE_SETUP: SessionConfig = {
  * The "host a game" entry point: pick which game to run, THEN configure it.
  * Everything downstream (lobby, rounds, summary) is shared.
  */
+/**
+ * What create_session ACCEPTS, which is not what it stores. The host authors
+ * alpha, so an edited line-up travels with its true parameters; the server
+ * splits it into the public config and the server-only session_secrets.
+ */
+type CreateSessionPayload = Omit<SessionConfig, "managers"> & { managers?: ManagerDraft[] };
+
 export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
   const [gameType, setGameType] = useState<GameType | null>(null);
 
@@ -181,6 +190,12 @@ export function CreateSessionForm({
   );
   const [advanced, setAdvanced] = useState(false);
   const [customAssets, setCustomAssets] = useState(false);
+  // The editable manager line-up. Only sent when the host has actually opened
+  // Advanced — otherwise the server builds the preset itself, so there is one
+  // source of truth for an untouched game.
+  const [drafts, setDrafts] = useState<ManagerDraft[]>(() =>
+    MANAGER_PRESETS.default.map((m) => ({ ...m })),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,7 +244,7 @@ export function CreateSessionForm({
           return out;
         })
       : null;
-    const payload: SessionConfig = {
+    const payload: CreateSessionPayload = {
       ...cfg,
       market_scope: cfg.market_mode === "manual" ? "shared" : cfg.market_scope,
       ...(portfolio
@@ -240,10 +255,15 @@ export function CreateSessionForm({
             assets: cleanedAssets,
           }
         : { num_assets: undefined, correlation: undefined, assets: undefined }),
-      // The manager line-up is built SERVER-side from the preset: alpha never
-      // travels through the client, and the skill shuffle has to happen in the
-      // same transaction that writes session_secrets.
-      ...(manager ? {} : { managers: undefined, num_managers: undefined }),
+      // Untouched, the line-up is built SERVER-side from the preset name. Once
+      // the host opens Advanced they are authoring alpha, so the full line-up
+      // travels — validated server-side, and still split into public config and
+      // session_secrets in the same transaction.
+      ...(manager
+        ? advanced
+          ? { managers: drafts, num_managers: drafts.length }
+          : { managers: undefined, num_managers: drafts.length }
+        : { managers: undefined, num_managers: undefined }),
       ...(portfolio || manager ? {} : { risk_free_rate: undefined }),
     };
     const { data, error } = await supabase
@@ -356,7 +376,13 @@ export function CreateSessionForm({
           : "Start with the standard setup, or flip on Advanced to change anything."}
       </p>
 
-      {advanced ? (
+      {advanced && manager ? (
+        <div className="mt-6">
+          <ManagerSetup cfg={cfg} set={set} drafts={drafts} onDrafts={setDrafts} />
+        </div>
+      ) : null}
+
+      {advanced && !manager ? (
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {portfolio ? (
@@ -566,7 +592,12 @@ export function CreateSessionForm({
               ) : null}
             </div>
           ) : null}
+        </>
+      ) : null}
 
+      {/* Shared toggles apply to every game type, manager included. */}
+      {advanced ? (
+        <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Toggle
               label="Show full leaderboard to students"
@@ -610,15 +641,11 @@ export function CreateSessionForm({
       )}
 
       <div className="mt-4">
-        {/* The manager game's advanced panel (per-manager beta/alpha/fees) is
-            Stage 5; until then the calibrated default preset is the only setup. */}
-        {manager ? null : (
-          <Toggle
-            label="Advanced setup (change all settings)"
-            checked={advanced}
-            onChange={setAdvanced}
-          />
-        )}
+        <Toggle
+          label="Advanced setup (change all settings)"
+          checked={advanced}
+          onChange={setAdvanced}
+        />
       </div>
 
       {error ? (

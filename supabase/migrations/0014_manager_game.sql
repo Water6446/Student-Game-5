@@ -428,7 +428,7 @@ begin
     for i in 0..(v_n - 1) loop
       v_mgr := v_mgrs->i;
       v_priv := v_priv || jsonb_build_array(jsonb_build_object(
-        'name',           v_mgr->>'name',
+        'name',           coalesce(nullif(btrim(v_mgr->>'name'), ''), 'Manager ' || (i + 1)),
         'beta',           coalesce((v_mgr->>'beta')::numeric, 1),
         -- slot i gets the alpha that the permutation sent here
         'alpha',          v_alphas[v_perm[i + 1] + 1],
@@ -450,7 +450,7 @@ begin
         (v_config->>'market_sd')::numeric
       );
       v_pub := v_pub || jsonb_build_array(jsonb_build_object(
-        'name',          v_mgr->>'name',
+        'name',          coalesce(nullif(btrim(v_mgr->>'name'), ''), 'Manager ' || (i + 1)),
         'strategy_line', coalesce(v_mgr->>'strategy_line', ''),
         'fee_type',      coalesce(v_mgr->>'fee_type', 'flat'),
         'mgmt_fee',      coalesce((v_mgr->>'mgmt_fee')::numeric, 0),

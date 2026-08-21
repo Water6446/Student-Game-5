@@ -7,6 +7,7 @@ import {
   informationRatio,
   managerFees,
   managerGrossReturn,
+  MANAGER_PRESETS,
   resolveManagerYear,
   totalVol,
   type ManagerMathConfig,
@@ -207,5 +208,47 @@ describe("annualizedReturn — the prospectus figures", () => {
 
   it("is null for an empty path", () => {
     expect(annualizedReturn([])).toBeNull();
+  });
+});
+
+describe("MANAGER_PRESETS", () => {
+  it("keeps the two lead funds identical apart from the sign of alpha", () => {
+    // This is what makes them unidentifiable year to year — the whole module.
+    const [meridian, apex] = MANAGER_PRESETS.default;
+    expect(apex.beta).toBe(meridian.beta);
+    expect(apex.tracking_error).toBe(meridian.tracking_error);
+    expect(apex.mgmt_fee).toBe(meridian.mgmt_fee);
+    expect(apex.perf_fee).toBe(meridian.perf_fee);
+    expect(apex.alpha).toBeCloseTo(-meridian.alpha, 12);
+  });
+
+  it("keeps every information ratio well under 1.0", () => {
+    // Above 1.0 is world-historically good and the lesson stops landing.
+    for (const preset of Object.values(MANAGER_PRESETS)) {
+      for (const m of preset) {
+        const ir = informationRatio(m.alpha, m.tracking_error);
+        if (ir != null) expect(Math.abs(ir)).toBeLessThanOrEqual(0.5);
+      }
+    }
+  });
+
+  it("hedge_fund only swaps the fees", () => {
+    MANAGER_PRESETS.hedge_fund.forEach((m, i) => {
+      const base = MANAGER_PRESETS.default[i];
+      expect(m.alpha).toBe(base.alpha);
+      expect(m.beta).toBe(base.beta);
+      expect(m.tracking_error).toBe(base.tracking_error);
+      expect(m.mgmt_fee).toBeCloseTo(0.02, 12);
+      expect(m.perf_fee).toBeCloseTo(0.2, 12);
+    });
+  });
+
+  it("market_neutral leads with a low-beta fund charging 2-and-20", () => {
+    const parity = MANAGER_PRESETS.market_neutral[0];
+    expect(parity.beta).toBeCloseTo(0.1, 12);
+    expect(parity.perf_fee).toBeCloseTo(0.2, 12);
+    // gross it is the best product here; net of 2-and-20 the manager keeps it
+    expect(parity.alpha).toBeGreaterThan(MANAGER_PRESETS.default[0].alpha);
+    expect(MANAGER_PRESETS.market_neutral).toHaveLength(6);
   });
 });

@@ -354,6 +354,7 @@ components/ManagerYearResult.tsx  manager game: one year's market + every manage
 components/FeeCounter.tsx         running fee total in loss tone, student + host
 components/ManagerProspectus.tsx  manager cards: fees, 10-yr track record, inline SVG sparkline
 components/host/ManagerReveal.tsx the end-of-game truth: true alpha vs. what was delivered
+components/host/ManagerSetup.tsx  host-only manager editor (presets, per-manager alpha/beta/fees)
 components/use-manager-truth.ts   get_manager_truth() — the only route to the real parameters
 components/use-synced-preference.ts  cross-tab preference pattern (localStorage + storage event)
 components/use-show-bots.ts       the bot toggle, built on use-synced-preference
