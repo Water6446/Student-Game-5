@@ -351,6 +351,7 @@ components/host/HostPresent.tsx   projector/present-mode reference implementatio
 components/CondensedList.tsx      top-N + "+N more" + bottom-M collapse for every player list
 components/LuckChip.tsx           signed luck vs the expected GOOD rate (clover + ± percentage)
 components/ManagerYearResult.tsx  manager game: one year's market + every manager's return
+components/FeeCounter.tsx         running fee total in loss tone, student + host
 components/use-synced-preference.ts  cross-tab preference pattern (localStorage + storage event)
 components/use-show-bots.ts       the bot toggle, built on use-synced-preference
 components/use-round-phase.ts     the round phase a screen should DISPLAY (gates stale rounds, swallows the auto-mode lock)

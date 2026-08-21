@@ -14,6 +14,7 @@ import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
 import { ManagerAllocationInput } from "@/components/student/ManagerAllocationInput";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
+import { FeeCounter } from "@/components/FeeCounter";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
 import { Banner, Button, Card } from "@/components/ui";
@@ -46,6 +47,7 @@ export function StudentRound({
   const [amounts, setAmounts] = useState<(number | null)[]>([]);
   const [percents, setPercents] = useState<(number | null)[]>([]);
   const [seeded, setSeeded] = useState<(number | null)[]>([]);
+  const [feesTotal, setFeesTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,16 +72,29 @@ export function StudentRound({
     let active = true;
     supabase
       .from("allocations")
-      .select("risky_breakdown, risky_amount, safe_amount")
+      .select("round_id, risky_breakdown, risky_amount, safe_amount, fees_paid")
       .eq("player_id", me.id)
-      .not("risky_breakdown", "is", null)
       .order("submitted_at", { ascending: false })
-      .limit(1)
       .then(({ data }) => {
         if (!active) return;
-        const prev = (data ?? [])[0] as
-          | { risky_breakdown: number[] | null; risky_amount: number; safe_amount: number }
-          | undefined;
+        const rows = (data ?? []) as {
+          round_id: string;
+          risky_breakdown: number[] | null;
+          risky_amount: number;
+          safe_amount: number;
+          fees_paid: number | null;
+        }[];
+        // One query, two jobs: the carry-forward seed and the running fee total.
+        // THIS round is excluded so the reveal can add its own year's fee
+        // without double-counting on a mid-reveal reload.
+        setFeesTotal(
+          rows
+            .filter((a) => a.round_id !== liveRound?.id)
+            .reduce((s, a) => s + (a.fees_paid == null ? 0 : Number(a.fees_paid)), 0),
+        );
+        const prev = rows.find(
+          (a) => a.risky_breakdown != null && a.round_id !== liveRound?.id,
+        );
         const base = prev ? Number(prev.risky_amount) + Number(prev.safe_amount) : 0;
         const next =
           prev?.risky_breakdown && base > 0
@@ -159,7 +174,12 @@ export function StudentRound({
 
   if (phase === "open" && liveRound) {
     return (
-      <Shell wealth={me.current_wealth} roundNumber={session.current_round} session={session}>
+      <Shell
+        wealth={me.current_wealth}
+        roundNumber={session.current_round}
+        session={session}
+        fees={manager ? feesTotal : null}
+      >
         {manager ? (
           <ManagerAllocationInput
             config={session.config}
@@ -229,7 +249,12 @@ export function StudentRound({
   // state and is what the student was already looking at.
   if (phase !== "revealed" || !liveRound || (revealPending && !revealTimedOut)) {
     return (
-      <Shell wealth={me.current_wealth} roundNumber={session.current_round} session={session}>
+      <Shell
+        wealth={me.current_wealth}
+        roundNumber={session.current_round}
+        session={session}
+        fees={manager ? feesTotal : null}
+      >
         <div className="rounded-xl border-2 border-ink bg-brand-soft p-5 text-center shadow-card">
           <div className="flex items-center justify-center gap-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
             <Lock /> Nice. Now we wait.
@@ -263,7 +288,16 @@ export function StudentRound({
     );
   }
 
-  return <Reveal supabase={supabase} session={session} me={me} round={liveRound} mine={mine} />;
+  return (
+    <Reveal
+      supabase={supabase}
+      session={session}
+      me={me}
+      round={liveRound}
+      mine={mine}
+      feesTotal={manager ? feesTotal : null}
+    />
+  );
 }
 
 function Shell({
@@ -271,12 +305,15 @@ function Shell({
   wealth,
   roundNumber,
   session,
+  fees,
 }: {
   children: React.ReactNode;
   wealth: number;
   /** always the session's current round — never a stale row's number */
   roundNumber: number;
   session: SessionRow;
+  /** manager game: running fee total, shown next to wealth every year */
+  fees?: number | null;
 }) {
   // hide the odds line when assets have custom per-asset odds (one number
   // can't summarize them)
@@ -301,6 +338,11 @@ function Shell({
           <span className="font-mono text-xl font-bold text-ink">{money(wealth)}</span>
         </span>
       </div>
+      {fees != null ? (
+        <div className="mb-4 flex justify-end">
+          <FeeCounter total={fees} />
+        </div>
+      ) : null}
       {showOdds ? (
         <div className="mb-4 flex items-center justify-between rounded-xl border-2 border-ink bg-surface px-4 py-2 text-sm shadow-card">
           <span className="font-editorial italic text-ink-muted">
@@ -328,12 +370,15 @@ function Reveal({
   me,
   round,
   mine,
+  feesTotal,
 }: {
   supabase: SupabaseClient;
   session: SessionRow;
   me: PlayerRow;
   round: RoundRow;
   mine: ReturnType<typeof useRoundAllocations>["allocations"][number] | null;
+  /** manager game only: fees paid across the whole game so far */
+  feesTotal?: number | null;
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
@@ -407,12 +452,22 @@ function Reveal({
         </div>
 
         {manager ? (
-          <ManagerYearResult
-            config={session.config}
-            round={round}
-            allocation={mine}
-            startWealth={before}
-          />
+          <>
+            <ManagerYearResult
+              config={session.config}
+              round={round}
+              allocation={mine}
+              startWealth={before}
+            />
+            {feesTotal != null ? (
+              <div className="flex justify-center">
+                <FeeCounter
+                  total={feesTotal + (mine?.fees_paid == null ? 0 : Number(mine.fees_paid))}
+                  thisYear={mine?.fees_paid == null ? null : Number(mine.fees_paid)}
+                />
+              </div>
+            ) : null}
+          </>
         ) : null}
 
         {portfolio && assetOuts.length > 0 ? (

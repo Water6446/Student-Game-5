@@ -170,3 +170,16 @@ describe("amountsFromPercents", () => {
     expect(amountsFromPercents(100, [60, 60])).toEqual([60, 60]);
   });
 });
+
+describe("indexSeries as the ghost line", () => {
+  it("lines up with what the Index bot compounds, year by year", () => {
+    // The chart line and the bot must read the same rounds.market_return, or the
+    // class sees a benchmark that disagrees with the standings.
+    const market = [0.08, -0.12, 0.2];
+    const line = indexSeries(100, market);
+    let bot = 100;
+    for (const r of market) bot = bot * (1 + r);
+    expect(line[line.length - 1]).toBeCloseTo(bot, 10);
+    expect(line).toHaveLength(market.length);
+  });
+});

@@ -20,7 +20,8 @@ import {
 } from "@/lib/game/results";
 import { edgeFraction, type StrategyKey } from "@/lib/game/counterfactual";
 import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/portfolio";
-import { isPortfolio } from "@/lib/game/types";
+import { isManager, isPortfolio } from "@/lib/game/types";
+import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
 import { CondensedList } from "@/components/CondensedList";
@@ -99,6 +100,23 @@ export function HostSummary({
     const i = visibleResults.findIndex((r) => r.player.id === openId);
     return i >= 0 ? [i] : [];
   }, [visibleResults, openId]);
+
+  // The index ghost line, sourced from rounds.market_return — the same number
+  // the Index bot compounds, so the line and the bot can never disagree.
+  const benchmark = useMemo(() => {
+    if (!isManager(session.config)) return null;
+    const revealed = rounds
+      .filter((r) => r.status === "revealed" && r.market_return != null)
+      .sort((a, b) => a.round_number - b.round_number);
+    if (revealed.length === 0) return null;
+    return {
+      label: "The Index (no fees)",
+      series: indexSeries(
+        session.config.starting_wealth,
+        revealed.map((r) => Number(r.market_return)),
+      ),
+    };
+  }, [session.config, rounds]);
 
   function downloadCsv() {
     // the CSV always exports EVERYONE, regardless of the bot toggle
@@ -447,6 +465,7 @@ export function HostSummary({
           rounds={rounds}
           allocations={allocations}
           startingWealth={session.config.starting_wealth}
+          benchmark={benchmark}
         />
       </Card>
     </main>

@@ -24,7 +24,8 @@ import {
 import { CondensedList } from "@/components/CondensedList";
 import { COLOR } from "@/lib/design/colors";
 import { assetName } from "@/lib/game/portfolio";
-import { isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
+import { indexSeries } from "@/lib/game/manager";
+import { isManager, isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
 import { money, signedPct } from "@/lib/game/format";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, Coins, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
@@ -187,13 +188,32 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
   );
 
   const portfolio = isPortfolio(session.config);
+  const manager = isManager(session.config);
+
+  // The index ghost line, from the same rounds.market_return the Index bot
+  // compounds, so the line and the bot can never disagree.
+  const benchmark = useMemo(() => {
+    if (!manager) return null;
+    const revealed = history.rounds
+      .filter((r) => r.status === "revealed" && r.market_return != null)
+      .sort((a, b) => a.round_number - b.round_number);
+    if (revealed.length === 0) return null;
+    return {
+      label: "The Index (no fees)",
+      series: indexSeries(
+        session.config.starting_wealth,
+        revealed.map((r) => Number(r.market_return)),
+      ),
+    };
+  }, [manager, history.rounds, session.config.starting_wealth]);
+
   // basic: each player's market draws; portfolio: gained/lost chips per round
   const outcomesByPlayer = useMemo(
     () =>
-      portfolio
+      portfolio || manager
         ? playerDeltaChipsMap(history.rounds, history.allocations)
         : playerOutcomesMap(session, players, history.rounds, history.allocations),
-    [portfolio, session, players, history.rounds, history.allocations],
+    [portfolio, manager, session, players, history.rounds, history.allocations],
   );
 
   // $0-tied players order by when they busted (first to bust sits last)
@@ -294,6 +314,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
             allocations={history.allocations}
             startingWealth={session.config.starting_wealth}
             hideToggle={true}
+            benchmark={benchmark}
           />
         </section>
       </div>

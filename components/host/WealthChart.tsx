@@ -18,6 +18,12 @@ import { useSyncedPreference } from "@/components/use-synced-preference";
 
 type ChartRow = { round: number } & Record<string, number>;
 
+/**
+ * Reserved series key for the benchmark line. Not a player id, so it is never
+ * culled by the crowded-chart logic and never appears in the players map.
+ */
+const BENCHMARK_KEY = "__benchmark";
+
 /** The subset of a Recharts tooltip entry this chart reads. */
 interface TooltipEntry {
   dataKey?: string | number;
@@ -32,12 +38,16 @@ export const WealthChart = memo(function WealthChart({
   allocations,
   startingWealth,
   hideToggle,
+  benchmark,
 }: {
   players: PlayerRow[];
   rounds: RoundRow[];
   allocations: AllocationRow[];
   startingWealth: number;
   hideToggle?: boolean;
+  /** manager game: the index students are measured against. series[i] = value
+   *  after round i+1. Drawn last, dashed, and never culled. */
+  benchmark?: { label: string; series: number[] } | null;
 }) {
   const [useLogScale, setUseLogScale] = useSyncedPreference("wealthChartLogScale", false);
 
@@ -73,6 +83,7 @@ export const WealthChart = memo(function WealthChart({
     // Round 0 = everyone at the starting wealth.
     const start: ChartRow = { round: 0 };
     players.forEach((p) => (start[p.id] = startingWealth));
+    if (benchmark) start[BENCHMARK_KEY] = startingWealth;
     rows.push(start);
 
     // carry the last known wealth forward for players missing a round (late join).
@@ -88,10 +99,15 @@ export const WealthChart = memo(function WealthChart({
         row[p.id] = plotVal;
         row[`${p.id}_real`] = realVal;
       });
+      if (benchmark) {
+        const realVal = benchmark.series[rn - 1] ?? startingWealth;
+        row[BENCHMARK_KEY] = useLogScale && realVal <= 0 ? 1 : realVal;
+        row[`${BENCHMARK_KEY}_real`] = realVal;
+      }
       rows.push(row);
     }
     return rows;
-  }, [players, rounds, allocations, startingWealth, useLogScale]);
+  }, [players, rounds, allocations, startingWealth, useLogScale, benchmark]);
 
   // 100 students is 100 overlapping lines in a 12-colour palette: illegible and
   // slow. Above the palette size, only the top 8 and bottom 2 by final wealth
@@ -156,10 +172,16 @@ export const WealthChart = memo(function WealthChart({
               labelStyle={{ color: COLOR.inkMuted }}
               // Only swap in a custom body when there is something to filter out,
               // so an ordinary chart keeps the default Recharts tooltip exactly.
-              content={featured ? <NamedTooltip players={players} featured={featured} /> : undefined}
+              content={
+                featured ? (
+                  <NamedTooltip players={players} featured={featured} benchmark={benchmark} />
+                ) : undefined
+              }
               formatter={(value: number, _name: string, item: TooltipEntry) => [
                 money(realValueOf(item, value)),
-                labelFor(players, String(item.dataKey)),
+                String(item.dataKey) === BENCHMARK_KEY
+                  ? benchmark?.label ?? "Benchmark"
+                  : labelFor(players, String(item.dataKey)),
               ]}
               labelFormatter={(l) => `Round ${l}`}
             />
@@ -180,6 +202,22 @@ export const WealthChart = memo(function WealthChart({
                 />
               );
             })}
+            {/* Drawn LAST so it sits on top of the class, and dashed so it reads
+                as "the thing you are measured against", not another player. */}
+            {benchmark ? (
+              <Line
+                key={BENCHMARK_KEY}
+                type="monotone"
+                dataKey={BENCHMARK_KEY}
+                name={benchmark.label}
+                stroke={COLOR.ink}
+                strokeDasharray="6 4"
+                strokeWidth={2}
+                dot={false}
+                isAnimationActive={false}
+                connectNulls
+              />
+            ) : null}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -225,18 +263,23 @@ function realValueOf(item: TooltipEntry, fallback: number): number {
 function NamedTooltip({
   players,
   featured,
+  benchmark,
   active,
   payload,
   label,
 }: {
   players: PlayerRow[];
   featured: Set<string>;
+  benchmark?: { label: string; series: number[] } | null;
   active?: boolean;
   payload?: TooltipEntry[];
   label?: number | string;
 }) {
   if (!active || !payload || payload.length === 0) return null;
-  const rows = payload.filter((e) => featured.has(String(e.dataKey)));
+  // The benchmark is never culled — it is the point of comparison.
+  const rows = payload.filter(
+    (e) => featured.has(String(e.dataKey)) || String(e.dataKey) === BENCHMARK_KEY,
+  );
   if (rows.length === 0) return null;
   return (
     <div
@@ -252,7 +295,10 @@ function NamedTooltip({
       <div style={{ color: COLOR.inkMuted, marginBottom: 4 }}>Round {label}</div>
       {rows.map((e) => (
         <div key={String(e.dataKey)} style={{ color: e.color }}>
-          {labelFor(players, String(e.dataKey))} : {money(realValueOf(e, e.value ?? 0))}
+          {String(e.dataKey) === BENCHMARK_KEY
+            ? benchmark?.label ?? "Benchmark"
+            : labelFor(players, String(e.dataKey))}{" "}
+          : {money(realValueOf(e, e.value ?? 0))}
         </div>
       ))}
     </div>
