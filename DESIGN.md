@@ -53,6 +53,7 @@ Defined as **RGB channel triplets** in `:root` so Tailwind opacity modifiers
   --paper: 235 227 208;       /* #EBE3D0 warm paper page */
   --paper-2: 251 239 210;     /* #FBEFD2 gold-tint inset panel */
   --surface: 255 253 246;     /* #FFFDF6 cards */
+  --paper-inverse: 246 239 221; /* #F6EFDD cream text ON dark ink panels */
 
   --ink: 33 26 18;            /* #211A12 text AND borders */
   --ink-muted: 107 92 64;     /* #6B5C40 secondary text (darkened for projector) */
@@ -84,6 +85,10 @@ Defined as **RGB channel triplets** in `:root` so Tailwind opacity modifiers
 - `play` (electric blue): the "you" highlight on leaderboards, stateful toggles,
   navigational primary CTAs (join / next round), info banners.
 - `ink` scale: text **and borders**. `paper`/`surface`: structure.
+- `paper-inverse` (cream): the text colour **on** a dark `bg-ink` panel — the
+  join-code block in the lobby and present views. Use `text-paper-inverse` and
+  its opacity modifiers (`/70`, `/80`) for the quieter lines in that block; never
+  `text-paper`, which is the page ground and reads dingy against ink.
 
 Tailwind maps them (see `tailwind.config.ts`):
 

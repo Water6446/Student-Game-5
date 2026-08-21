@@ -20,7 +20,11 @@ const config: Config = {
         DEFAULT: "2px",
       },
       colors: {
-        paper: { DEFAULT: token("--paper"), 2: token("--paper-2") },
+        paper: {
+          DEFAULT: token("--paper"),
+          2: token("--paper-2"),
+          inverse: token("--paper-inverse"),
+        },
         surface: token("--surface"),
         ink: {
           DEFAULT: token("--ink"),

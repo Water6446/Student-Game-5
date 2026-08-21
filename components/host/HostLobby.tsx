@@ -70,11 +70,11 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Projectable join panel — dark ink block */}
-        <div className="flex flex-col items-center rounded-2xl border-2 border-ink bg-ink p-6 text-center text-[#F6EFDD] shadow-lift">
-          <p className="font-display text-sm font-extrabold uppercase tracking-[0.2em] text-[#F6EFDD]/70">
+        <div className="flex flex-col items-center rounded-2xl border-2 border-ink bg-ink p-6 text-center text-paper-inverse shadow-lift">
+          <p className="font-display text-sm font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
             Game code
           </p>
-          <p className="font-mono text-6xl font-black tracking-[0.3em] text-[#F6EFDD] sm:text-7xl">
+          <p className="font-mono text-6xl font-black tracking-[0.3em] text-paper-inverse sm:text-7xl">
             {session.join_code}
           </p>
 
@@ -86,7 +86,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
             </div>
           </div>
 
-          <p className="break-all font-editorial italic text-[#F6EFDD]/75">join at {link}</p>
+          <p className="break-all font-editorial italic text-paper-inverse/75">join at {link}</p>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
             <Button variant="gold" onClick={copyLink}>

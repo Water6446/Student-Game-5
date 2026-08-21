@@ -121,17 +121,17 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
   return (
     <div className="grid flex-1 items-center gap-8 py-4 lg:grid-cols-2">
       {/* Dark ink panel: giant game code + join caption */}
-      <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-ink bg-ink p-10 text-center text-[#F6EFDD] shadow-lift">
-        <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-[#F6EFDD]/70">
+      <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-ink bg-ink p-10 text-center text-paper-inverse shadow-lift">
+        <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
           Game code
         </p>
-        <p className="font-mono text-7xl font-black tracking-[0.3em] text-[#F6EFDD] sm:text-8xl">
+        <p className="font-mono text-7xl font-black tracking-[0.3em] text-paper-inverse sm:text-8xl">
           {session.join_code}
         </p>
         <div className="mt-8 rounded-3xl border-2 border-ink bg-white p-6 shadow-card">
           <QRCodeSVG value={link} size={220} fgColor="#211A12" />
         </div>
-        <p className="mt-6 break-all font-editorial text-2xl italic text-[#F6EFDD]/80">
+        <p className="mt-6 break-all font-editorial text-2xl italic text-paper-inverse/80">
           join from your phone — {link}
         </p>
       </div>

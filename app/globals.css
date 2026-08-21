@@ -11,6 +11,7 @@
   --paper: 235 227 208; /* #EBE3D0 warm paper page */
   --paper-2: 251 239 210; /* #FBEFD2 gold-tint inset panel */
   --surface: 255 253 246; /* #FFFDF6 cards */
+  --paper-inverse: 246 239 221; /* #F6EFDD cream ON ink panels */
 
   --ink: 33 26 18; /* #211A12 text AND borders */
   --ink-muted: 107 92 64; /* #6B5C40 secondary text (projector contrast) */
