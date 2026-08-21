@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useSupabaseUser } from "@/components/use-supabase-user";
+import { isAnonymous, useSupabaseUser } from "@/components/use-supabase-user";
 import { HostSignIn } from "@/components/host/HostSignIn";
 import { NewSessionPanel } from "@/components/host/CreateSessionForm";
 import { SessionsList } from "@/components/host/SessionsList";
 import { Instructions } from "@/components/Instructions";
 import { Button, Card } from "@/components/ui";
 import { ArrowLeft } from "@/components/icons";
+
+// Off unless explicitly enabled. See .env.example.
+const ALLOW_ANON_HOST = process.env.NEXT_PUBLIC_ALLOW_ANON_HOST === "true";
 
 export default function HostPage() {
   const { supabase, user, loading } = useSupabaseUser();
@@ -18,10 +21,9 @@ export default function HostPage() {
     );
   }
 
-  // A real (verified, non-anonymous) account is normally required to host.
-  // TEMP (testing): anonymous "skip email" hosts are allowed through too. To
-  // restore production behavior, change this back to `!user || isAnonymous(user)`.
-  if (!user) {
+  // Hosting requires a real, verified account. Anonymous "skip email" sessions
+  // only get through when the testing flag is explicitly on.
+  if (!user || (isAnonymous(user) && !ALLOW_ANON_HOST)) {
     return <HostSignIn supabase={supabase} />;
   }
 

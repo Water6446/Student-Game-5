@@ -6,6 +6,9 @@ import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
 import { Instructions } from "@/components/Instructions";
 import { siteUrl } from "@/lib/game/db";
 
+// Off unless explicitly enabled. See .env.example.
+const ALLOW_ANON_HOST = process.env.NEXT_PUBLIC_ALLOW_ANON_HOST === "true";
+
 export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -24,10 +27,9 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
     else setSent(true);
   }
 
-  // TEMP (testing): skip the email magic link entirely and sign in anonymously
-  // because Supabase's email quota is rate-limited. The magic-link flow above is
-  // left fully intact. To remove this bypass, delete this function and the
-  // "Skip email" button below, and re-tighten create_session + the /host gate.
+  // Testing only, behind NEXT_PUBLIC_ALLOW_ANON_HOST: skip the email magic link
+  // and sign in anonymously, because Supabase's email quota is rate-limited. The
+  // magic-link flow above is the real one and is left fully intact.
   async function skipEmailForTesting() {
     setBusy(true);
     setError(null);
@@ -73,20 +75,21 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
           </div>
         )}
 
-        {/* TEMP (testing): bypass email while the Supabase email quota is rate-limited. */}
-        <div className="mt-6 border-t border-line pt-4">
-          <Button
-            variant="secondary"
-            onClick={skipEmailForTesting}
-            disabled={busy}
-            className="w-full"
-          >
-            {busy ? "…" : "Skip email — sign in for testing"}
-          </Button>
-          <p className="mt-2 text-center text-xs text-ink-subtle">
-            Temporary: signs you in without email verification.
-          </p>
-        </div>
+        {ALLOW_ANON_HOST ? (
+          <div className="mt-6 border-t border-line pt-4">
+            <Button
+              variant="secondary"
+              onClick={skipEmailForTesting}
+              disabled={busy}
+              className="w-full"
+            >
+              {busy ? "…" : "Skip email — sign in for testing"}
+            </Button>
+            <p className="mt-2 text-center text-xs text-ink-subtle">
+              Testing only: signs you in without email verification.
+            </p>
+          </div>
+        ) : null}
       </Card>
 
       <Instructions role="professor" />
