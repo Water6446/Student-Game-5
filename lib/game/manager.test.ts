@@ -252,3 +252,42 @@ describe("MANAGER_PRESETS", () => {
     expect(MANAGER_PRESETS.market_neutral).toHaveLength(6);
   });
 });
+
+describe("amountsFromPercents — cents rounding vs the leverage cap", () => {
+  // The wealth from the field report: $101.3436… after year 1. "Max (2×)"
+  // rounded five 40% slices up to $40.54 each = $202.70, 1.3 cents over the
+  // exact cap of $202.687…, and the server (correctly) rejected it.
+  const WEALTH = 101.34364861876819;
+
+  it("never lets rounding push the total past the leverage cap", () => {
+    const out = amountsFromPercents(WEALTH, [40, 40, 40, 40, 40], 2);
+    const sum = out.reduce((s, a) => s + a, 0);
+    expect(sum).toBeLessThanOrEqual(2 * WEALTH + 1e-9);
+    // and it lands as close to the cap as whole cents allow, not far under it
+    expect(sum).toBeCloseTo(Math.floor(2 * WEALTH * 100) / 100, 10);
+  });
+
+  it("never manufactures a phantom borrow at exactly 100%", () => {
+    // 5 × roundCents(20% of wealth) summed half a cent OVER wealth, turning
+    // safe_amount microscopically negative — a "Borrowed −$0" line on screen.
+    const out = amountsFromPercents(WEALTH, [20, 20, 20, 20, 20], 2);
+    expect(out.reduce((s, a) => s + a, 0)).toBeLessThanOrEqual(WEALTH + 1e-9);
+  });
+
+  it("trims only the overage cents, from the tail", () => {
+    const out = amountsFromPercents(WEALTH, [40, 40, 40, 40, 40], 2);
+    // the first slices keep their rounded value; only the tail absorbs cents
+    expect(out[0]).toBeCloseTo(40.54, 10);
+    expect(out[4]).toBeGreaterThan(40.4);
+    for (const a of out) expect(a).toBeGreaterThanOrEqual(0);
+  });
+
+  it("leaves under-cap allocations untouched", () => {
+    expect(amountsFromPercents(100, [60, 60], 2)).toEqual([60, 60]);
+    expect(amountsFromPercents(128.4, [40, 20, null], 2)).toEqual([51.36, 25.68, 0]);
+  });
+
+  it("handles zero wealth without dividing the world by it", () => {
+    expect(amountsFromPercents(0, [40, 40], 2)).toEqual([0, 0]);
+  });
+});

@@ -269,7 +269,36 @@ export function annualizedReturn(yearly: number[]): number | null {
   return Math.pow(cum, 1 / yearly.length) - 1;
 }
 
-/** Dollar amounts from percent-of-wealth inputs, rounded to cents. */
-export function amountsFromPercents(wealth: number, percents: (number | null)[]): number[] {
-  return percents.map((p) => roundCents(((p ?? 0) / 100) * wealth));
+/**
+ * Dollar amounts from percent-of-wealth inputs, rounded to cents — with the
+ * TOTAL clamped to min(what was asked for, capMultiple × wealth).
+ *
+ * Rounding each manager's slice to whole cents can round UP by half a cent
+ * apiece, and five of those can push the sum past the exact bound the server
+ * enforces: "Max (2×)" on a wealth of $101.3436 submitted $202.70 against a cap
+ * of $202.687… and errored, and 100% invested summed half a cent over wealth,
+ * manufacturing a phantom borrow. The overage is trimmed from the last
+ * non-zero amounts, so the client never submits what the RPC will reject.
+ */
+export function amountsFromPercents(
+  wealth: number,
+  percents: (number | null)[],
+  capMultiple = Number.POSITIVE_INFINITY,
+): number[] {
+  const amounts = percents.map((p) => roundCents(((p ?? 0) / 100) * wealth));
+  if (!(wealth > 0)) return amounts.map(() => 0);
+
+  const askedPct = percents.reduce<number>((s, p) => s + (p ?? 0), 0);
+  const bound = Math.min(askedPct / 100, capMultiple) * wealth;
+  // floor to cents: any cents-valued total strictly above the bound is exactly
+  // what the server rejects
+  const target = Math.floor(bound * 100 + 1e-9) / 100;
+
+  let excess = roundCents(amounts.reduce((s, a) => s + a, 0) - target);
+  for (let i = amounts.length - 1; i >= 0 && excess > 0; i--) {
+    const cut = Math.min(amounts[i], excess);
+    amounts[i] = roundCents(amounts[i] - cut);
+    excess = roundCents(excess - cut);
+  }
+  return amounts;
 }

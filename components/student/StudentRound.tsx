@@ -158,7 +158,11 @@ export function StudentRound({
     const { error } = manager
       ? await supabase.rpc("submit_manager_allocation", {
           p_round_id: liveRound.id,
-          p_amounts: amountsFromPercents(me.current_wealth, percents),
+          p_amounts: amountsFromPercents(
+            me.current_wealth,
+            percents,
+            session.config.leverage_cap ?? 2,
+          ),
         })
       : portfolio
         ? await supabase.rpc("submit_portfolio_allocation", {
@@ -425,8 +429,11 @@ function Reveal({
     };
   }, [supabase, session.id, session.config.show_full_leaderboard_to_students, round.id]);
 
-  // portfolio has no single market — the header reads off YOUR round result
-  const good = portfolio ? delta >= 0 : outcome === "good";
+  // portfolio and manager games have no single good/bad market — the header
+  // reads off YOUR round result. (The manager banner once read the good/bad
+  // field, which is always null there, and shouted DOWN over a +7% year.)
+  const personal = portfolio || manager;
+  const good = personal ? delta >= 0 : outcome === "good";
   // Celebrate a personal win (gained money this round).
   const celebrate = delta > 0;
 
@@ -439,7 +446,7 @@ function Reveal({
       <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
         <div
           className={`-mx-6 -mt-6 mb-1 flex items-center justify-center gap-2 border-b-2 border-ink px-6 py-4 font-display text-3xl font-black uppercase tracking-tight text-white ${
-            portfolio
+            personal
               ? delta > 0
                 ? "bg-gain"
                 : delta < 0
@@ -450,7 +457,7 @@ function Reveal({
                 : "bg-loss"
           }`}
         >
-          {portfolio ? (
+          {personal ? (
             <>
               {delta > 0 ? <ArrowUp /> : delta < 0 ? <ArrowDown /> : null}
               {delta > 0 ? "Up!" : delta < 0 ? "Down" : "Flat round"}

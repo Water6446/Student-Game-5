@@ -299,6 +299,13 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
                 Revealing the market…
               </p>
             </>
+          ) : manager && round?.market_return != null ? (
+            /* Manager years have no good/bad outcome — the field is null, and
+               reading it here shouted "Market down!" over every up year. */
+            <RoundOutcomeBig
+              good={Number(round.market_return) >= 0}
+              pct={Number(round.market_return)}
+            />
           ) : portfolio && round?.market_outcomes ? (
             <PortfolioOutcomeBig config={session.config} outcomes={round.market_outcomes} />
           ) : shared && !portfolio ? (
@@ -361,6 +368,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
           roundNumber={session.current_round}
           config={session.config}
           assetOutcomes={portfolio ? round?.market_outcomes ?? null : null}
+          marketReturn={manager ? round?.market_return ?? null : null}
           onDismiss={() => setRevealFor(null)}
         />
       ) : null}
@@ -403,7 +411,7 @@ function PortfolioOutcomeBig({
   );
 }
 
-function RoundOutcomeBig({ good }: { good: boolean }) {
+function RoundOutcomeBig({ good, pct }: { good: boolean; pct?: number }) {
   return (
     <div
       className={`mt-6 flex flex-col items-center gap-3 rounded-2xl border-2 border-ink px-8 py-6 text-white shadow-card ${
@@ -416,6 +424,11 @@ function RoundOutcomeBig({ good }: { good: boolean }) {
       <span className="font-display text-4xl font-black uppercase tracking-tight sm:text-5xl">
         {good ? "Market up!" : "Market down!"}
       </span>
+      {pct != null ? (
+        <span className="font-mono text-3xl font-black sm:text-4xl">
+          {signedPct(pct * 100, 1)}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -427,6 +440,7 @@ function RevealTakeover({
   roundNumber,
   config,
   assetOutcomes,
+  marketReturn,
   onDismiss,
 }: {
   shared: boolean;
@@ -435,6 +449,8 @@ function RevealTakeover({
   config: SessionConfig;
   /** portfolio, shared scope: the class-wide per-asset outcomes */
   assetOutcomes: MarketOutcome[] | null;
+  /** manager game: the year's index return — replaces the good/bad flag */
+  marketReturn?: number | null;
   onDismiss: () => void;
 }) {
   // Portfolio with class-wide outcomes: a grid of asset results. All-good gets
@@ -485,8 +501,11 @@ function RevealTakeover({
     );
   }
 
-  const neutral = !shared;
-  const cls = neutral ? "bg-ink text-paper" : good ? "bg-gain text-white" : "bg-loss text-white";
+  // Manager years carry a continuous return, not a good/bad flag: the sign
+  // drives the colour and the number itself is the headline detail.
+  const isGood = marketReturn != null ? marketReturn >= 0 : good;
+  const neutral = !shared && marketReturn == null;
+  const cls = neutral ? "bg-ink text-paper" : isGood ? "bg-gain text-white" : "bg-loss text-white";
   return (
     <button
       type="button"
@@ -494,19 +513,23 @@ function RevealTakeover({
       aria-label="Dismiss reveal"
       className={`animate-pop-in fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-6 ${cls}`}
     >
-      {!neutral && good ? <Confetti /> : null}
+      {!neutral && isGood ? <Confetti /> : null}
       <span className="font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
-        Round {roundNumber}
+        {marketReturn != null ? "Year" : "Round"} {roundNumber}
       </span>
       <span className="text-[clamp(5rem,22vw,16rem)] leading-none">
-        {neutral ? <Shuffle /> : good ? <ArrowUp /> : <ArrowDown />}
+        {neutral ? <Shuffle /> : isGood ? <ArrowUp /> : <ArrowDown />}
       </span>
       <span className="font-display text-[clamp(2.5rem,9vw,7rem)] font-black uppercase leading-none tracking-tight">
-        {neutral ? "Results are in" : good ? "Market up!" : "Market down!"}
+        {neutral ? "Results are in" : isGood ? "Market up!" : "Market down!"}
       </span>
-      {!neutral ? (
+      {marketReturn != null ? (
+        <span className="font-mono text-[clamp(2rem,6vw,4rem)] font-black">
+          {signedPct(marketReturn * 100, 1)}
+        </span>
+      ) : !neutral ? (
         <span className="font-editorial text-2xl italic opacity-90">
-          Risky bets {good ? "paid off" : "took a hit"}
+          Risky bets {isGood ? "paid off" : "took a hit"}
         </span>
       ) : null}
     </button>
