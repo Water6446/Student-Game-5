@@ -25,6 +25,8 @@ import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
 import { CondensedList } from "@/components/CondensedList";
+import { ManagerReveal } from "@/components/host/ManagerReveal";
+import { FeeCounter, sumFees } from "@/components/FeeCounter";
 import { LuckChip } from "@/components/LuckChip";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
@@ -179,7 +181,10 @@ export function HostSummary({
               : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isManager(session.config) ? (
+            <FeeCounter total={sumFees(allocations)} label="Class fees paid" />
+          ) : null}
           {hasBots ? (
             <BotToggle
               showBots={showBots}
@@ -200,6 +205,13 @@ export function HostSummary({
           </Button>
         </div>
       </header>
+
+      {/* Who was actually skilled — the payoff of the whole module. */}
+      {isManager(session.config) ? (
+        <div className="mb-6">
+          <ManagerReveal supabase={supabase} session={session} rounds={rounds} />
+        </div>
+      ) : null}
 
       {/* Counterfactual */}
       <Card className="mb-6">

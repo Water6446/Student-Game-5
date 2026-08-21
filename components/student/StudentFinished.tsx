@@ -13,7 +13,9 @@ import {
 } from "@/lib/game/results";
 import { edgeFraction } from "@/lib/game/counterfactual";
 import { assetName } from "@/lib/game/portfolio";
-import { isPortfolio } from "@/lib/game/types";
+import { isManager, isPortfolio } from "@/lib/game/types";
+import { indexSeries } from "@/lib/game/manager";
+import { sumFees } from "@/components/FeeCounter";
 import { money, ordinal, sharpeText, signedMoney, signedPct } from "@/lib/game/format";
 import { Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
@@ -30,8 +32,13 @@ export function StudentFinished({
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [result, setResult] = useState<PlayerResult | null>(null);
+  const [managerSummary, setManagerSummary] = useState<{
+    indexWealth: number;
+    fees: number;
+  } | null>(null);
 
   const portfolio = isPortfolio(session.config);
+  const manager = isManager(session.config);
 
   useEffect(() => {
     let active = true;
@@ -65,6 +72,21 @@ export function StudentFinished({
       // flattened outcomes, wealth series and the derived return/Sharpe stats
       const [res] = buildPlayerResults(session, [me], rounds, allocs);
       setResult(res ?? null);
+
+      // The punchline of the module: what the index did with no fees, and what
+      // the manager fees actually cost. Both come from rows the student can
+      // already read — no truth needed.
+      if (isManager(session.config)) {
+        const market = rounds
+          .filter((r) => r.status === "revealed" && r.market_return != null)
+          .sort((a, b) => a.round_number - b.round_number)
+          .map((r) => Number(r.market_return));
+        const series = indexSeries(session.config.starting_wealth, market);
+        setManagerSummary({
+          indexWealth: series.length > 0 ? series[series.length - 1] : session.config.starting_wealth,
+          fees: sumFees(allocs.filter((a) => a.player_id === me.id)),
+        });
+      }
     })();
 
     return () => {
@@ -141,6 +163,37 @@ export function StudentFinished({
             >
               {signedPct(myLuck.delta * 100)} vs {Math.round(expected * 100)}% expected
             </span>
+          </div>
+        ) : null}
+
+        {/* The punchline: your wealth, the index you could not buy, and the
+            gap — with the fee total sitting inside it. */}
+        {manager && managerSummary ? (
+          <div className="mt-6 rounded-2xl border-2 border-ink bg-surface p-4 text-left shadow-lift">
+            <dl className="space-y-1 font-mono text-sm">
+              <SumRow label="Final wealth" value={money(me.current_wealth)} />
+              <SumRow
+                label="If you had just held the index"
+                value={money(managerSummary.indexWealth)}
+              />
+              <div className="!mt-2 border-t-2 border-ink pt-2">
+                <SumRow
+                  label="You paid in fees"
+                  value={money(managerSummary.fees)}
+                  tone="loss"
+                />
+                <SumRow
+                  label={
+                    me.current_wealth >= managerSummary.indexWealth
+                      ? "You beat the index by"
+                      : "You trailed the index by"
+                  }
+                  value={money(Math.abs(me.current_wealth - managerSummary.indexWealth))}
+                  tone={me.current_wealth >= managerSummary.indexWealth ? "gain" : "loss"}
+                  bold
+                />
+              </div>
+            </dl>
           </div>
         ) : null}
 
@@ -221,6 +274,32 @@ export function StudentFinished({
         </Link>
       </Card>
     </main>
+  );
+}
+
+/** One line of the index comparison: label left, money right. */
+function SumRow({
+  label,
+  value,
+  tone,
+  bold,
+}: {
+  label: string;
+  value: string;
+  tone?: "gain" | "loss";
+  bold?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd
+        className={`shrink-0 ${bold ? "font-black" : "font-bold"} ${
+          tone === "loss" ? "text-loss" : tone === "gain" ? "text-gain" : "text-ink"
+        }`}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }
 

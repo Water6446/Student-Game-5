@@ -29,6 +29,7 @@ import { isManager, isPortfolio, type MarketOutcome, type SessionConfig } from "
 import { money, signedPct } from "@/lib/game/format";
 import { Confetti } from "@/components/Confetti";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
+import { ManagerReveal } from "@/components/host/ManagerReveal";
 import { ArrowUp, ArrowDown, Coins, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
 
 /**
@@ -550,6 +551,14 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
       <div className="mx-auto w-full max-w-3xl">
         <Leaderboard ranked={ranked} outcomesByPlayer={outcomesByPlayer} />
       </div>
+
+      {/* The reveal belongs on the projector too — it is the moment the class
+          finds out whether the fund they trusted ever had an edge. */}
+      {isManager(session.config) ? (
+        <div className="mx-auto mt-6 w-full max-w-3xl">
+          <ManagerReveal supabase={supabase} session={session} rounds={history.rounds} />
+        </div>
+      ) : null}
     </div>
   );
 }
