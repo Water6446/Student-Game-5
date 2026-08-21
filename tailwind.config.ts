@@ -42,6 +42,7 @@ const config: Config = {
         card: "3px 3px 0 rgb(var(--ink))", // standard card / button
         lift: "6px 6px 0 rgb(var(--ink))", // hero card, modal, big CTA
         pop: "5px 5px 0 rgb(var(--ink))", // primary CTA emphasis
+        kbd: "2px 2px 0 rgb(var(--ink))", // the card shadow at keycap scale
       },
       keyframes: {
         "pop-in": {

@@ -245,6 +245,9 @@ gets `border-2 border-ink` + `shadow-card` + the press shift.
   ring. Use semantic input `type`/`inputMode`.
 - **`Toggle`** — switch with `role="switch"`; ink `border-2`, track on = `bg-play`
   (blue), knob white with a thin ink border.
+- **`Kbd`** — a keycap for shortcut legends: `border-2 border-ink rounded-lg
+  bg-surface font-mono shadow-kbd` (the card shadow at 2px). Legends are a
+  reminder, never the only way to reach an action.
 - **`Banner`** — `kind`: `error` (loss), `info` (play/blue), `success` (gain);
   `rounded-xl border-2 border-ink shadow-card`, soft-tint fill + matching text,
   `role="alert"`.
@@ -345,6 +348,7 @@ components/host/HostPresent.tsx   projector/present-mode reference implementatio
 components/CondensedList.tsx      top-N + "+N more" + bottom-M collapse for every player list
 components/use-show-bots.ts       cross-tab preference pattern (localStorage + storage event)
 components/use-round-phase.ts     the round phase a screen should DISPLAY (gates stale rounds, swallows transient locks)
+components/use-hotkeys.ts         window keyboard shortcuts, guarded against typing and browser/OS keys
 ```
 
 **Starting a new game:** copy `globals.css`, `tailwind.config.ts`, the

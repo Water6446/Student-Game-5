@@ -35,7 +35,8 @@ import { CondensedList } from "@/components/CondensedList";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { isPortfolio } from "@/lib/game/types";
 import { money, signedPct } from "@/lib/game/format";
-import { Banner, Button, Card } from "@/components/ui";
+import { Banner, Button, Card, Kbd } from "@/components/ui";
+import { useHotkeys } from "@/components/use-hotkeys";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
@@ -192,6 +193,60 @@ export function HostRoundControl({
     (p) => p === "good" || p === "bad",
   );
 
+  /** Manual portfolio: resolve the next unset asset, so "g g b g" walks the list.
+   *  Once every asset is set, another press corrects the last one. */
+  function pickAsset(outcome: MarketOutcome) {
+    setPicks((prev) => {
+      const next = Array.from({ length: nAssets }, (_, j) => prev[j] ?? null);
+      const i = next.findIndex((p) => p == null);
+      next[i === -1 ? nAssets - 1 : i] = outcome;
+      return next;
+    });
+  }
+
+  const setMarket = portfolioGame ? pickAsset : setPick;
+
+  // The pinned primary button and its keyboard shortcut read the SAME choice, so
+  // the two can never disagree about what "the main action" currently is.
+  const primaryAction: { label: string; run: () => void; disabled: boolean;
+    variant?: "success" | "danger"; icon?: React.ReactNode } | null =
+    phase === "loading"
+      ? null
+      : phase === "open"
+        ? isManual
+          ? { label: "Lock allocations", run: lock, disabled: busy }
+          : { label: "Lock & reveal", run: lockAndReveal, disabled: busy }
+        : phase === "locked"
+          ? {
+              label: "Reveal results",
+              run: reveal,
+              disabled: busy || (isManual && (portfolioGame ? !picksComplete : !pick)),
+            }
+          : isLastRound
+            ? { label: "Finish game", run: finish, disabled: busy, variant: "danger" }
+            : {
+                label: "Next round",
+                run: next,
+                disabled: busy,
+                variant: "success",
+                icon: <ArrowRight />,
+              };
+
+  const primaryReady = primaryAction != null && !primaryAction.disabled;
+  const canSetMarket = isManual && phase === "locked";
+
+  // Register a key ONLY while its action is live: a registered key calls
+  // preventDefault, and Space has to keep scrolling the page otherwise.
+  // Finish early and Delete stay mouse-only — both are irreversible.
+  useHotkeys({
+    ...(primaryReady
+      ? { space: () => primaryAction!.run(), enter: () => primaryAction!.run() }
+      : {}),
+    ...(canSetMarket
+      ? { g: () => setMarket("good"), b: () => setMarket("bad") }
+      : {}),
+  });
+
   // Standings chips: basic shows each player's own market draws; portfolio has
   // no single outcome per round, so chips read gained/lost that round instead.
   const deltaChipsByPlayer = useMemo(
@@ -299,7 +354,17 @@ export function HostRoundControl({
           {/* Primary action — pinned to the top of the panel so it stays in the
               same place across open → reveal → next. In auto mode the host can
               click "Lock & reveal" then "Next round" without moving the cursor. */}
-          {phase === "loading" && (
+          {primaryAction ? (
+            <Button
+              onClick={primaryAction.run}
+              disabled={primaryAction.disabled}
+              variant={primaryAction.variant}
+              className="w-full text-lg"
+            >
+              {primaryAction.label}
+              {primaryAction.icon}
+            </Button>
+          ) : (
             <>
               {/* One fetch round-trip after "Next round" lands. The panel keeps
                   its shape and the action stays pinned but disabled — showing
@@ -312,35 +377,24 @@ export function HostRoundControl({
               </p>
             </>
           )}
-          {phase === "open" &&
-            (isManual ? (
-              <Button onClick={lock} disabled={busy} className="w-full text-lg">
-                Lock allocations
-              </Button>
-            ) : (
-              <Button onClick={lockAndReveal} disabled={busy} className="w-full text-lg">
-                Lock &amp; reveal
-              </Button>
-            ))}
-          {phase === "locked" && (
-            <Button
-              onClick={reveal}
-              disabled={busy || (isManual && (portfolioGame ? !picksComplete : !pick))}
-              className="w-full text-lg"
-            >
-              Reveal results
-            </Button>
-          )}
-          {phase === "revealed" &&
-            (isLastRound ? (
-              <Button onClick={finish} disabled={busy} variant="danger" className="w-full text-lg">
-                Finish game
-              </Button>
-            ) : (
-              <Button onClick={next} disabled={busy} variant="success" className="w-full text-lg">
-                Next round <ArrowRight />
-              </Button>
-            ))}
+
+          {/* Discoverability, not a modal — and only the keys that apply right
+              now. Hidden below sm: phones have no keyboard and need the space. */}
+          {primaryReady || canSetMarket ? (
+            <p className="hidden items-center justify-center gap-1.5 text-center font-mono text-xs text-ink-subtle sm:flex">
+              {primaryReady ? (
+                <>
+                  <Kbd>Space</Kbd> — {primaryAction!.label.toLowerCase()}
+                </>
+              ) : null}
+              {primaryReady && canSetMarket ? <span aria-hidden="true">·</span> : null}
+              {canSetMarket ? (
+                <>
+                  <Kbd>G</Kbd> / <Kbd>B</Kbd> — set the market
+                </>
+              ) : null}
+            </p>
+          ) : null}
 
           {error ? <Banner kind="error">{error}</Banner> : null}
 

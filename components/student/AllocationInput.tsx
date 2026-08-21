@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { clsx } from "@/components/clsx";
+import { useHotkeys } from "@/components/use-hotkeys";
 import { money } from "@/lib/game/format";
 
 /** Round to cents to avoid float dust in the submitted amount. */
@@ -36,6 +37,18 @@ export function AllocationInput({
     if (n > wealth) return wealth;
     return cents(n);
   }
+
+  // Arrow keys nudge the risky share by 5% of wealth for the handful of students
+  // on a laptop. Bound here so the nudge goes through the same clamp() as every
+  // other control, and it stands down while focus is in a field — the slider and
+  // the number inputs already step on their own.
+  useHotkeys(
+    {
+      arrowleft: () => onChange(clamp(r - wealth * 0.05)),
+      arrowright: () => onChange(clamp(r + wealth * 0.05)),
+    },
+    { enabled: !disabled && wealth > 0 },
+  );
 
   return (
     <div className="space-y-4">

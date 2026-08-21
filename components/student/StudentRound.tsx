@@ -8,6 +8,7 @@ import { riskyMultiplier } from "@/lib/game/math";
 import { assetName, assetPayoffMode, numAssets } from "@/lib/game/portfolio";
 import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useRoundPhase } from "@/components/use-round-phase";
+import { useHotkeys } from "@/components/use-hotkeys";
 import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
 import { money, signedMoney, ordinal } from "@/lib/game/format";
@@ -67,6 +68,14 @@ export function StudentRound({
   }, [revealPending, liveRound?.id]);
 
   const touched = portfolio ? amounts.some((a) => a !== null) : risky !== null;
+
+  // Enter submits — and is the one key that must keep working while focus is in
+  // an amount field, which is exactly why useHotkeys takes an allow-list rather
+  // than weakening its typing guard.
+  useHotkeys(
+    { enter: () => void submit() },
+    { enabled: phase === "open" && touched && !busy, allowWhileTyping: ["enter"] },
+  );
 
   async function submit() {
     if (!touched || !liveRound) return;
