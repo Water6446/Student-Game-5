@@ -21,7 +21,25 @@ The **UI follows the shared "Academy Arcade" design system — see [DESIGN.md](.
 
 ---
 
-## The game (rules)
+## The games
+
+Three simulations share one engine — lobby, rounds, lock/reveal, leaderboard,
+present mode and CSV:
+
+| | Basic | Portfolio | Manager |
+|---|---|---|---|
+| Risky side | one risky bet | N risky assets | 5 fund managers |
+| Outcome | good / bad | good / bad per asset | **continuous normal returns** |
+| Round = | a round | a round | **a year** (25 by default) |
+| Extra | — | correlation ρ | fees, leverage to 2×, a secret alpha |
+
+The **manager game** teaches active vs. passive: skill is real but tiny and
+statistically invisible over a career, fees compound against you regardless, and
+on the market-neutral preset the best strategy in the game still loses to its own
+fee structure. Its maths, the fee order of operations and the secrecy model are
+in [MECHANICS.md § Manager game](./MECHANICS.md#manager-game).
+
+## The basic game (rules)
 
 - Each player starts with a configurable **starting wealth** (default `$100`).
 - Runs for a configurable number of **rounds** (default `25`).
@@ -55,6 +73,9 @@ lib/game/            Pure, unit-tested game math (single source of truth)
 supabase/migrations/ SQL migrations (apply in order)
   0001_schema.sql    Tables
   0002_rls.sql       Row Level Security policies + grants + Realtime
+                     (see also 0014: session_secrets is RLS-on with NO policies
+                      and NO grants — deny-all, readable only by SECURITY
+                      DEFINER functions. It holds the manager game's true alpha.)
   0003_functions.sql SECURITY DEFINER host RPCs + resolve_round
 scripts/
   _supabase_mock.sql Local stand-in for the Supabase auth surface (test only)
@@ -116,6 +137,10 @@ which asserts (and aborts on any failure) that:
 - a **student cannot** submit `risky > current_wealth`;
 - a **student cannot** see another student's allocation, or a non-member the
   session/players; a hidden leaderboard is denied to students but not the host;
+- for a manager game, `sessions.config` **leaks no** `alpha`, `beta` or
+  `tracking_error`; a **student cannot** read `public.session_secrets` at all,
+  nor call `get_manager_truth` before the session is `finished` — while the host
+  can at any time; and the **leverage cap is enforced server-side**;
 - the **wealth math** computed by the SQL matches the spec's worked examples,
   including the non-submitter "all-safe" default.
 

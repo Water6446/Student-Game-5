@@ -122,7 +122,14 @@ export function HostSummary({
 
   function downloadCsv() {
     // the CSV always exports EVERYONE, regardless of the bot toggle
-    const csv = buildResultsCsv(results, rounds, portfolio, expected);
+    const csv = buildResultsCsv(
+      results,
+      rounds,
+      portfolio,
+      expected,
+      isManager(session.config),
+      benchmark?.series.at(-1),
+    );
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

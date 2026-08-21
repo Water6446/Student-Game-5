@@ -37,6 +37,10 @@ export interface PlayerResult {
   riskByRound: (number | null)[];
   /** average dollars bet per round, ignoring rounds where the player had $0 */
   avgBet: number;
+  /** manager game: fees charged each revealed round (null where unknown) */
+  feesByRound: (number | null)[];
+  /** manager game: total fees paid across the game */
+  feesPaid: number;
   /**
    * the actual outcome sequence this player faced. Basic game: one draw per
    * round. Portfolio game: every asset draw, flattened round by round (so
@@ -333,6 +337,8 @@ export function buildPlayerResults(
     const matrix: MarketOutcome[][] = [];
     const wealthByRound: number[] = [];
     const riskByRound: (number | null)[] = [];
+    const feesByRound: (number | null)[] = [];
+    let feesPaid = 0;
     let last = startWealth;
     let betSum = 0;
     let betRounds = 0;
@@ -375,6 +381,10 @@ export function buildPlayerResults(
         riskByRound.push(null);
       }
 
+      const fee = a?.fees_paid == null ? null : Number(a.fees_paid);
+      feesByRound.push(fee);
+      feesPaid += fee ?? 0;
+
       if (a?.resulting_wealth != null) last = Number(a.resulting_wealth);
       wealthByRound.push(last);
     }
@@ -389,6 +399,8 @@ export function buildPlayerResults(
       wealthByRound,
       riskByRound,
       avgBet: betRounds > 0 ? betSum / betRounds : 0,
+      feesByRound,
+      feesPaid,
       totalReturn: nRounds > 0 ? finalWealth / startWealth - 1 : null,
       perRoundReturn:
         nRounds > 0 ? Math.pow(Math.max(finalWealth, 0) / startWealth, 1 / nRounds) - 1 : null,
@@ -519,6 +531,10 @@ export function buildResultsCsv(
   portfolio = false,
   /** benchmark GOOD rate (expectedGoodRate) — adds a signed "Luck vs expected %" column */
   expectedRate?: number,
+  /** manager game: swaps the luck columns for fees and the index comparison */
+  manager = false,
+  /** manager game: wealth an index-holder would have finished with */
+  indexFinal?: number,
 ): string {
   const revealed = revealedRounds(rounds);
   const header: (string | number)[] = [
@@ -532,8 +548,13 @@ export function buildResultsCsv(
     "Total return %",
     "Per-round %",
     "Sharpe",
-    ...(expectedRate != null ? ["Luck vs expected %"] : []),
-    ...revealed.flatMap((r) => [`R${r.round_number} $`, `R${r.round_number} risk %`]),
+    ...(manager ? ["Total fees", "Index final", "vs Index"] : []),
+    ...(expectedRate != null && !manager ? ["Luck vs expected %"] : []),
+    ...revealed.flatMap((r) =>
+      manager
+        ? [`Y${r.round_number} $`, `Y${r.round_number} exposure %`, `Y${r.round_number} fees $`]
+        : [`R${r.round_number} $`, `R${r.round_number} risk %`],
+    ),
   ];
   const rows: (string | number)[][] = [header];
   for (const res of results) {
@@ -541,7 +562,15 @@ export function buildResultsCsv(
     const total = res.outcomes.length;
     const perRound = revealed.flatMap((_, i) => {
       const risk = res.riskByRound[i];
-      return [roundCents(res.wealthByRound[i]), risk == null ? "" : Math.round(risk * 100)];
+      const cells: (string | number)[] = [
+        roundCents(res.wealthByRound[i]),
+        risk == null ? "" : Math.round(risk * 100),
+      ];
+      if (manager) {
+        const fee = res.feesByRound[i];
+        cells.push(fee == null ? "" : roundCents(fee));
+      }
+      return cells;
     });
     rows.push([
       res.rank,
@@ -554,11 +583,46 @@ export function buildResultsCsv(
       res.totalReturn == null ? "" : Math.round(res.totalReturn * 1000) / 10,
       res.perRoundReturn == null ? "" : Math.round(res.perRoundReturn * 1000) / 10,
       res.sharpe == null ? "" : roundCents(res.sharpe),
-      ...(expectedRate != null
+      ...(manager
+        ? [
+            roundCents(res.feesPaid),
+            indexFinal == null ? "" : roundCents(indexFinal),
+            indexFinal == null ? "" : roundCents(res.finalWealth - indexFinal),
+          ]
+        : []),
+      ...(expectedRate != null && !manager
         ? [total ? Math.round((good / total - expectedRate) * 100) : ""]
         : []),
       ...perRound,
     ]);
   }
+
+  // The professor will want the year's draws for a lecture, so they get their
+  // own block: a blank line, then a second header. One row per year.
+  if (manager) {
+    const nManagers = revealed.reduce(
+      (n, r) => Math.max(n, r.manager_returns?.length ?? 0),
+      0,
+    );
+    if (nManagers > 0) {
+      rows.push([]);
+      rows.push([
+        "Year",
+        "Index return %",
+        ...Array.from({ length: nManagers }, (_, i) => `Manager ${i + 1} return %`),
+      ]);
+      for (const r of revealed) {
+        rows.push([
+          r.round_number,
+          r.market_return == null ? "" : Math.round(Number(r.market_return) * 1000) / 10,
+          ...Array.from({ length: nManagers }, (_, i) => {
+            const v = r.manager_returns?.[i];
+            return v == null ? "" : Math.round(Number(v) * 1000) / 10;
+          }),
+        ]);
+      }
+    }
+  }
+
   return toCsv(rows);
 }

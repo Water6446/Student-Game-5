@@ -416,3 +416,87 @@ describe("buildResultsCsv new columns", () => {
     expect(cells[h.indexOf("Luck vs expected %")]).toBe("40"); // 2/2 good vs 0.6 → +40
   });
 });
+
+describe("buildResultsCsv — manager game", () => {
+  function managerSession(): SessionRow {
+    return {
+      ...session(),
+      config: {
+        ...DEFAULT_CONFIG,
+        game_type: "manager",
+        market_scope: "shared",
+        num_managers: 2,
+        risk_free_rate: 0.03,
+      },
+    };
+  }
+
+  function managerRound(id: string, n: number, market: number, mgrs: number[]): RoundRow {
+    return { ...round(id, n), market_return: market, manager_returns: mgrs };
+  }
+
+  function feeAlloc(
+    roundId: string,
+    playerId: string,
+    risky: number,
+    safe: number,
+    resulting: number,
+    fees: number,
+  ): AllocationRow {
+    return { ...alloc(roundId, playerId, risky, safe, "good", resulting), fees_paid: fees };
+  }
+
+  it("swaps the luck column for fees and the index comparison", () => {
+    const human = player("stu", 118);
+    const rounds = [
+      managerRound("r1", 1, 0.1, [0.12, 0.08]),
+      managerRound("r2", 2, -0.05, [-0.04, -0.06]),
+    ];
+    const allocations = [
+      feeAlloc("r1", "stu", 100, 0, 111, 1),
+      feeAlloc("r2", "stu", 111, 0, 118, 1.11),
+    ];
+    const results = buildPlayerResults(managerSession(), [human], rounds, allocations);
+    const csv = buildResultsCsv(results, rounds, false, 0.6, true, 104.5);
+    const lines = csv.split("\r\n");
+    const h = lines[0].split(",");
+    const cells = lines[1].split(",");
+
+    expect(h).toContain("Total fees");
+    expect(h).toContain("vs Index");
+    expect(h).not.toContain("Luck vs expected %"); // no good/bad draws here
+    expect(cells[h.indexOf("Total fees")]).toBe("2.11");
+    expect(cells[h.indexOf("Index final")]).toBe("104.5");
+    expect(cells[h.indexOf("vs Index")]).toBe("13.5");
+    // per-year columns are YEARS, and carry the fee
+    expect(h).toContain("Y1 exposure %");
+    expect(cells[h.indexOf("Y2 fees $")]).toBe("1.11");
+  });
+
+  it("appends a per-year block of the index and manager returns", () => {
+    const human = player("stu", 100);
+    const rounds = [managerRound("r1", 1, 0.1, [0.12, 0.08])];
+    const results = buildPlayerResults(managerSession(), [human], rounds, []);
+    const lines = buildResultsCsv(results, rounds, false, undefined, true, 110).split("\r\n");
+
+    // blank separator, then a second header, then one row per year
+    const sep = lines.findIndex((l) => l === "");
+    expect(sep).toBeGreaterThan(0);
+    expect(lines[sep + 1]).toBe("Year,Index return %,Manager 1 return %,Manager 2 return %");
+    expect(lines[sep + 2]).toBe("1,10,12,8");
+  });
+
+  it("leaves the other two games' CSV untouched", () => {
+    const human = player("stu", 121);
+    const rounds = [round("r1", 1), round("r2", 2)];
+    const allocations = [
+      alloc("r1", "stu", 50, 50, "good", 110),
+      alloc("r2", "stu", 55, 55, "good", 121),
+    ];
+    const results = buildPlayerResults(session(), [human], rounds, allocations);
+    const h = buildResultsCsv(results, rounds, false, 0.6).split("\r\n")[0].split(",");
+    expect(h).toContain("Luck vs expected %");
+    expect(h).not.toContain("Total fees");
+    expect(h).toContain("R1 risk %");
+  });
+});
