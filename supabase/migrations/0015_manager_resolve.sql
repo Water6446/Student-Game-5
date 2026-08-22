@@ -7,7 +7,8 @@
 -- The manager branch shares only the outer scaffolding with the other two —
 -- host check, locked check, the per-player loop shape, and the final
 -- `status = 'revealed'` update, which stays LAST because every client keys its
--- reveal off that write (see docs/IMPLEMENTATION-PLAN.md § Task 3).
+-- reveal off that write: components/use-round-phase.ts gates each screen on it,
+-- so writing it before the allocations would reveal an empty round.
 --
 -- Per year:
 --   r_market ~ N(market_mean, market_sd)                       ONE draw, shared
