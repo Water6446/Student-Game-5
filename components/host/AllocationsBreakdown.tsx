@@ -21,15 +21,16 @@ export function AllocationsBreakdown({
   allocations,
   goodProb,
   portfolio = false,
-  levered = false,
+  manager = false,
 }: {
   players: PlayerRow[];
   allocations: AllocationRow[];
   goodProb: number;
   /** portfolio game: bot strategies bet a different fixed share */
   portfolio?: boolean;
-  /** manager game: allocations can exceed 100% of wealth, and safe can go negative */
-  levered?: boolean;
+  /** manager game: allocations can exceed 100% of wealth, safe can go negative,
+   *  and a non-submitter CARRIES FORWARD instead of defaulting to all-safe */
+  manager?: boolean;
 }) {
   const rows = useMemo(() => {
     const byPlayer = new Map(allocations.map((a) => [a.player_id, a]));
@@ -74,20 +75,23 @@ export function AllocationsBreakdown({
             submitted: true,
           };
         }
-        // human who hasn't submitted (defaults to all-safe; nothing to bet at $0)
+        // Human who hasn't submitted. In the basic and portfolio games that
+        // means all-safe, a real 0%. In the MANAGER game the server carries
+        // last year's book forward, so their exposure is unknown here rather
+        // than zero — claiming 0% told the host the opposite of what resolves.
         return {
           id: p.id,
           name: p.display_name,
           wealth: currentWealth,
           risky: null,
           safe: null,
-          pct: currentWealth > 0 ? 0 : null,
+          pct: manager ? null : currentWealth > 0 ? 0 : null,
           isBot: false,
           submitted: false,
         };
       })
       .sort((x, y) => (y.risky ?? -1) - (x.risky ?? -1));
-  }, [players, allocations, goodProb, portfolio]);
+  }, [players, allocations, goodProb, portfolio, manager]);
 
   // Same "who has actually submitted" rule as both host counters — one helper so
   // the three surfaces can't drift apart.
@@ -134,7 +138,7 @@ export function AllocationsBreakdown({
           // The meter tops out at fully invested; anything past that is
           // borrowed, and says so as a multiple rather than overflowing.
           const barPct = Math.min(pct ?? 0, 100);
-          const isLevered = levered && pct != null && pct > 100;
+          const isLevered = manager && pct != null && pct > 100;
           return (
             <li className="flex items-center gap-3 py-2">
               {/* Name + status */}
@@ -149,8 +153,15 @@ export function AllocationsBreakdown({
                 ) : null}
                 <span className="truncate text-sm text-ink">{r.name}</span>
                 {!r.isBot && !r.submitted ? (
-                  <span className="shrink-0 rounded-full border border-ink bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink">
-                    no bet
+                  <span
+                    className="shrink-0 rounded-full border border-ink bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink"
+                    title={
+                      manager
+                        ? "No change this year — last year's portfolio carries forward"
+                        : "No allocation submitted — defaults to all-safe"
+                    }
+                  >
+                    {manager ? "holding" : "no bet"}
                   </span>
                 ) : null}
               </div>

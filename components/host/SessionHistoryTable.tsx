@@ -3,13 +3,15 @@
 import { useMemo } from "react";
 import type { AllocationRow, RoundRow } from "@/lib/game/db";
 import type { MarketOutcome } from "@/lib/game/types";
-import { signedMoney } from "@/lib/game/format";
+import { signedMoney, signedPct } from "@/lib/game/format";
 import { OutcomeChips } from "@/components/OutcomeChips";
 import { ArrowUp, ArrowDown } from "@/components/icons";
 
 interface HistoryRow {
   round: number;
   outcome: RoundRow["market_outcome"] | "independent";
+  /** manager game: the year's index return; null in the other two games */
+  marketReturn: number | null;
   /** portfolio, shared scope: the class-wide per-asset outcomes */
   assetOutcomes: MarketOutcome[] | null;
   goodCount: number;
@@ -30,9 +32,13 @@ export function SessionHistoryTable({
   rounds,
   allocations,
   scrollClassName,
+  manager = false,
 }: {
   rounds: RoundRow[];
   allocations: AllocationRow[];
+  /** manager game: rounds are YEARS and carry a continuous index return rather
+   *  than a good/bad outcome — without this the Market column read "indep. 0↑ 0↓". */
+  manager?: boolean;
   /** Applied to the single scroll container — e.g. a bounded `max-h-*` when the
    *  card is collapsed. Print variants keep every row visible on paper. */
   scrollClassName?: string;
@@ -68,6 +74,7 @@ export function SessionHistoryTable({
       return {
         round: r.round_number,
         outcome: r.market_outcome ?? "independent",
+        marketReturn: r.market_return == null ? null : Number(r.market_return),
         assetOutcomes: r.market_outcomes ?? null,
         goodCount,
         badCount,
@@ -87,8 +94,8 @@ export function SessionHistoryTable({
     <div>
       {/* Caption stays outside the scroller so it never scrolls out of view. */}
       <p className="mb-2 font-editorial text-xs italic text-ink-muted">
-        How players did <span className="font-semibold">in that round</span> — each player&apos;s
-        wealth change, summarized across the class.
+        How players did <span className="font-semibold">in that {manager ? "year" : "round"}</span>{" "}
+        — each player&apos;s wealth change, summarized across the class.
       </p>
       {/* One scroll container for BOTH axes so the sticky header sticks to it
           (a nested overflow-x box would capture the vertical scroll instead). */}
@@ -98,8 +105,8 @@ export function SessionHistoryTable({
         <table className="w-full min-w-[32rem] text-sm">
         <thead>
           <tr className="sticky top-0 z-10 bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper">
-            <th className="px-2 py-2">Round</th>
-            <th className="px-2 py-2">Market</th>
+            <th className="px-2 py-2">{manager ? "Year" : "Round"}</th>
+            <th className="px-2 py-2">{manager ? "Index" : "Market"}</th>
             <th className="px-2 py-2 text-right">Avg</th>
             <th className="px-2 py-2 text-right">Median</th>
             <th className="px-2 py-2 text-right">High</th>
@@ -111,7 +118,18 @@ export function SessionHistoryTable({
             <tr key={h.round} className="border-t border-line">
               <td className="px-2 py-2 font-mono text-ink">{h.round}</td>
               <td className="px-2 py-2">
-                {h.assetOutcomes ? (
+                {h.marketReturn != null ? (
+                  // Manager years have no good/bad flag — the index return IS
+                  // the market column.
+                  <span
+                    className={`inline-flex items-center gap-0.5 font-mono font-semibold ${
+                      h.marketReturn >= 0 ? "text-gain" : "text-loss"
+                    }`}
+                  >
+                    {signedPct(h.marketReturn * 100, 1)}
+                    {h.marketReturn >= 0 ? <ArrowUp /> : <ArrowDown />}
+                  </span>
+                ) : h.assetOutcomes ? (
                   // portfolio, shared scope: one arrow per asset, in asset order
                   <OutcomeChips outcomes={h.assetOutcomes} />
                 ) : h.outcome === "good" ? (

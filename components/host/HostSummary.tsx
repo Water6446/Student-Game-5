@@ -25,7 +25,7 @@ import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, Card } from "@/components/ui";
 import { CondensedList } from "@/components/CondensedList";
-import { ManagerReveal } from "@/components/host/ManagerReveal";
+import { ManagerReveal } from "@/components/ManagerReveal";
 import { FeeCounter, sumFees } from "@/components/FeeCounter";
 import { LuckChip } from "@/components/LuckChip";
 import { useShowBots } from "@/components/use-show-bots";
@@ -154,6 +154,7 @@ export function HostSummary({
       expected,
       managerGame,
       indexFinal,
+      managerGame ? (session.config.managers ?? []).map((m) => m.name) : undefined,
     );
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -430,24 +431,48 @@ export function HostSummary({
                   {open ? (
                     <div className="border-t border-line px-4 py-2">
                       <div className="mb-1 text-xs text-ink-subtle">
-                        {good}/{r.outcomes.length} good {portfolio ? "draws" : "markets"} · avg bet{" "}
-                        {money(r.avgBet)}
+                        {/* A manager game has no good/bad draws, so this read
+                            "0/0 good markets" under a chip row saying "no
+                            rounds". Fees are the number that belongs here. */}
+                        {managerGame ? (
+                          <>
+                            fees paid{" "}
+                            <span className="font-mono font-semibold text-loss">
+                              {money(r.feesPaid)}
+                            </span>{" "}
+                            ·{" "}
+                          </>
+                        ) : (
+                          <>
+                            {good}/{r.outcomes.length} good {portfolio ? "draws" : "markets"} ·{" "}
+                          </>
+                        )}
+                        avg {managerGame ? "invested" : "bet"} {money(r.avgBet)}
                         {r.totalReturn != null ? (
                           <>
                             {" "}
                             · total return {signedPct(r.totalReturn * 100)}
                             {r.perRoundReturn != null
-                              ? ` (${signedPct(r.perRoundReturn * 100, 1)}/round)`
+                              ? ` (${signedPct(r.perRoundReturn * 100, 1)}/${
+                                  managerGame ? "yr" : "round"
+                                })`
                               : ""}
                           </>
                         ) : null}{" "}
                         · Sharpe{" "}
                         <span title="return per unit of volatility (see MECHANICS.md)">
                           {sharpeText(r.sharpe)}
-                        </span>{" "}
-                        · full match{portfolio ? " (round by round, per asset)" : ""}:
+                        </span>
+                        {managerGame ? null : (
+                          <>
+                            {" "}
+                            · full match{portfolio ? " (round by round, per asset)" : ""}:
+                          </>
+                        )}
                       </div>
-                      <OutcomeChips outcomes={r.outcomes} empty="no rounds" />
+                      {managerGame ? null : (
+                        <OutcomeChips outcomes={r.outcomes} empty="no rounds" />
+                      )}
                     </div>
                   ) : null}
                 </li>
@@ -467,7 +492,9 @@ export function HostSummary({
             aria-expanded={historyOpen}
             className="flex w-full items-center justify-between text-left focus:outline-none"
           >
-            <h2 className="text-xl font-bold text-ink">Round history</h2>
+            <h2 className="text-xl font-bold text-ink">
+              {managerGame ? "Year" : "Round"} history
+            </h2>
             <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
               {historyOpen ? "Collapse" : "Show all"}
               <ChevronDown
@@ -479,6 +506,7 @@ export function HostSummary({
             <SessionHistoryTable
               rounds={rounds}
               allocations={allocations}
+              manager={managerGame}
               scrollClassName={
                 historyOpen ? "" : "max-h-96 print:max-h-none print:overflow-visible"
               }
@@ -552,13 +580,16 @@ export function HostSummary({
 
       {/* Wealth chart */}
       <Card className="mt-6">
-        <h2 className="mb-3 text-xl font-bold text-ink">Wealth over rounds</h2>
+        <h2 className="mb-3 text-xl font-bold text-ink">
+          Wealth over {managerGame ? "years" : "rounds"}
+        </h2>
         <WealthChart
           players={visiblePlayers}
           rounds={rounds}
           allocations={allocations}
           startingWealth={session.config.starting_wealth}
           benchmark={benchmark}
+          unitLabel={managerGame ? "Year" : "Round"}
         />
       </Card>
     </main>

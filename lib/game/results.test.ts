@@ -486,6 +486,31 @@ describe("buildResultsCsv — manager game", () => {
     expect(lines[sep + 2]).toBe("1,10,12,8");
   });
 
+  it("uses the real fund names in the per-year block when given them", () => {
+    const human = player("stu", 100);
+    const rounds = [managerRound("r1", 1, 0.1, [0.12, 0.08])];
+    const results = buildPlayerResults(managerSession(), [human], rounds, []);
+    const lines = buildResultsCsv(results, rounds, false, undefined, true, 110, [
+      "Meridian Alpha",
+      "Parity Absolute Return",
+    ]).split("\r\n");
+    const sep = lines.findIndex((l) => l === "");
+    expect(lines[sep + 1]).toBe(
+      "Year,Index return %,Meridian Alpha return %,Parity Absolute Return return %",
+    );
+  });
+
+  it("drops the good-draw columns, which are always zero here", () => {
+    const human = player("stu", 100);
+    const rounds = [managerRound("r1", 1, 0.1, [0.12, 0.08])];
+    const results = buildPlayerResults(managerSession(), [human], rounds, []);
+    const h = buildResultsCsv(results, rounds, false, 0.6, true, 110).split("\r\n")[0].split(",");
+    expect(h).not.toContain("Good rounds");
+    expect(h).not.toContain("Total rounds");
+    expect(h).not.toContain("Good %");
+    expect(h).toContain("Avg invested");
+  });
+
   it("leaves the other two games' CSV untouched", () => {
     const human = player("stu", 121);
     const rounds = [round("r1", 1), round("r2", 2)];
@@ -502,12 +527,12 @@ describe("buildResultsCsv — manager game", () => {
 });
 
 describe("manager games have no good/bad draws", () => {
-  it("produces empty outcomes, which makes the strategy counterfactual degenerate", () => {
+  it("produces no outcomes and NO strategy counterfactual", () => {
     // resolve_round writes market_outcome = null for a manager round — returns
-    // are continuous. So `outcomes` is empty, every strategy replays zero draws,
-    // and all four counterfactual cards come out at the starting wealth. That is
-    // why HostSummary suppresses the card for this game type rather than showing
-    // four identical $100s.
+    // are continuous. So `outcomes` is empty and the good/bad counterfactual has
+    // nothing to replay: every strategy would come back at the starting wealth.
+    // It is left UNDEFINED rather than degenerate, so no screen can render four
+    // identical $100 cards — the student end screen used to do exactly that.
     const s: SessionRow = {
       ...session(),
       config: { ...DEFAULT_CONFIG, game_type: "manager", market_scope: "shared" },
@@ -524,10 +549,8 @@ describe("manager games have no good/bad draws", () => {
     const [res] = buildPlayerResults(s, [human], rounds, allocations);
 
     expect(res.outcomes).toEqual([]);
-    // every strategy returns the untouched starting wealth
-    const values = Object.values(res.counterfactual ?? {});
-    expect(values).toHaveLength(4);
-    for (const v of values) expect(v).toBe(s.config.starting_wealth);
+    expect(res.counterfactual).toBeUndefined();
+    expect(res.portfolioCounterfactual).toBeUndefined();
     // meanwhile the real wealth series is fine — the game itself works
     expect(res.wealthByRound).toEqual([111, 118]);
     expect(res.totalReturn).toBeCloseTo(0.18, 10);

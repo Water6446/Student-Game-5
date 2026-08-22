@@ -383,7 +383,7 @@ export function HostRoundControl({
             <ArrowLeft /> Dashboard
           </Link>
           <h1 className="text-3xl font-black text-ink">
-            Round {session.current_round}{" "}
+            {managerGame ? "Year" : "Round"} {session.current_round}{" "}
             <span className="text-ink-subtle">/ {session.config.num_rounds}</span>
           </h1>
         </div>
@@ -560,7 +560,7 @@ export function HostRoundControl({
                 allocations={allocs}
                 goodProb={session.config.good_prob ?? 0.6}
                 portfolio={portfolioGame}
-                levered={managerGame}
+                manager={managerGame}
               />
               {!isManual && !managerGame ? (
                 <OddsDisclosure supabase={supabase} session={session} />
@@ -623,7 +623,7 @@ export function HostRoundControl({
                   allocations={allocs}
                   goodProb={session.config.good_prob ?? 0.6}
                   portfolio={portfolioGame}
-                  levered={managerGame}
+                  manager={managerGame}
                 />
               )}
             </>
@@ -722,20 +722,29 @@ export function HostRoundControl({
 
       {/* Wealth over rounds */}
       <Card className="mt-6">
-        <h2 className="mb-3 text-xl font-bold text-ink">Wealth over rounds</h2>
+        <h2 className="mb-3 text-xl font-bold text-ink">
+          Wealth over {managerGame ? "years" : "rounds"}
+        </h2>
         <WealthChart
           players={visiblePlayers}
           rounds={history.rounds}
           allocations={history.allocations}
           startingWealth={session.config.starting_wealth}
           benchmark={benchmark}
+          unitLabel={managerGame ? "Year" : "Round"}
         />
       </Card>
 
       {/* Per-round history */}
       <Card className="mt-6">
-        <h2 className="mb-3 text-xl font-bold text-ink">Round history</h2>
-        <SessionHistoryTable rounds={history.rounds} allocations={history.allocations} />
+        <h2 className="mb-3 text-xl font-bold text-ink">
+          {managerGame ? "Year" : "Round"} history
+        </h2>
+        <SessionHistoryTable
+          rounds={history.rounds}
+          allocations={history.allocations}
+          manager={managerGame}
+        />
       </Card>
     </main>
   );

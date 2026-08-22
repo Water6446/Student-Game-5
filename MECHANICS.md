@@ -296,6 +296,15 @@ Sharpe **applies** and is kept: a per-year return series is exactly what
 `expectedGoodRate` do **not** — there are no good/bad draws to be lucky in, so
 the class line becomes the market's return instead.
 
+The good/bad **counterfactual** does not apply either, and
+`buildPlayerResults` leaves `counterfactual` **undefined** for a manager game
+rather than degenerate. It replays market draws, and there are none: run it here
+and all four strategies come back at the starting wealth. Leaving it undefined is
+what stops a screen rendering four identical $100 cards. The manager game's
+counterfactual is the **index**, compounded from `rounds.market_return`
+(`indexSeries`), shown as the ghost line, the "if you had just held the index"
+row on the student end screen, and the class-vs-index cards on the host summary.
+
 Code: [lib/game/manager.ts](lib/game/manager.ts), mirrored by
 `supabase/migrations/0015_manager_resolve.sql`.
 

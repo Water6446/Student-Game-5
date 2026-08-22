@@ -19,6 +19,7 @@ import { sumFees } from "@/components/FeeCounter";
 import { money, ordinal, sharpeText, signedMoney, signedPct } from "@/lib/game/format";
 import { Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
+import { ManagerReveal } from "@/components/ManagerReveal";
 import { Trophy, ArrowLeft, Clover } from "@/components/icons";
 
 export function StudentFinished({
@@ -36,6 +37,9 @@ export function StudentFinished({
     indexWealth: number;
     fees: number;
   } | null>(null);
+  // Kept in state only for the manager reveal, which needs market_return and
+  // manager_returns to put "delivered" next to each true alpha.
+  const [managerRounds, setManagerRounds] = useState<RoundRow[] | null>(null);
 
   const portfolio = isPortfolio(session.config);
   const manager = isManager(session.config);
@@ -82,6 +86,7 @@ export function StudentFinished({
           .sort((a, b) => a.round_number - b.round_number)
           .map((r) => Number(r.market_return));
         const series = indexSeries(session.config.starting_wealth, market);
+        setManagerRounds(rounds);
         setManagerSummary({
           indexWealth: series.length > 0 ? series[series.length - 1] : session.config.starting_wealth,
           fees: sumFees(allocs.filter((a) => a.player_id === me.id)),
@@ -107,7 +112,11 @@ export function StudentFinished({
     : null;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-6 py-8">
+    <main
+      className={`mx-auto flex min-h-dvh flex-col justify-center px-6 py-8 ${
+        manager ? "max-w-2xl" : "max-w-lg"
+      }`}
+    >
       {topThree ? <Confetti /> : null}
       <Card className="animate-pop-in text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
@@ -264,6 +273,19 @@ export function StudentFinished({
               Same market outcomes you faced — only your strategy changes.
             </p>
           </div>
+        ) : null}
+
+        {/* The other half of the module's payoff: the fee/index card above says
+            what it cost you, this says who was actually worth hiring. Students
+            may read it only once the session is finished — get_manager_truth
+            enforces that server-side, so this is not a client-side secret. */}
+        {manager && managerRounds ? (
+          <ManagerReveal
+            supabase={supabase}
+            session={session}
+            rounds={managerRounds}
+            className="mt-6 text-left"
+          />
         ) : null}
 
         <Link

@@ -281,13 +281,29 @@ export function StudentRound({
               rather than accuse the student of missing the round. */}
           {phase === "loading" ? null : mine ? (
             <p className="mt-3 font-mono text-ink">
-              {portfolio
-                ? `Invested ${money(Number(mine.risky_amount))} across ${n} assets · safe ${money(Number(mine.safe_amount))}`
-                : `You risked ${money(Number(mine.risky_amount))} · safe ${money(Number(mine.safe_amount))}`}
+              {manager
+                ? // safe_amount goes NEGATIVE when levered, so "safe −$50" was
+                  // both wrong and alarming — say borrowed and mean it.
+                  `Invested ${money(Number(mine.risky_amount))} across ${n} managers · ${
+                    Number(mine.safe_amount) < 0
+                      ? `borrowed ${money(-Number(mine.safe_amount))}`
+                      : `cash ${money(Number(mine.safe_amount))}`
+                  }`
+                : portfolio
+                  ? `Invested ${money(Number(mine.risky_amount))} across ${n} assets · safe ${money(Number(mine.safe_amount))}`
+                  : `You risked ${money(Number(mine.risky_amount))} · safe ${money(Number(mine.safe_amount))}`}
             </p>
           ) : (
             <p className="mt-3 font-editorial text-sm italic text-ink-subtle">
-              You didn&apos;t submit — you&apos;ll default to all-safe.
+              {/* The manager game CARRIES FORWARD — the server rescales last
+                  year's shares to current wealth rather than defaulting to
+                  all-safe. Telling a holder they are about to sit in cash is
+                  the opposite of what happens. */}
+              {manager
+                ? seeded.some((p) => (p ?? 0) > 0)
+                  ? "You didn't change anything — you keep last year's portfolio."
+                  : "You haven't hired anyone — you stay in the risk-free asset."
+                : "You didn't submit — you'll default to all-safe."}
             </p>
           )}
           <div className="mt-4 flex justify-center gap-2" aria-hidden="true">
@@ -336,8 +352,15 @@ function Shell({
   const customOdds =
     isPortfolio(session.config) &&
     (session.config.assets ?? []).some((a) => a?.good_prob != null);
+  // The manager game has no good/bad market to quote odds on — returns are
+  // continuous. show_odds_to_students defaults to true and its toggle is hidden
+  // for this game type, so without the guard EVERY manager round screen carried
+  // a "The market looks like ↑60% ↓40%" bar that describes a different game.
   const showOdds =
-    session.config.show_odds_to_students && session.config.market_mode === "auto" && !customOdds;
+    session.config.show_odds_to_students &&
+    session.config.market_mode === "auto" &&
+    !customOdds &&
+    !isManager(session.config);
   const goodPct = Math.round((session.config.good_prob ?? 0.6) * 100);
 
   return (

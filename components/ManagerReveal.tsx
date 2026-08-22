@@ -22,13 +22,26 @@ export function ManagerReveal({
   supabase,
   session,
   rounds,
+  className = "mt-6",
 }: {
   supabase: SupabaseClient;
   session: SessionRow;
   rounds: RoundRow[];
+  /** the student end screen stacks its own cards, so the margin is caller-owned */
+  className?: string;
 }) {
   const { truth, loading } = useManagerTruth(supabase, session.id, true);
   const n = numManagers(session.config);
+
+  // Years actually played, not config.num_rounds — a game finished early has
+  // fewer observations, and every statistical claim below is per observation.
+  const years = useMemo(
+    () =>
+      rounds.filter(
+        (r) => r.status === "revealed" && r.market_return != null && r.manager_returns,
+      ).length,
+    [rounds],
+  );
 
   // Realised alpha over the game: mean(r_i − beta_i·r_market) across revealed
   // years. Computed here rather than stored, from the rows everyone can see.
@@ -50,7 +63,7 @@ export function ManagerReveal({
 
   if (loading) {
     return (
-      <Card className="mt-6">
+      <Card className={className}>
         <p className="font-editorial italic text-ink-muted">Revealing the managers…</p>
       </Card>
     );
@@ -66,14 +79,28 @@ export function ManagerReveal({
     realised: realised?.[i] ?? null,
   })).sort((a, b) => b.alpha - a.alpha);
 
+  // The closing statistical claim, read off the most-skilled manager actually in
+  // play. Needs a positive alpha, a real tracking error and at least one year.
+  const best = rows[0];
+  const stat =
+    best && best.alpha > 0 && best.te > 0 && years > 0
+      ? {
+          alpha: best.alpha,
+          te: best.te,
+          ir: best.alpha / best.te,
+          se: best.te / Math.sqrt(years),
+          sigma: (best.alpha / best.te) * Math.sqrt(years),
+        }
+      : null;
+
   return (
-    <Card className="mt-6">
+    <Card className={className}>
       <h2 className="text-xl font-bold text-ink">Who was actually skilled</h2>
       <p className="mb-3 mt-1 text-sm text-ink-muted">
         The true parameters, hidden until now. <span className="font-semibold">Delivered</span> is
-        what each manager actually produced over these {session.config.num_rounds} years — the gap
-        between it and the true alpha is how little {session.config.num_rounds} observations can
-        tell you.
+        what each manager actually produced over these {years} year{years === 1 ? "" : "s"} — the
+        gap between it and the true alpha is how little {years} observation
+        {years === 1 ? "" : "s"} can tell you.
       </p>
 
       <div className="mb-2 hidden gap-3 px-3 text-xs font-bold uppercase tracking-wide text-ink-subtle sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
@@ -112,10 +139,24 @@ export function ManagerReveal({
         )}
       />
 
+      {/* Derived from THIS line-up and THIS many years — the numbers were once
+          hardcoded to the default preset and a 25-year game, and quietly lied
+          whenever the host changed either. */}
       <p className="mt-3 font-editorial text-sm italic text-ink-muted">
-        Skill of ±2% against 5% tracking error is an information ratio of 0.4. Over 25 years the
-        standard error on that estimate is 1% — barely two sigma. Nobody in the room could have
-        known.
+        {stat ? (
+          <>
+            The best manager here ran {signedPct(stat.alpha * 100, 1)} of alpha against{" "}
+            {Math.round(stat.te * 100)}% tracking error — an information ratio of{" "}
+            {stat.ir.toFixed(2)}. Over {years} year{years === 1 ? "" : "s"} the standard error on
+            that estimate is {(stat.se * 100).toFixed(1)}%, so even the truth is only{" "}
+            {stat.sigma.toFixed(1)} sigma. Nobody in the room could have known.
+          </>
+        ) : (
+          <>
+            Skill this small cannot be separated from luck at this sample size. That is the
+            lesson, not a flaw in the game.
+          </>
+        )}
       </p>
     </Card>
   );

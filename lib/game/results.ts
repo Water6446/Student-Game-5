@@ -3,7 +3,7 @@
 // finals. Also builds the CSV export. Pure given its inputs (no I/O).
 
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
-import { isPortfolio, type MarketOutcome, type MarketScope } from "./types";
+import { isManager, isPortfolio, type MarketOutcome, type MarketScope } from "./types";
 import {
   allStrategyOutcomes,
   strategyFraction,
@@ -324,6 +324,11 @@ export function buildPlayerResults(
 ): PlayerResult[] {
   const revealed = revealedRounds(rounds);
   const portfolio = isPortfolio(session.config);
+  // The good/bad counterfactual REPLAYS market draws, and a manager game has
+  // none: run it there and every strategy comes back at the starting wealth,
+  // which the student end screen then rendered as four identical $100 cards.
+  // The manager game's counterfactual is the index, computed from market_return.
+  const manager = isManager(session.config);
   const scope = session.config.market_scope;
   const mode = session.config.payoff_mode;
   const startWealth = session.config.starting_wealth;
@@ -406,9 +411,10 @@ export function buildPlayerResults(
         nRounds > 0 ? Math.pow(Math.max(finalWealth, 0) / startWealth, 1 / nRounds) - 1 : null,
       sharpe: sharpeRatio(perRoundReturns(startWealth, wealthByRound), rf),
       outcomes,
-      counterfactual: portfolio
-        ? undefined
-        : allStrategyOutcomes(startWealth, outcomes, mode, goodProb),
+      counterfactual:
+        portfolio || manager
+          ? undefined
+          : allStrategyOutcomes(startWealth, outcomes, mode, goodProb),
       portfolioCounterfactual: portfolio
         ? allPortfolioStrategyOutcomes(session.config, startWealth, matrix)
         : undefined,
@@ -535,16 +541,19 @@ export function buildResultsCsv(
   manager = false,
   /** manager game: wealth an index-holder would have finished with */
   indexFinal?: number,
+  /** manager game: the line-up's names, for the per-year returns block */
+  managerNames?: string[],
 ): string {
   const revealed = revealedRounds(rounds);
   const header: (string | number)[] = [
     "Rank",
     "Player",
     "Final wealth",
-    portfolio ? "Good draws" : "Good rounds",
-    portfolio ? "Total draws" : "Total rounds",
-    "Good %",
-    "Avg bet",
+    // A manager game has no good/bad draws, so these three were always 0,0,0.
+    ...(manager
+      ? []
+      : [portfolio ? "Good draws" : "Good rounds", portfolio ? "Total draws" : "Total rounds", "Good %"]),
+    manager ? "Avg invested" : "Avg bet",
     "Total return %",
     "Per-round %",
     "Sharpe",
@@ -576,9 +585,7 @@ export function buildResultsCsv(
       res.rank,
       res.player.display_name,
       roundCents(res.finalWealth),
-      good,
-      total,
-      total ? Math.round((100 * good) / total) : 0,
+      ...(manager ? [] : [good, total, total ? Math.round((100 * good) / total) : 0]),
       roundCents(res.avgBet),
       res.totalReturn == null ? "" : Math.round(res.totalReturn * 1000) / 10,
       res.perRoundReturn == null ? "" : Math.round(res.perRoundReturn * 1000) / 10,
@@ -609,7 +616,12 @@ export function buildResultsCsv(
       rows.push([
         "Year",
         "Index return %",
-        ...Array.from({ length: nManagers }, (_, i) => `Manager ${i + 1} return %`),
+        // Real fund names when the caller has them — "Manager 3" means nothing
+        // in a lecture six weeks later.
+        ...Array.from(
+          { length: nManagers },
+          (_, i) => `${managerNames?.[i]?.trim() || `Manager ${i + 1}`} return %`,
+        ),
       ]);
       for (const r of revealed) {
         rows.push([

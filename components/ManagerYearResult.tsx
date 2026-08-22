@@ -33,6 +33,15 @@ export function ManagerYearResult({
   const rMarket = round.market_return ?? null;
   const held = (allocation?.risky_breakdown ?? []) as number[];
   const fees = allocation?.fees_paid == null ? 0 : Number(allocation.fees_paid);
+  // Split the year's fees into management and performance. The two behave
+  // completely differently — one is charged in a losing year, the other takes a
+  // fifth of the upside — and lumping them into "Fees this year" hides the
+  // entire point of the 2-and-20 line-up.
+  const split = (allocation?.fee_breakdown ?? []).reduce(
+    (acc, f) => ({ mgmt: acc.mgmt + Number(f?.mgmt ?? 0), perf: acc.perf + Number(f?.perf ?? 0) }),
+    { mgmt: 0, perf: 0 },
+  );
+  const showSplit = split.perf > 0.005;
   const allocated = allocation ? Number(allocation.risky_amount) : 0;
   const borrowed = Math.max(allocated - startWealth, 0);
   const borrowCost = borrowed * borrowRate(cfg);
@@ -56,6 +65,16 @@ export function ManagerYearResult({
         </div>
       ) : null}
 
+      {/* The prospectus quotes returns NET of fees; these are the manager's
+          GROSS returns for the year, with the fees itemised below. Without the
+          label a student compares two different numbers and concludes the fund
+          lied to them. */}
+      <div className="flex items-center gap-2 pt-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-subtle">
+        <span className="min-w-0 flex-1">Manager</span>
+        <span className="w-20 shrink-0 text-right">Gross</span>
+        {allocation ? <span className="w-24 shrink-0 text-right">You held</span> : null}
+      </div>
+
       <ul className="divide-y divide-line">
         {Array.from({ length: n }, (_, i) => {
           const r = returns[i];
@@ -75,7 +94,7 @@ export function ManagerYearResult({
               </span>
               {allocation ? (
                 <span className="w-24 shrink-0 text-right font-mono text-xs text-ink-subtle">
-                  {amount > 0 ? `you held ${share}%` : "—"}
+                  {amount > 0 ? `${share}%` : "—"}
                 </span>
               ) : null}
             </li>
@@ -86,7 +105,13 @@ export function ManagerYearResult({
       {allocation ? (
         <>
       <dl className="space-y-1 border-t-2 border-ink pt-2 font-mono text-sm">
-        <Row label="Fees this year" value={-fees} />
+        {showSplit ? (
+          <>
+            <Row label="Management fees" value={-split.mgmt} />
+            <Row label="Performance fees" value={-split.perf} />
+          </>
+        ) : null}
+        <Row label={showSplit ? "Fees this year (total)" : "Fees this year"} value={-fees} />
         {borrowed > 0 ? <Row label="Borrowing cost" value={-borrowCost} /> : null}
       </dl>
 

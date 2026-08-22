@@ -39,6 +39,7 @@ export const WealthChart = memo(function WealthChart({
   startingWealth,
   hideToggle,
   benchmark,
+  unitLabel = "Round",
 }: {
   players: PlayerRow[];
   rounds: RoundRow[];
@@ -48,6 +49,8 @@ export const WealthChart = memo(function WealthChart({
   /** manager game: the index students are measured against. series[i] = value
    *  after round i+1. Drawn last, dashed, and never culled. */
   benchmark?: { label: string; series: number[] } | null;
+  /** what one step on the X axis is called — "Year" in the manager game */
+  unitLabel?: string;
 }) {
   const [useLogScale, setUseLogScale] = useSyncedPreference("wealthChartLogScale", false);
 
@@ -151,7 +154,7 @@ export const WealthChart = memo(function WealthChart({
               fontSize={12}
               fontFamily="var(--font-mono)"
               label={{
-                value: "Round",
+                value: unitLabel,
                 position: "insideBottom",
                 offset: -2,
                 fill: COLOR.inkMuted,
@@ -185,7 +188,12 @@ export const WealthChart = memo(function WealthChart({
               // so an ordinary chart keeps the default Recharts tooltip exactly.
               content={
                 featured ? (
-                  <NamedTooltip players={players} featured={featured} benchmark={benchmark} />
+                  <NamedTooltip
+                      players={players}
+                      featured={featured}
+                      benchmark={benchmark}
+                      unitLabel={unitLabel}
+                    />
                 ) : undefined
               }
               formatter={(value: number, _name: string, item: TooltipEntry) => [
@@ -194,7 +202,7 @@ export const WealthChart = memo(function WealthChart({
                   ? benchmark?.label ?? "Benchmark"
                   : labelFor(players, String(item.dataKey)),
               ]}
-              labelFormatter={(l) => `Round ${l}`}
+              labelFormatter={(l) => `${unitLabel} ${l}`}
             />
             {linePlayers.map((p, i) => {
               const named = featured == null || featured.has(p.id);
@@ -275,6 +283,7 @@ function NamedTooltip({
   players,
   featured,
   benchmark,
+  unitLabel = "Round",
   active,
   payload,
   label,
@@ -282,6 +291,7 @@ function NamedTooltip({
   players: PlayerRow[];
   featured: Set<string>;
   benchmark?: { label: string; series: number[] } | null;
+  unitLabel?: string;
   active?: boolean;
   payload?: TooltipEntry[];
   label?: number | string;
@@ -303,7 +313,9 @@ function NamedTooltip({
         fontSize: 12,
       }}
     >
-      <div style={{ color: COLOR.inkMuted, marginBottom: 4 }}>Round {label}</div>
+      <div style={{ color: COLOR.inkMuted, marginBottom: 4 }}>
+        {unitLabel} {label}
+      </div>
       {rows.map((e) => (
         <div key={String(e.dataKey)} style={{ color: e.color }}>
           {String(e.dataKey) === BENCHMARK_KEY

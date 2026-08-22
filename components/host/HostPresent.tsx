@@ -29,7 +29,7 @@ import { isManager, isPortfolio, type MarketOutcome, type SessionConfig } from "
 import { money, signedPct } from "@/lib/game/format";
 import { Confetti } from "@/components/Confetti";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
-import { ManagerReveal } from "@/components/host/ManagerReveal";
+import { ManagerReveal } from "@/components/ManagerReveal";
 import { ArrowUp, ArrowDown, Coins, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
 
 /**
@@ -266,7 +266,8 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
       <div className="flex min-h-0 flex-col gap-6">
         <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border-2 border-ink bg-play-soft p-8 text-center shadow-card">
           <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
-            Round {session.current_round} / {session.config.num_rounds}
+            {manager ? "Year" : "Round"} {session.current_round} /{" "}
+            {session.config.num_rounds}
           </p>
 
           {phase === "loading" ? (
@@ -325,7 +326,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
 
         <section className="rounded-3xl border-2 border-ink bg-surface p-5 shadow-card">
           <h2 className="mb-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
-            Wealth over rounds
+            Wealth over {manager ? "years" : "rounds"}
           </h2>
           <WealthChart
             players={visiblePlayers}
@@ -334,6 +335,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
             startingWealth={session.config.starting_wealth}
             hideToggle={true}
             benchmark={benchmark}
+            unitLabel={manager ? "Year" : "Round"}
           />
         </section>
       </div>
@@ -568,7 +570,8 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
           <Trophy className="text-ink" /> Final standings
         </h2>
         <p className="mt-1 font-editorial text-xl italic text-ink-muted">
-          {session.config.num_rounds} rounds · game over
+          {session.config.num_rounds} {isManager(session.config) ? "years" : "rounds"} · game
+          over
         </p>
       </div>
       <div className="mx-auto w-full max-w-3xl">
