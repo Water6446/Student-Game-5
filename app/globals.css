@@ -121,7 +121,11 @@ body {
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    /* staggered entrances (the homepage hero) must land instantly too, or a
+       fill-mode animation keeps its content hidden for the whole delay */
+    animation-delay: 0ms !important;
     transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
   .confetti-piece {

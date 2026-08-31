@@ -38,9 +38,23 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
+const DESCRIPTION =
+  "A classroom simulation of investment risk, for finance and economics courses. " +
+  "Students divide their wealth between a safe and a risky asset from their phones, " +
+  "the market resolves on the projector, and the class compares what each strategy produced.";
+
+// TODO(max) OG image: add `openGraph.images` once there is a real social card.
 export const metadata: Metadata = {
   title: "The Risk Game",
-  description: "A live, in-class investment-risk simulation. Bet, reveal, repeat.",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "The Risk Game",
+    description: DESCRIPTION,
+    url: process.env.NEXT_PUBLIC_SITE_URL,
+    siteName: "The Risk Game",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

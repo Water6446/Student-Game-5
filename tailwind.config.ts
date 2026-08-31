@@ -56,6 +56,12 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        // Marketing hero: a line slides up from behind its own mask. The
+        // wrapper clips, so the text arrives rather than fades.
+        "slide-up": {
+          "0%": { transform: "translateY(105%)" },
+          "100%": { transform: "translateY(0)" },
+        },
         "count-pop": {
           "0%": { transform: "scale(0.8)", opacity: "0" },
           "60%": { transform: "scale(1.06)" },
@@ -79,6 +85,7 @@ const config: Config = {
       animation: {
         "pop-in": "pop-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
         rise: "rise 0.4s ease-out both",
+        "slide-up": "slide-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) both",
         "count-pop": "count-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
         confetti: "confetti 2.6s linear forwards",
         shake: "shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both",
