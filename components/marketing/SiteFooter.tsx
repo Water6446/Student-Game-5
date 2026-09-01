@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Coins } from "@/components/icons";
 import { Eyebrow, Shell } from "@/components/marketing/primitives";
-import { FOOTER, SITE, isTodo } from "@/lib/marketing/content";
+import { FOOTER, SITE } from "@/lib/marketing/content";
 
 const LINK_CLASS =
   "inline-flex min-h-[44px] items-center text-sm font-semibold text-paper-inverse/75 transition hover:text-paper-inverse";
@@ -50,18 +50,6 @@ export function SiteFooter() {
                 <a href={`mailto:${FOOTER.email}`} className={LINK_CLASS}>
                   {FOOTER.email}
                 </a>
-              </li>
-              {/* Source stays a plain string until there is a real URL to link. */}
-              <li>
-                {isTodo(FOOTER.repoUrl) ? (
-                  <span className="inline-flex min-h-[44px] items-center font-mono text-xs text-paper-inverse/60">
-                    {FOOTER.repoUrl}
-                  </span>
-                ) : (
-                  <a href={FOOTER.repoUrl} className={LINK_CLASS}>
-                    Source
-                  </a>
-                )}
               </li>
               <li>
                 <a href={FOOTER.personalSiteUrl} className={LINK_CLASS}>

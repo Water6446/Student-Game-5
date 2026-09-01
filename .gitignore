@@ -14,3 +14,8 @@ coverage/
 # Local design-skill reference dumps (not part of the app)
 agent-skills/
 ui-ux-pro-max-skill/
+
+# Claude Code tooling — local only, never committed
+.claude/
+.agents/
+skills-lock.json

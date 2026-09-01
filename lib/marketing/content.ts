@@ -41,7 +41,6 @@ export const SITE = {
   blurb:
     "A live, in-class investment-risk simulation. Students participate from their phones while you run the market from the front of the room.",
   email: "maxalexjansen@gmail.com",
-  repoUrl: "TODO(max) repo URL",
   personalSiteUrl: "https://max-jansen.com",
   location: "Worcester, MA",
 } as const;
@@ -375,10 +374,6 @@ export const FAQ = {
       q: "What do I get afterward?",
       a: "A CSV of every round, every allocation, and the counterfactual: what each student would have ended with under other strategies.",
     },
-    {
-      q: "Is it open source?",
-      a: "TODO(max) — yes/link, or cut this row.",
-    },
   ],
 } as const;
 
@@ -400,7 +395,6 @@ export const FOOTER = {
   ],
   contactTitle: "Contact",
   email: SITE.email,
-  repoUrl: SITE.repoUrl,
   personalSiteUrl: SITE.personalSiteUrl,
   location: SITE.location,
   copyright: "© 2026 Max Jansen",
