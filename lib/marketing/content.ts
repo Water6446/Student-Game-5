@@ -64,7 +64,7 @@ export const HERO = {
   headlineLead: "A classroom simulation",
   headlineEmphasis: "of investment risk.",
   scrollLabel: "scroll",
-  sub: "Built for finance and economics courses. Students divide their wealth between a safe and a risky asset each round, the market resolves, and the class can compare what the different strategies produced.",
+  sub: "A hands-on way to learn how investment risk really works. Each round you divide your wealth between a safe and a risky asset, the market turns, and you see how your choices stack up against every other strategy in the room. For classrooms, client workshops, and anyone curious about the tradeoff between playing it safe and reaching for more.",
   primary: { label: "Host a session", href: "/host" },
   secondary: { label: "Join with a code", href: "/join" },
   note: "Students join without accounts · Works on any phone · Free while in pilot",
