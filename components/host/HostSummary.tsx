@@ -368,7 +368,8 @@ export function HostSummary({
         <Card>
           <h2 className="mb-1 text-xl font-bold text-ink">Final standings</h2>
           <p className="mb-3 text-xs text-ink-subtle">
-            S = Sharpe (return per unit of risk). Click a player to see every market they faced.
+            S = Sharpe Ratio (return per unit of risk). Click a player to see every market outcome
+            they faced.
           </p>
           <CondensedList
             items={visibleResults}

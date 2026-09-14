@@ -184,6 +184,77 @@ export function sharpeRatio(returns: number[], riskFree = 0): number | null {
 }
 
 /**
+ * A player's performance in the SAME units the market line uses: this period's
+ * return, the total on starting wealth, and the geometric rate per period.
+ *
+ * The host screens quote the index as "+16.3% this year · +7.7%/yr over 11
+ * years" while every player figure alongside it was in dollars, so the two
+ * could not be compared by eye — which is precisely the comparison the manager
+ * game is about. One helper so the host panel and the student screen can never
+ * word the same number differently.
+ */
+export interface ReturnSummary {
+  /** the most recent revealed round's return; null before any round resolves */
+  latest: number | null;
+  /** finalWealth/startWealth − 1 */
+  total: number;
+  /** the constant per-period rate that compounds to `total`; null at 0 periods */
+  annualized: number | null;
+  /** revealed rounds behind these figures */
+  periods: number;
+}
+
+export function returnSummary(
+  startWealth: number,
+  currentWealth: number,
+  periods: number,
+  latest: number | null,
+): ReturnSummary {
+  const total = startWealth > 0 ? currentWealth / startWealth - 1 : 0;
+  return {
+    latest,
+    total,
+    annualized:
+      periods > 0 && startWealth > 0
+        ? Math.pow(Math.max(currentWealth, 0) / startWealth, 1 / periods) - 1
+        : null,
+    periods,
+  };
+}
+
+/**
+ * `returnSummary` for every player, reading each one's latest revealed round
+ * from their own allocation row (a player who sat out that round shows no
+ * latest figure rather than a fabricated 0%).
+ */
+export function returnSummaryByPlayer(
+  startWealth: number,
+  players: PlayerRow[],
+  rounds: RoundRow[],
+  allocations: AllocationRow[],
+): Map<string, ReturnSummary> {
+  const revealed = revealedRounds(rounds);
+  const last = revealed[revealed.length - 1] ?? null;
+  const lastByPlayer = new Map<string, AllocationRow>();
+  if (last) {
+    for (const a of allocations) {
+      if (a.round_id === last.id) lastByPlayer.set(a.player_id, a);
+    }
+  }
+  const out = new Map<string, ReturnSummary>();
+  for (const p of players) {
+    const a = lastByPlayer.get(p.id);
+    let latest: number | null = null;
+    if (a?.resulting_wealth != null) {
+      const before = Number(a.risky_amount) + Number(a.safe_amount);
+      if (before > 0) latest = Number(a.resulting_wealth) / before - 1;
+    }
+    out.set(p.id, returnSummary(startWealth, Number(p.current_wealth), revealed.length, latest));
+  }
+  return out;
+}
+
+/**
  * Expected GOOD probability per draw — the luck benchmark. Basic: good_prob.
  * Portfolio: the mean of each asset's good_prob (every revealed round faces one
  * draw per asset, so this is exactly the expected rate of the draws faced).

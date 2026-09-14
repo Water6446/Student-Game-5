@@ -8,7 +8,10 @@ import {
   managerFees,
   managerGrossReturn,
   MANAGER_PRESETS,
+  netReturn,
   resolveManagerYear,
+  rollingProspectus,
+  rollingProspectuses,
   totalVol,
   type ManagerMathConfig,
 } from "./manager";
@@ -289,5 +292,71 @@ describe("amountsFromPercents — cents rounding vs the leverage cap", () => {
 
   it("handles zero wealth without dividing the world by it", () => {
     expect(amountsFromPercents(0, [40, 40], 2)).toEqual([0, 0]);
+  });
+});
+
+describe("rolling prospectus", () => {
+  const fund: ManagerPublic = {
+    name: "Test Fund",
+    strategy_line: "",
+    fee_type: "flat",
+    mgmt_fee: 0.01,
+    perf_fee: 0,
+    track_record: {
+      yearly: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      one_yr: 0.1,
+      five_yr: 0.1,
+      ten_yr: 0.1,
+    },
+    vol_label: "Low",
+  };
+
+  it("mirrors the SQL's net-of-fees convention", () => {
+    // gross − mgmt − perf on the positive part only
+    expect(netReturn({ mgmt_fee: 0.02, perf_fee: 0.2 }, 0.1)).toBeCloseTo(0.1 - 0.02 - 0.02, 10);
+    expect(netReturn({ mgmt_fee: 0.02, perf_fee: 0.2 }, -0.1)).toBeCloseTo(-0.12, 10);
+  });
+
+  it("keeps a ten-year window: newest joins, oldest drops", () => {
+    const rolled = rollingProspectus(fund, [0.3]);
+    expect(rolled.track_record.yearly).toHaveLength(10);
+    // the appended year is net of the 1% management fee
+    expect(rolled.track_record.yearly[9]).toBeCloseTo(0.29, 10);
+    // one of the ten identical history years fell off the front
+    expect(rolled.track_record.yearly.slice(0, 9)).toEqual(Array(9).fill(0.1));
+  });
+
+  it("reports the newest year as 1 yr, and recomputes 5 and 10 yr off the window", () => {
+    const rolled = rollingProspectus(fund, [0.3]);
+    expect(rolled.track_record.one_yr).toBeCloseTo(0.29, 10);
+    // last five = four 10% years and one 29% year
+    const cum5 = 1.1 ** 4 * 1.29;
+    expect(rolled.track_record.five_yr).toBeCloseTo(cum5 ** (1 / 5) - 1, 8);
+    const cum10 = 1.1 ** 9 * 1.29;
+    expect(rolled.track_record.ten_yr).toBeCloseTo(cum10 ** (1 / 10) - 1, 8);
+  });
+
+  it("drops the whole pre-game decade once ten years have been played", () => {
+    const played = Array.from({ length: 12 }, (_, i) => 0.2 + i / 100);
+    const rolled = rollingProspectus(fund, played);
+    expect(rolled.track_record.yearly).toHaveLength(10);
+    expect(rolled.track_record.yearly.every((r) => r > 0.19)).toBe(true);
+  });
+
+  it("re-derives the volatility label from the rolled window", () => {
+    // a calm fund that just lived through violent years is no longer "Low"
+    const rolled = rollingProspectus(fund, [0.6, -0.5, 0.7, -0.45, 0.55]);
+    expect(rolled.vol_label).not.toBe("Low");
+  });
+
+  it("leaves the card untouched before the first year resolves", () => {
+    expect(rollingProspectus(fund, [])).toBe(fund);
+  });
+
+  it("pairs each manager with its own column of returns", () => {
+    const other = { ...fund, name: "Other", mgmt_fee: 0 };
+    const [a, b] = rollingProspectuses([fund, other], [[0.3, 0.5], [0.2, 0.4]]);
+    expect(a.track_record.yearly.slice(-2)).toEqual([0.29, 0.19]);
+    expect(b.track_record.yearly.slice(-2)).toEqual([0.5, 0.4]);
   });
 });

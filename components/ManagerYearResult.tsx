@@ -3,7 +3,8 @@
 import type { AllocationRow, RoundRow } from "@/lib/game/db";
 import type { SessionConfig } from "@/lib/game/types";
 import { borrowRate, managerMathConfig, managerName, numManagers } from "@/lib/game/manager";
-import { money, signedMoney, signedPct } from "@/lib/game/format";
+import { cost, money, signedPct } from "@/lib/game/format";
+import type { ReturnSummary } from "@/lib/game/results";
 import { ArrowDown, ArrowUp } from "@/components/icons";
 
 /**
@@ -20,12 +21,18 @@ export function ManagerYearResult({
   round,
   allocation,
   startWealth,
+  marketSoFar,
+  playerSoFar,
 }: {
   config: SessionConfig;
   round: RoundRow;
   allocation: AllocationRow | null;
   /** wealth at the START of the year (risky + safe on the row) */
   startWealth: number;
+  /** the index's record to date — this year's return plus the annualized rate */
+  marketSoFar?: { latest: number; annualized: number; years: number } | null;
+  /** the player's own record, in the SAME units, so the two can be compared */
+  playerSoFar?: ReturnSummary | null;
 }) {
   const n = numManagers(config);
   const cfg = managerMathConfig(config);
@@ -53,14 +60,26 @@ export function ManagerYearResult({
   return (
     <div className="space-y-2 text-left">
       {rMarket != null ? (
-        <div className="flex items-baseline justify-between rounded-xl border-2 border-ink bg-paper-2 px-3 py-2 shadow-card">
+        <div className="flex items-baseline justify-between gap-2 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2 shadow-card">
           <span className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
             The market
           </span>
-          <span
-            className={`font-mono text-lg font-black ${rMarket >= 0 ? "text-gain" : "text-loss"}`}
-          >
-            {signedPct(rMarket * 100, 1)}
+          <span className="text-right">
+            <span
+              className={`block font-mono text-lg font-black ${
+                rMarket >= 0 ? "text-gain" : "text-loss"
+              }`}
+            >
+              {signedPct(rMarket * 100, 1)}
+            </span>
+            {/* Life-of-game rate alongside the year's, because one year of the
+                index says nothing — and because the player's own line below now
+                carries the same pair, which is the comparison being taught. */}
+            {marketSoFar && marketSoFar.years > 1 ? (
+              <span className="block font-mono text-[11px] leading-tight text-ink-subtle">
+                {signedPct(marketSoFar.annualized * 100, 1)}/yr over {marketSoFar.years} yrs
+              </span>
+            ) : null}
           </span>
         </div>
       ) : null}
@@ -107,23 +126,31 @@ export function ManagerYearResult({
       <dl className="space-y-1 border-t-2 border-ink pt-2 font-mono text-sm">
         {showSplit ? (
           <>
-            <Row label="Management fees" value={-split.mgmt} />
-            <Row label="Performance fees" value={-split.perf} />
+            <Row label="Management fees" value={split.mgmt} />
+            <Row label="Performance fees" value={split.perf} />
           </>
         ) : null}
-        <Row label={showSplit ? "Fees this year (total)" : "Fees this year"} value={-fees} />
-        {borrowed > 0 ? <Row label="Borrowing cost" value={-borrowCost} /> : null}
+        <Row label={showSplit ? "Fees this year (total)" : "Fees this year"} value={fees} />
+        {borrowed > 0 ? <Row label="Borrowing cost" value={borrowCost} /> : null}
       </dl>
 
-      <div className="flex items-baseline justify-between border-t-2 border-ink pt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 border-t-2 border-ink pt-2">
         <span className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
           Your year
         </span>
-        <span className="font-mono text-sm text-ink">
+        <span className="text-right font-mono text-sm text-ink">
           {money(startWealth)} → <span className="font-black">{money(endWealth)}</span>{" "}
           <span className={delta >= 0 ? "text-gain" : "text-loss"}>
             ({signedPct(yourPct, 1)})
           </span>
+          {/* The dollars are yours alone; the percentages are what line up
+              against the index quoted at the top of this card. */}
+          {playerSoFar?.annualized != null && playerSoFar.periods > 1 ? (
+            <span className="block text-[11px] leading-tight text-ink-subtle">
+              {signedPct(playerSoFar.total * 100, 1)} total ·{" "}
+              {signedPct(playerSoFar.annualized * 100, 1)}/yr over {playerSoFar.periods} yrs
+            </span>
+          ) : null}
         </span>
       </div>
         </>
@@ -132,11 +159,17 @@ export function ManagerYearResult({
   );
 }
 
+/**
+ * One charge in the year's ledger. Every row here is a COST, so it is written
+ * as one — "$3.94", not "−$3.94". A minus sign in front of a fee reads as a
+ * rebate, and a host reported exactly that ("fees appear to be negative")
+ * before assuming the arithmetic was broken. Red carries the direction.
+ */
 function Row({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-baseline justify-between">
       <dt className="text-ink-muted">{label}</dt>
-      <dd className={value < 0 ? "font-bold text-loss" : "text-ink"}>{signedMoney(value)}</dd>
+      <dd className={value > 0 ? "font-bold text-loss" : "text-ink"}>{cost(value)}</dd>
     </div>
   );
 }

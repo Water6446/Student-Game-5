@@ -17,15 +17,25 @@ interface HistoryRow {
   goodCount: number;
   badCount: number;
   /** per-player wealth CHANGE that round, summarized across the class */
-  avg: number | null;
-  median: number | null;
-  high: number | null;
-  low: number | null;
+  avg: Delta | null;
+  median: Delta | null;
+  high: Delta | null;
+  low: Delta | null;
 }
 
-function medianOf(sorted: number[]): number {
+/** One player's result for a round, in both units. */
+interface Delta {
+  /** dollars gained or lost */
+  dollars: number;
+  /** the same move as a fraction of what they started the round with */
+  pct: number;
+}
+
+function medianOf(sorted: Delta[]): Delta {
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  if (sorted.length % 2) return sorted[mid];
+  const [a, b] = [sorted[mid - 1], sorted[mid]];
+  return { dollars: (a.dollars + b.dollars) / 2, pct: (a.pct + b.pct) / 2 };
 }
 
 export function SessionHistoryTable({
@@ -53,14 +63,20 @@ export function SessionHistoryTable({
       // Each player's outcome THAT round = wealth change from the round's start
       // (risky+safe, what they bet from) to its end. Players who entered the
       // round already wiped out ($0) have no stake, so they're excluded.
+      // Both units for every player: dollars are what changed hands, percent is
+      // what compares to the index return in the column alongside. Ranking runs
+      // on percent so HIGH and LOW name the best and worst YEAR, not merely the
+      // richest player — a $90 gain on $900 is a worse year than $20 on $100.
       const deltas = allocs
-        .map((a) => {
+        .map((a): Delta | null => {
           if (a.resulting_wealth == null) return null;
           const before = Number(a.risky_amount) + Number(a.safe_amount);
-          return before > 0 ? Number(a.resulting_wealth) - before : null;
+          if (!(before > 0)) return null;
+          const dollars = Number(a.resulting_wealth) - before;
+          return { dollars, pct: dollars / before };
         })
-        .filter((d): d is number => d != null)
-        .sort((a, b) => a - b);
+        .filter((d): d is Delta => d != null)
+        .sort((a, b) => a.pct - b.pct);
       // good/bad tallies for independent rounds: per player (basic) or per
       // player × asset (portfolio)
       let goodCount = 0;
@@ -78,7 +94,12 @@ export function SessionHistoryTable({
         assetOutcomes: r.market_outcomes ?? null,
         goodCount,
         badCount,
-        avg: deltas.length ? deltas.reduce((s, d) => s + d, 0) / deltas.length : null,
+        avg: deltas.length
+          ? {
+              dollars: deltas.reduce((s, d) => s + d.dollars, 0) / deltas.length,
+              pct: deltas.reduce((s, d) => s + d.pct, 0) / deltas.length,
+            }
+          : null,
         median: deltas.length ? medianOf(deltas) : null,
         high: deltas.length ? deltas[deltas.length - 1] : null,
         low: deltas.length ? deltas[0] : null,
@@ -154,10 +175,10 @@ export function SessionHistoryTable({
                   </span>
                 )}
               </td>
-              <DeltaCell value={h.avg} />
-              <DeltaCell value={h.median} />
-              <DeltaCell value={h.high} />
-              <DeltaCell value={h.low} />
+              <DeltaCell value={h.avg} percentFirst={manager} />
+              <DeltaCell value={h.median} percentFirst={manager} />
+              <DeltaCell value={h.high} percentFirst={manager} />
+              <DeltaCell value={h.low} percentFirst={manager} />
             </tr>
           ))}
         </tbody>
@@ -167,19 +188,35 @@ export function SessionHistoryTable({
   );
 }
 
-/** A signed money cell colored by its sign (gain / loss / neutral). */
-function DeltaCell({ value }: { value: number | null }) {
+/**
+ * A signed cell colored by its sign (gain / loss / neutral).
+ *
+ * In the manager game the neighbouring Index column is a PERCENTAGE, and a
+ * dollar figure next to it cannot be compared by eye — the percent leads and
+ * the dollars sit underneath. The other two games have no index return to read
+ * against, so they keep dollars alone.
+ */
+function DeltaCell({ value, percentFirst }: { value: Delta | null; percentFirst?: boolean }) {
   const cls =
     value == null
       ? "text-ink-subtle"
-      : value > 0
+      : value.dollars > 0
         ? "text-gain"
-        : value < 0
+        : value.dollars < 0
           ? "text-loss"
           : "text-ink-muted";
   return (
     <td className={`px-2 py-2 text-right font-mono ${cls}`}>
-      {value == null ? "—" : signedMoney(value)}
+      {value == null ? (
+        "—"
+      ) : percentFirst ? (
+        <>
+          <div className="font-semibold">{signedPct(value.pct * 100, 1)}</div>
+          <div className="text-[11px] leading-tight opacity-70">{signedMoney(value.dollars)}</div>
+        </>
+      ) : (
+        signedMoney(value.dollars)
+      )}
     </td>
   );
 }

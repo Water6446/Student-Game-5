@@ -28,6 +28,7 @@ import {
   playerDeltaChipsMap,
   playerOutcomesMap,
   portfolioOutcomeMatrix,
+  returnSummaryByPlayer,
   submittedHumanCount,
   type LuckStats,
 } from "@/lib/game/results";
@@ -38,7 +39,7 @@ import { indexSeries } from "@/lib/game/manager";
 import { FeeCounter, feesByPlayer, sumFees } from "@/components/FeeCounter";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
-import { money, signedPct } from "@/lib/game/format";
+import { cost, money, signedPct } from "@/lib/game/format";
 import { Banner, Button, Card } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { useShowBots } from "@/components/use-show-bots";
@@ -337,6 +338,22 @@ export function HostRoundControl({
   const feesFor = useMemo(
     () => (managerGame ? feesByPlayer(history.allocations) : null),
     [managerGame, history.allocations],
+  );
+
+  // Every player in the same units as the market line above them, so the class
+  // can read "you did +13.9% this year, the index did +16.3%" straight off the
+  // standings instead of comparing a percentage against a dollar balance.
+  const returnsFor = useMemo(
+    () =>
+      managerGame
+        ? returnSummaryByPlayer(
+            session.config.starting_wealth,
+            players,
+            history.rounds,
+            history.allocations,
+          )
+        : null,
+    [managerGame, session.config.starting_wealth, players, history.rounds, history.allocations],
   );
 
   // The manager game's class line is the market itself: this year's index
@@ -690,6 +707,7 @@ export function HostRoundControl({
                   : outcomesByPlayer.get(p.id)) ?? []
               ).slice(-5);
               const rowLuck = luckByPlayer.get(p.id) ?? null;
+              const ret = returnsFor?.get(p.id) ?? null;
               return (
                 // Below sm this wraps to two lines — name + money, then luck and
                 // the market chips — instead of overflowing a 375px viewport.
@@ -698,8 +716,27 @@ export function HostRoundControl({
                     <span className="mr-2 font-mono text-ink-subtle">{index + 1}.</span>
                     {p.display_name}
                   </span>
-                  <span className="order-2 font-mono text-lg font-bold text-gain sm:order-3">
-                    {money(p.current_wealth)}
+                  <span className="order-2 text-right sm:order-3">
+                    <span className="block font-mono text-lg font-bold text-gain">
+                      {money(p.current_wealth)}
+                    </span>
+                    {ret ? (
+                      <span className="block font-mono text-[11px] leading-tight text-ink-subtle">
+                        {ret.latest != null ? (
+                          <>
+                            <span className={ret.latest >= 0 ? "text-gain" : "text-loss"}>
+                              {signedPct(ret.latest * 100, 1)}
+                            </span>{" "}
+                            this yr ·{" "}
+                          </>
+                        ) : null}
+                        {ret.annualized != null ? (
+                          <span className={ret.annualized >= 0 ? "text-gain" : "text-loss"}>
+                            {signedPct(ret.annualized * 100, 1)}/yr
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
                     <LuckChip luck={rowLuck} expected={expected} />
@@ -708,7 +745,7 @@ export function HostRoundControl({
                         className="shrink-0 font-mono text-xs text-loss"
                         title="fees paid to managers so far"
                       >
-                        −{money(feesFor.get(p.id) ?? 0)}
+                        {cost(feesFor.get(p.id) ?? 0)}
                       </span>
                     ) : null}
                     <OutcomeChips outcomes={last5} />

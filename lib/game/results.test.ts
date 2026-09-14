@@ -560,3 +560,54 @@ describe("manager games have no good/bad draws", () => {
     expect(luckStats(0, 0, 0.6)).toBeNull();
   });
 });
+
+describe("Sharpe: why the manager game's spread is narrow", () => {
+  // A host asked whether a 0.45–0.60 band across players who finished between
+  // +587% and +837% meant the metric was broken. It is not: Sharpe is invariant
+  // to how MUCH of your wealth you commit, so in a game where everyone faces one
+  // market path the spread is structurally small. These pin that down.
+
+  /** wealth series for a player holding `exposure` × wealth in the market */
+  function series(start: number, marketReturns: number[], exposure: number, rf: number): number[] {
+    const out: number[] = [];
+    let w = start;
+    for (const r of marketReturns) {
+      w = w * (1 + exposure * r + (1 - exposure) * rf);
+      out.push(w);
+    }
+    return out;
+  }
+
+  const market = [0.21, -0.07, 0.14, 0.32, -0.15, 0.09, 0.26, -0.03, 0.18, 0.11];
+  const rf = 0.03;
+
+  it("is identical for two players with the same mix at different sizes", () => {
+    const all = sharpeRatio(perRoundReturns(100, series(100, market, 1, rf)), rf);
+    const half = sharpeRatio(perRoundReturns(100, series(100, market, 0.5, rf)), rf);
+    expect(all).not.toBeNull();
+    // same number, wildly different finals — this IS the teaching point
+    expect(half!).toBeCloseTo(all!, 10);
+    const finalAll = series(100, market, 1, rf).at(-1)!;
+    const finalHalf = series(100, market, 0.5, rf).at(-1)!;
+    // $251 vs $189 on a $100 stake — a gap the standings would rank on
+    expect(finalAll).toBeGreaterThan(finalHalf * 1.25);
+  });
+
+  it("falls, never rises, when leverage is paid for", () => {
+    // 2× funded at a borrow rate above the risk-free rate
+    const borrow = 0.08;
+    const levered: number[] = [];
+    let w = 100;
+    for (const r of market) {
+      w = w * (1 + 2 * r - borrow);
+      levered.push(w);
+    }
+    const plain = sharpeRatio(perRoundReturns(100, series(100, market, 1, rf)), rf)!;
+    expect(sharpeRatio(perRoundReturns(100, levered), rf)!).toBeLessThan(plain);
+  });
+
+  it("is computed on one return per revealed round, not a smoothed series", () => {
+    const wealth = series(100, market, 1, rf);
+    expect(perRoundReturns(100, wealth)).toHaveLength(market.length);
+  });
+});

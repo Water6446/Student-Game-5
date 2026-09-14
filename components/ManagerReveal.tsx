@@ -121,20 +121,22 @@ export function ManagerReveal({
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         renderItem={(r) => (
           <li className="grid grid-cols-2 items-baseline gap-x-3 gap-y-1 rounded-lg border border-line bg-paper-2 px-3 py-2 sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
-            <span className="col-span-2 min-w-0 sm:col-span-1">
-              <span className="truncate font-semibold text-ink">{r.name}</span>
-              <span className="ml-2 font-editorial text-xs italic text-ink-muted">
+            {/* `truncate` needs a block box — on the inline span it used to sit
+                on it did nothing, so a long name ran straight into its verdict
+                with no separation. Flex gives a real gap and lets the verdict
+                drop to its own line rather than crushing the name. */}
+            <span className="col-span-2 flex min-w-0 flex-wrap items-baseline gap-x-2 sm:col-span-1">
+              <span className="min-w-0 max-w-full truncate font-semibold text-ink">{r.name}</span>
+              <span className="font-editorial text-xs italic text-ink-muted">
                 {verdict(r.alpha)}
               </span>
             </span>
-            <Cell value={r.alpha} bold />
-            <Cell value={r.realised} />
-            <span className="text-right font-mono text-xs text-ink-muted">
-              {Math.round(r.te * 100)}%
-            </span>
-            <span className="text-right font-mono text-xs text-ink-muted">
-              {r.beta.toFixed(1)}
-            </span>
+            {/* The header row is `hidden sm:grid`, so below sm these four
+                numbers arrived unlabelled. Each carries its own label there. */}
+            <Cell label="True alpha" value={r.alpha} bold />
+            <Cell label="Delivered" value={r.realised} />
+            <Cell label="Track err" text={`${Math.round(r.te * 100)}%`} />
+            <Cell label="Beta" text={r.beta.toFixed(1)} />
           </li>
         )}
       />
@@ -162,17 +164,44 @@ export function ManagerReveal({
   );
 }
 
-function Cell({ value, bold }: { value: number | null; bold?: boolean }) {
-  if (value == null) {
-    return <span className="text-right font-mono text-sm text-ink-subtle">—</span>;
-  }
+/**
+ * One numeric cell. `value` is a signed fraction rendered as a coloured
+ * percentage; `text` is a pre-formatted neutral figure (tracking error, beta).
+ * The label only shows below `sm`, where the table's header row is hidden.
+ */
+function Cell({
+  label,
+  value,
+  text,
+  bold,
+}: {
+  label: string;
+  value?: number | null;
+  text?: string;
+  bold?: boolean;
+}) {
+  const tone =
+    text != null
+      ? "text-ink-muted"
+      : value == null
+        ? "text-ink-subtle"
+        : value > 0.0005
+          ? "text-gain"
+          : value < -0.0005
+            ? "text-loss"
+            : "text-ink-muted";
   return (
-    <span
-      className={`text-right font-mono text-sm ${bold ? "font-black" : ""} ${
-        value > 0.0005 ? "text-gain" : value < -0.0005 ? "text-loss" : "text-ink-muted"
-      }`}
-    >
-      {signedPct(value * 100, 1)}
+    <span className="flex items-baseline justify-between gap-1 sm:justify-end">
+      <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-subtle sm:hidden">
+        {label}
+      </span>
+      <span
+        className={`text-right font-mono ${text != null ? "text-xs" : "text-sm"} ${
+          bold ? "font-black" : ""
+        } ${tone}`}
+      >
+        {text ?? (value == null ? "—" : signedPct(value * 100, 1))}
+      </span>
     </span>
   );
 }

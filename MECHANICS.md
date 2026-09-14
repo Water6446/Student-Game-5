@@ -10,7 +10,8 @@ UI copy stays short on purpose; the detail lives here.
 [Returns](#returns) · [Sharpe ratio](#sharpe-ratio) · [Correlation ρ](#correlation-ρ-portfolio) ·
 [Counterfactuals & benchmark bots](#counterfactuals--benchmark-bots) ·
 [Manager game](#manager-game) ·
-[Standings](#standings) · [CSV export](#csv-export)
+[Standings](#standings) · [Writing the numbers](#writing-the-numbers) ·
+[CSV export](#csv-export)
 
 ---
 
@@ -120,6 +121,29 @@ Sharpe = (mean(rᵢ) − rf) / stdev(rᵢ)
 - A missed round reads as a 0% return (wealth carries forward) — so a late
   joiner's leading rounds count as 0% returns and pull their stdev down.
 - Code: `perRoundReturns`, `sharpeRatio` in [lib/game/results.ts](lib/game/results.ts).
+
+### Why the manager game's Sharpe values cluster
+
+Expect a **narrow band** — roughly 0.45 to 0.60 across a class whose finals
+range from +587% to +837%. That is not the metric failing; it is forced:
+
+- **Sharpe is invariant to position size.** A player fully invested and a
+  player half in cash hold the same mix, so their excess return and their
+  standard deviation scale by the same factor and cancel. Identical Sharpe,
+  very different finals. Pinned by a test in
+  [lib/game/results.test.ts](lib/game/results.test.ts).
+- **Leverage only lowers it**, because borrowing is charged at
+  `risk_free_rate + borrow_spread`, above the rate the excess return is
+  measured against.
+- **One market path for the whole class.** Scope is forced to `shared`, so
+  everyone's returns load on the same factor and everyone is anchored near that
+  path's realised Sharpe. A 25-year realised Sharpe has a standard error of
+  about `sqrt((1 + S²/2)/n)` ≈ 0.2, so the path's own value routinely lands
+  well above the 0.31 the default parameters imply in expectation.
+
+What is left to vary is **which managers a player held** — the only lever that
+moves Sharpe once size cancels. That is the lesson: total return ranks players
+by how much they bet, Sharpe ranks them by what they bet on.
 
 ## Correlation ρ (portfolio)
 
@@ -266,6 +290,23 @@ The label is computed from the **realised displayed path**, so it cannot be
 inverted back into beta. Track records regenerate every session, and are
 generated *after* the shuffle.
 
+**The window rolls as the game runs.** Each revealed year's return joins the
+track record and the oldest year drops off, so the card always shows the last
+ten years and always ends with the year the class just watched; `one_yr`,
+`five_yr`, `ten_yr` and the vol label are all recomputed off the new window. The
+game years are netted with the same arithmetic the SQL uses
+(`gross − mgmt_fee − perf_fee·max(gross, 0)`), so the two halves of the window
+are measured identically. After ten played years the pre-game decade is gone and
+the card is entirely in-game history — which is the honest version of the
+lesson, not a leak: ten fresh years still cannot separate skill from luck, and a
+student who wants the raw series already has `rounds.manager_returns`.
+
+Rolling happens **client-side** from public rows; nothing is rewritten in
+`sessions.config`. Code: `rollingProspectus`, `rollingProspectuses`, `netReturn`
+in [lib/game/manager.ts](lib/game/manager.ts). The lobby surfaces (host lobby,
+present mode, the student waiting screen) pass no game years and so show the
+fund's original decade.
+
 **Never displayed to students:** information ratio, Sharpe, beta, alpha or
 tracking error for a manager. The host's setup form is the one exception.
 
@@ -322,6 +363,32 @@ Code: [lib/game/manager.ts](lib/game/manager.ts), mirrored by
 - **Bot toggle**: hides benchmark bots from standings, luck, and the chart on
   every host surface (synced across tabs via localStorage). Hiding bots
   re-ranks the list; the strategy cards and the CSV always keep everyone.
+
+## Writing the numbers
+
+Presentation rules that a beta host tripped over, kept here so they do not drift
+back:
+
+- **Cents are all-or-nothing.** `money` prints `$100` or `$33.60`, never
+  `$33.6` — a lone tenth reads as truncation and invites doubt about the
+  arithmetic behind it.
+- **A cost is written as a cost.** Fees and borrowing charges render through
+  `cost` as `$2.56`, never `−$2.56`; the loss colour carries the direction. A
+  minus sign in front of a fee reads as a rebate, and did.
+- **A running total names its parts.** The fee counter reads
+  `$33.60 · $2.40 this year`, where the total *already includes* this year.
+  Written as `$33.60 −$2.40` it read as a subtraction.
+- **Never orphan a number.** Every figure says what it is: the prospectus badge
+  reads `FEE 1%/yr`, and the host's allocation rows read `$67.52 risky /
+  $22.52 safe` rather than a bare pair joined by a middot.
+- **A levered position says "borrowed".** `safe_amount` goes negative under
+  leverage; no surface shows that raw — they show `$102.09 borrowed`.
+- **Match the units you are asking to be compared.** Wherever the index or
+  market is quoted as a percentage, the player figures beside it carry a
+  percentage too (`returnSummary` / `returnSummaryByPlayer` in
+  [lib/game/results.ts](lib/game/results.ts)). Dollars alone next to an index
+  percentage is the comparison the manager game exists to teach, made
+  impossible to do by eye.
 
 ## CSV export
 

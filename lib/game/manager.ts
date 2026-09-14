@@ -270,6 +270,95 @@ export function annualizedReturn(yearly: number[]): number | null {
 }
 
 /**
+ * A manager's net-of-fees return for one year, the way a prospectus reports it:
+ * the gross return less the management fee, less the performance fee on the
+ * positive part of the gross. This MIRRORS `_gen_track_record` in
+ * supabase/migrations/0014 — the same arithmetic that produced the ten years of
+ * history the fund was hired on, so a game year can be appended to that history
+ * without the two halves being measured differently.
+ */
+export function netReturn(
+  m: Pick<ManagerPublic, "mgmt_fee" | "perf_fee">,
+  grossReturn: number,
+): number {
+  return grossReturn - m.mgmt_fee - m.perf_fee * Math.max(grossReturn, 0);
+}
+
+/** The vol label, read off a realised path — never off beta or tracking error. */
+export function volLabel(yearly: number[]): ManagerPublic["vol_label"] {
+  if (yearly.length === 0) return "Moderate";
+  const mean = yearly.reduce((a, b) => a + b, 0) / yearly.length;
+  const sd = Math.sqrt(yearly.reduce((s, r) => s + (r - mean) ** 2, 0) / yearly.length);
+  if (sd < 0.1) return "Low";
+  if (sd < 0.2) return "Moderate";
+  if (sd < 0.3) return "High";
+  return "Very high";
+}
+
+/**
+ * The prospectus as it stands TODAY: the stored ten-year history with each
+ * played year appended and the oldest year dropped, so the window is always the
+ * last ten years and always ends with the year the class just watched.
+ *
+ * A static track record quietly became a lie the moment play began — a fund
+ * could post −30% in front of the room while its card still advertised the
+ * decade it was hired on. Rolling the window is also the honest version of the
+ * lesson: ten years of history keeps arriving, and it still cannot separate
+ * skill from luck.
+ *
+ * `gameGrossReturns` are the manager's GROSS game returns, oldest first
+ * (`rounds.manager_returns`, public data). Fees are applied here.
+ */
+export function rollingProspectus(m: ManagerPublic, gameGrossReturns: number[]): ManagerPublic {
+  if (gameGrossReturns.length === 0) return m;
+
+  const window = 10;
+  const history = m.track_record.yearly;
+  const played = gameGrossReturns.map((r) => netReturn(m, r));
+  const yearly = [...history, ...played].slice(-window);
+
+  // Compounding floors each factor just above zero for the same reason the SQL
+  // does: a fractional power of a negative base is not a real number.
+  const annualized = (series: number[]): number => {
+    if (series.length === 0) return 0;
+    let cum = 1;
+    for (const r of series) cum *= Math.max(1 + r, 0.0001);
+    return Math.pow(cum, 1 / series.length) - 1;
+  };
+
+  return {
+    ...m,
+    track_record: {
+      yearly,
+      one_yr: yearly[yearly.length - 1],
+      five_yr: annualized(yearly.slice(-5)),
+      ten_yr: annualized(yearly),
+    },
+    vol_label: volLabel(yearly),
+  };
+}
+
+/**
+ * Every manager's prospectus rolled forward to the current year.
+ *
+ * `roundsManagerReturns` is one entry per REVEALED year, oldest first, each the
+ * `manager_returns` array for that year.
+ */
+export function rollingProspectuses(
+  managers: ManagerPublic[],
+  roundsManagerReturns: (number[] | null)[],
+): ManagerPublic[] {
+  return managers.map((m, i) =>
+    rollingProspectus(
+      m,
+      roundsManagerReturns
+        .map((year) => year?.[i])
+        .filter((r): r is number => typeof r === "number" && Number.isFinite(r)),
+    ),
+  );
+}
+
+/**
  * Dollar amounts from percent-of-wealth inputs, rounded to cents — with the
  * TOTAL clamped to min(what was asked for, capMultiple × wealth).
  *

@@ -5,7 +5,7 @@ import type { AllocationRow, PlayerRow } from "@/lib/game/db";
 import { strategyFraction } from "@/lib/game/counterfactual";
 import { submittedHumanCount } from "@/lib/game/results";
 import { portfolioStrategyFraction } from "@/lib/game/portfolio";
-import { money, signedMoney } from "@/lib/game/format";
+import { money } from "@/lib/game/format";
 import { Bot } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 
@@ -179,20 +179,24 @@ export function AllocationsBreakdown({
                 ) : null}
               </div>
 
-              {/* Numbers: % is the hero; exact dollars sit quietly beneath */}
-              <div className="w-20 shrink-0 text-right sm:w-[88px]">
+              {/* Numbers: % is the hero; exact dollars sit labelled beneath.
+                  The pair used to render as a bare "$67.52 · $22.52", and the
+                  middot read as a minus sign — a host asked where the
+                  subtraction came from. Each amount now names itself, and a
+                  levered row says "borrowed" instead of showing a negative
+                  safe balance, which is the same fix the student screen made. */}
+              <div className="w-24 shrink-0 text-right sm:w-28">
                 <div className="font-mono text-sm font-bold text-ink">
                   {pct == null ? "—" : `${pct}%`}
                 </div>
                 <div className="font-mono text-[11px] leading-tight text-ink-subtle">
-                  <span className="text-loss/90">{r.risky == null ? "—" : money(r.risky)}</span>
-                  <span className="text-line-strong"> · </span>
+                  <div className="text-loss/90">
+                    {r.risky == null ? "—" : `${money(r.risky)} risky`}
+                  </div>
                   {safeVal < 0 ? (
-                    <span className="font-bold text-loss" title="borrowed">
-                      {signedMoney(safeVal)}
-                    </span>
+                    <div className="font-bold text-loss">{money(-safeVal)} borrowed</div>
                   ) : (
-                    <span className="text-gain/90">{money(safeVal)}</span>
+                    <div className="text-gain/90">{money(safeVal)} safe</div>
                   )}
                 </div>
               </div>

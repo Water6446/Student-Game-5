@@ -3,7 +3,26 @@
 
 export function money(n: number | string): string {
   const v = typeof n === "string" ? Number(n) : n;
-  return `$${(Number.isFinite(v) ? v : 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const safe = Number.isFinite(v) ? v : 0;
+  // Cents are all-or-nothing: $33.6 and $204.2 read as truncated numbers and
+  // made a host distrust the fee arithmetic. A whole-dollar amount stays clean
+  // ("$100"), anything with a fractional part prints both places ("$33.60").
+  const digits = Number.isInteger(safe) ? 0 : 2;
+  return `$${safe.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+}
+
+/**
+ * A COST, written as a cost: "$2.56", never "−$2.56". Fees and borrowing
+ * charges are unambiguously money leaving the player, and a minus sign in front
+ * of one reads as a rebate at a glance. Colour (text-loss) carries the sign;
+ * the minus is reserved for signed ledgers where a value could go either way.
+ */
+export function cost(n: number | string): string {
+  const v = typeof n === "string" ? Number(n) : n;
+  return money(Math.abs(Number.isFinite(v) ? v : 0));
 }
 
 export function signedMoney(n: number | string): string {

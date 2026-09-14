@@ -9,6 +9,7 @@ import { assetName, assetPayoffMode, numAssets } from "@/lib/game/portfolio";
 import { amountsFromPercents, numManagers } from "@/lib/game/manager";
 import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useRoundPhase } from "@/components/use-round-phase";
+import { useManagerProgress, type ManagerProgress } from "@/components/use-manager-progress";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
@@ -16,7 +17,7 @@ import { ManagerAllocationInput } from "@/components/student/ManagerAllocationIn
 import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { FeeCounter } from "@/components/FeeCounter";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
-import { money, signedMoney, ordinal } from "@/lib/game/format";
+import { money, signedMoney, signedPct, ordinal, sharpeText } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
 import { Banner, Button, Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
@@ -48,7 +49,6 @@ export function StudentRound({
   const [amounts, setAmounts] = useState<(number | null)[]>([]);
   const [percents, setPercents] = useState<(number | null)[]>([]);
   const [seeded, setSeeded] = useState<(number | null)[]>([]);
-  const [feesTotal, setFeesTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +63,20 @@ export function StudentRound({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id, n]);
 
+  // Fees so far, a running Sharpe, and my return next to the index's — the
+  // figures that used to appear only on the end screen. Fees exclude the live
+  // round so the reveal can add its own year without double-counting.
+  const progress = useManagerProgress(
+    supabase,
+    session.id,
+    session.config.starting_wealth,
+    session.config.risk_free_rate ?? 0,
+    me.id,
+    liveRound?.id ?? null,
+    manager,
+  );
+  const feesTotal = progress.feesTotal;
+
   // Manager game: a portfolio you did not touch this year is one you still
   // hold, so each year opens PRE-FILLED with last year's shares — matching the
   // server, which carries non-submitters forward instead of defaulting them to
@@ -73,7 +87,7 @@ export function StudentRound({
     let active = true;
     supabase
       .from("allocations")
-      .select("round_id, risky_breakdown, risky_amount, safe_amount, fees_paid")
+      .select("round_id, risky_breakdown, risky_amount, safe_amount")
       .eq("player_id", me.id)
       .order("submitted_at", { ascending: false })
       .then(({ data }) => {
@@ -83,16 +97,7 @@ export function StudentRound({
           risky_breakdown: number[] | null;
           risky_amount: number;
           safe_amount: number;
-          fees_paid: number | null;
         }[];
-        // One query, two jobs: the carry-forward seed and the running fee total.
-        // THIS round is excluded so the reveal can add its own year's fee
-        // without double-counting on a mid-reveal reload.
-        setFeesTotal(
-          rows
-            .filter((a) => a.round_id !== liveRound?.id)
-            .reduce((s, a) => s + (a.fees_paid == null ? 0 : Number(a.fees_paid)), 0),
-        );
         const prev = rows.find(
           (a) => a.risky_breakdown != null && a.round_id !== liveRound?.id,
         );
@@ -184,6 +189,7 @@ export function StudentRound({
         roundNumber={session.current_round}
         session={session}
         fees={manager ? feesTotal : null}
+        sharpe={manager ? progress.sharpe : null}
       >
         {manager ? (
           <ManagerAllocationInput
@@ -216,7 +222,13 @@ export function StudentRound({
               Manager prospectuses
             </summary>
             <div className="mt-2">
-              <ManagerProspectus config={session.config} />
+              {/* Rolled forward every year: the class just watched these funds
+                  perform, and a card still quoting only its pre-game decade
+                  would be advertising a history that no longer exists. */}
+              <ManagerProspectus
+                config={session.config}
+                managerReturns={progress.managerReturns}
+              />
             </div>
           </details>
         ) : null}
@@ -270,6 +282,7 @@ export function StudentRound({
         roundNumber={session.current_round}
         session={session}
         fees={manager ? feesTotal : null}
+        sharpe={manager ? progress.sharpe : null}
       >
         <div className="rounded-xl border-2 border-ink bg-brand-soft p-5 text-center shadow-card">
           <div className="flex items-center justify-center gap-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
@@ -328,6 +341,7 @@ export function StudentRound({
       round={liveRound}
       mine={mine}
       feesTotal={manager ? feesTotal : null}
+      progress={manager ? progress : null}
     />
   );
 }
@@ -338,6 +352,7 @@ function Shell({
   roundNumber,
   session,
   fees,
+  sharpe,
 }: {
   children: React.ReactNode;
   wealth: number;
@@ -346,6 +361,10 @@ function Shell({
   session: SessionRow;
   /** manager game: running fee total, shown next to wealth every year */
   fees?: number | null;
+  /** manager game: Sharpe over the years resolved so far. Risk-adjusted return
+   *  used to surface only on the end screen, which is too late to change how
+   *  anyone plays — it belongs next to the wealth it is qualifying. */
+  sharpe?: number | null;
 }) {
   // hide the odds line when assets have custom per-asset odds (one number
   // can't summarize them)
@@ -378,7 +397,18 @@ function Shell({
         </span>
       </div>
       {fees != null ? (
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+          {sharpe != null ? (
+            <span
+              className="inline-flex items-baseline gap-2 rounded-xl border-2 border-ink bg-surface px-3 py-1.5 shadow-card"
+              title="Return per unit of risk taken, across the years so far"
+            >
+              <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+                Sharpe
+              </span>
+              <span className="font-mono text-sm font-bold text-ink">{sharpeText(sharpe)}</span>
+            </span>
+          ) : null}
           <FeeCounter total={fees} />
         </div>
       ) : null}
@@ -410,6 +440,7 @@ function Reveal({
   round,
   mine,
   feesTotal,
+  progress,
 }: {
   supabase: SupabaseClient;
   session: SessionRow;
@@ -418,6 +449,8 @@ function Reveal({
   mine: ReturnType<typeof useRoundAllocations>["allocations"][number] | null;
   /** manager game only: fees paid across the whole game so far */
   feesTotal?: number | null;
+  /** manager game only: running index and player returns, in the same units */
+  progress?: ManagerProgress | null;
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
@@ -500,6 +533,8 @@ function Reveal({
               round={round}
               allocation={mine}
               startWealth={before}
+              marketSoFar={progress?.market ?? null}
+              playerSoFar={progress?.player ?? null}
             />
             {feesTotal != null ? (
               <div className="flex justify-center">

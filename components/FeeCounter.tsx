@@ -1,6 +1,6 @@
 "use client";
 
-import { money, signedMoney } from "@/lib/game/format";
+import { cost, money } from "@/lib/game/format";
 import type { AllocationRow } from "@/lib/game/db";
 
 /**
@@ -27,10 +27,14 @@ export function FeeCounter({
       <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-loss">
         {label}
       </span>
+      {/* The total ALREADY INCLUDES this year. "−$2.40 this year" next to it
+          read as a subtraction from the total — and as negative fees — so the
+          two are now separated and both written as plain costs. */}
       <span className="font-mono text-sm font-bold text-loss">{money(total)}</span>
       {thisYear != null && thisYear > 0 ? (
         <span className="font-mono text-xs text-loss/80">
-          {signedMoney(-thisYear)} this year
+          <span aria-hidden="true">· </span>
+          {cost(thisYear)} this year
         </span>
       ) : null}
     </span>
