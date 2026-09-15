@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Hanken_Grotesk, Fraunces, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { COLOR } from "@/lib/design/colors";
 
@@ -69,7 +70,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${display.variable} ${sans.variable} ${editorial.variable} ${mono.variable}`}
     >
-      <body className="min-h-dvh font-sans">{children}</body>
+      <body className="min-h-dvh font-sans">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
