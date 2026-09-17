@@ -81,6 +81,13 @@ The account layer (migrations `0016`–`0022`, see
 methods work until these dashboard steps are done.** Everything here is a
 console/DNS task only the project owner can do.
 
+### 0. Apply the migrations
+
+Nothing below exists in the database until this runs.
+
+- [ ] `npm run db:push` (after the one-time `npx supabase login` + `npm run
+      db:link` in Part A). `npm run db:status` lists what is applied vs pending.
+
 ### 1. Google sign-in — do this one first
 
 It needs no email sending at all, which makes it the quickest way to get a real
@@ -158,7 +165,7 @@ deleting the results (ACCOUNTS.md §2.4).
 
 ### 7. Verify
 
-- [ ] `npm run test:accounts-db` — 26 offline assertions against the real
+- [ ] `npm run test:accounts-db` — 28 offline assertions against the real
       migrations (needs Docker).
 - [ ] `npm run security-check` — the same denials over the live network path.
 - [ ] Register an account, confirm the email, sign out, sign in **by username**,

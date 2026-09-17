@@ -32,8 +32,8 @@ to stay until then.
 | Sign-in / register card, Google, reset page | `components/host/HostSignIn.tsx`, `app/auth/reset/` |
 | Account page | `app/account/`, `components/account/` |
 | "Keep your results?" prompt | `components/student/SaveResultsPrompt.tsx` |
-| 26 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
-| 6 live assertions | `scripts/security-check.ts` |
+| 28 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
+| 6 more live assertions | `scripts/security-check.ts` |
 
 **Before any of it works in production**, the dashboard steps in
 [DEPLOYMENT.md § Accounts setup](./DEPLOYMENT.md#part-b--accounts-setup) have to
