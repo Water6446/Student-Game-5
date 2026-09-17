@@ -88,6 +88,21 @@ Nothing below exists in the database until this runs.
 - [ ] `npm run db:push` (after the one-time `npx supabase login` + `npm run
       db:link` in Part A). `npm run db:status` lists what is applied vs pending.
 
+### 0b. Allow the app's URL back in — do this before Google
+
+Every method here leaves the site and comes back: OAuth bounces via Google, and
+confirmation, reset and magic links arrive from an email. Supabase refuses to
+return to a URL that is not on the allowlist, so without this step Google
+sign-in appears to work and then dumps you somewhere blank.
+
+- [ ] **Supabase** → Authentication → **URL Configuration**
+  - **Site URL**: `http://localhost:3000` while developing, your production URL
+    once deployed.
+  - **Redirect URLs**: add `http://localhost:3000/**`, plus the production
+    `https://<your-app>.vercel.app/**`. Keep both — they can coexist.
+  - Using a different dev port (`next dev -p 3100`)? Add that one too; the app
+    returns to whatever origin it is served from.
+
 ### 1. Google sign-in — do this one first
 
 It needs no email sending at all, which makes it the quickest way to get a real
