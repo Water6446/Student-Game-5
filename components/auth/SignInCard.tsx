@@ -18,6 +18,9 @@ import {
 
 type Mode = "signin" | "register";
 
+/** One message per field, so several problems can be reported together. */
+type FieldErrors = { username?: string | null; email?: string | null; password?: string | null };
+
 /**
  * The sign-in / register card. Laid out by whoever renders it — /login wraps it
  * in the site chrome — so it owns no page-level spacing of its own.
@@ -292,28 +295,41 @@ function RegisterPanel({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [sent, setSent] = useState(false);
 
   async function register() {
-    const uErr = usernameError(username);
-    const eErr = emailError(email);
-    const pErr = passwordError(password);
-    if (uErr || eErr || pErr) {
-      setError(uErr ?? eErr ?? pErr);
-      return;
-    }
+    // Every field is checked before any is reported, so someone with a short
+    // username AND a short password is told both at once instead of fixing one
+    // and discovering the other.
+    // Named `problems`, not `next` — `next` is this card's redirect target.
+    const problems: FieldErrors = {
+      username: usernameError(username),
+      email: emailError(email),
+      password: passwordError(password),
+    };
+    setFieldErrors(problems);
+    setError(null);
+    if (problems.username || problems.email || problems.password) return;
 
     setBusy(true);
-    setError(null);
 
     // Pre-flight so a taken handle is a friendly message rather than a raised
     // exception out of the sign-up trigger. The unique index is still the thing
     // that actually decides, so a race just surfaces below.
-    const { data: free } = await supabase.rpc("username_available", {
+    const { data: free, error: availError } = await supabase.rpc("username_available", {
       p_username: username.trim(),
     });
+    if (availError) {
+      // Never report a failed CHECK as a failed username. If this RPC is
+      // missing, the account migrations (0016+) have not been applied to the
+      // project yet — say that rather than blaming the name they chose.
+      setError(`Could not check that username: ${availError.message}`);
+      setBusy(false);
+      return;
+    }
     if (free !== true) {
-      setError("That username is taken");
+      setFieldErrors({ username: "That username is taken" });
       setBusy(false);
       return;
     }
@@ -358,7 +374,11 @@ function RegisterPanel({
 
   return (
     <div className="space-y-4">
-      <Field label="Username" hint="3–24 characters: letters, numbers, underscore">
+      <Field
+        label="Username"
+        hint="3–24 characters: letters, numbers, underscore"
+        error={fieldErrors.username}
+      >
         <TextInput
           autoComplete="username"
           placeholder="jsmith"
@@ -366,7 +386,7 @@ function RegisterPanel({
           onChange={(e) => setUsername(e.target.value)}
         />
       </Field>
-      <Field label="Email">
+      <Field label="Email" error={fieldErrors.email}>
         <TextInput
           type="email"
           inputMode="email"
@@ -376,7 +396,11 @@ function RegisterPanel({
           onChange={(e) => setEmail(e.target.value)}
         />
       </Field>
-      <Field label="Password" hint={`At least ${MIN_PASSWORD_LENGTH} characters`}>
+      <Field
+        label="Password"
+        hint={`At least ${MIN_PASSWORD_LENGTH} characters`}
+        error={fieldErrors.password}
+      >
         <TextInput
           type="password"
           autoComplete="new-password"

@@ -94,6 +94,31 @@ begin
   raise notice 'PASS: OAuth sign-up gets a generated, unique username (%)', p.username;
 end $$;
 
+-- username_available is what a registration form calls before signing up, so a
+-- wrong answer here reads to the user as "that username is taken" for every name
+-- they try. It must be exact about all four cases.
+do $$ begin
+  if public.username_available('a_free_name') is not true then
+    raise exception 'FAIL: a free, valid username reported as unavailable';
+  end if;
+  if public.username_available('jsmith') is not false then
+    raise exception 'FAIL: a taken username reported as available';
+  end if;
+  if public.username_available('JSmiTH') is not false then
+    raise exception 'FAIL: username availability is case sensitive; it must not be';
+  end if;
+  if public.username_available('ab') is not false then
+    raise exception 'FAIL: a too-short username reported as available';
+  end if;
+  if public.username_available('has space') is not false then
+    raise exception 'FAIL: a malformed username reported as available';
+  end if;
+  if public.username_available(null) is not false then
+    raise exception 'FAIL: null username reported as available';
+  end if;
+  raise notice 'PASS: username_available answers correctly for free/taken/malformed/null';
+end $$;
+
 \set prof_jwt   '{"sub":"a1000000-0000-0000-0000-000000000001","role":"authenticated","is_anonymous":false}'
 \set sneaky_jwt '{"sub":"a1000000-0000-0000-0000-000000000003","role":"authenticated","is_anonymous":false}'
 \set guest_jwt  '{"sub":"b1000000-0000-0000-0000-000000000001","role":"authenticated","is_anonymous":true}'

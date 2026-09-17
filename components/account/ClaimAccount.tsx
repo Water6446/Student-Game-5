@@ -88,9 +88,15 @@ function StartClaim({ supabase, next }: { supabase: SupabaseClient; next: string
       setError(uErr);
       return null;
     }
-    const { data: free } = await supabase.rpc("username_available", {
+    const { data: free, error: availError } = await supabase.rpc("username_available", {
       p_username: username.trim(),
     });
+    if (availError) {
+      // A failed check is not a taken name. If this RPC is missing, the account
+      // migrations (0016+) have not been applied to the project.
+      setError(`Could not check that username: ${availError.message}`);
+      return null;
+    }
     if (free !== true) {
       setError("That username is taken");
       return null;

@@ -48,12 +48,28 @@ export function Button({
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({
+  label,
+  hint,
+  error,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  /** Replaces the hint while set, so a field never shows advice and a complaint at once. */
+  error?: string | null;
+  children: ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-semibold text-ink">{label}</span>
       {children}
-      {hint ? <span className="mt-1 block text-xs text-ink-subtle">{hint}</span> : null}
+      {error ? (
+        // The wording carries the meaning, so this does not rely on colour alone.
+        <span className="mt-1 block text-xs font-bold text-loss">{error}</span>
+      ) : hint ? (
+        <span className="mt-1 block text-xs text-ink-subtle">{hint}</span>
+      ) : null}
     </label>
   );
 }

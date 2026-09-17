@@ -53,9 +53,15 @@ export const NAV_LINKS = [
 
 export const HEADER = {
   joinCta: { label: "Join a game", href: "/join" },
+  /**
+   * The one amber action in the bar, and it depends on who is looking: hosting
+   * is not offered to someone who cannot host yet, so signed out it invites them
+   * to sign in instead. AccountMenu picks between the two.
+   */
   hostCta: { label: "Host a session", href: "/host" },
   /** the same action, shortened for phones */
   hostCtaShort: "Host",
+  loginCta: { label: "Log in", href: "/login" },
 } as const;
 
 /**

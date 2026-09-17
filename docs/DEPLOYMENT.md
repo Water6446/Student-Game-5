@@ -165,7 +165,7 @@ deleting the results (ACCOUNTS.md §2.4).
 
 ### 7. Verify
 
-- [ ] `npm run test:accounts-db` — 28 offline assertions against the real
+- [ ] `npm run test:accounts-db` — 29 offline assertions against the real
       migrations (needs Docker).
 - [ ] `npm run security-check` — the same denials over the live network path.
 - [ ] Register an account, confirm the email, sign out, sign in **by username**,
