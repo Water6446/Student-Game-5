@@ -58,6 +58,33 @@ export const HEADER = {
   hostCtaShort: "Host",
 } as const;
 
+/**
+ * The sign-in page. It sits under the same header and footer as the homepage, so
+ * its copy lives here with the rest of the site's voice rather than inside the
+ * auth component.
+ */
+export const LOGIN = {
+  eyebrow: "Host access",
+  heading: "Sign in to run a session.",
+  sub: "Your sessions, their standings, and the settings you last used — all kept with your account.",
+  points: [
+    {
+      title: "Students never sign up",
+      body: "They join with a code or a QR. No accounts, no app, no email addresses collected.",
+    },
+    {
+      title: "Your sessions stay put",
+      body: "Every game you have run, with its standings and counterfactuals, waits on your dashboard.",
+    },
+    {
+      title: "Two ways in",
+      body: "Google, or a username and password — whichever your department prefers.",
+    },
+  ],
+  joinPrompt: "Here to play rather than host?",
+  joinCta: "Join a game with a code",
+} as const;
+
 export const HERO = {
   eyebrow: "In-class market simulation",
   /** The headline is set in two faces: Archivo black, then Fraunces italic. */

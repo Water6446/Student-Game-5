@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
-import { Instructions } from "@/components/Instructions";
 import { clsx } from "@/components/clsx";
 import { GoogleMark } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
+import { ALLOW_ANON_HOST } from "@/lib/auth/can-host";
 import {
   emailError,
   looksLikeEmail,
@@ -16,21 +16,33 @@ import {
   usernameError,
 } from "@/lib/auth/validation";
 
-// ON unless explicitly disabled. Still in testing — set
-// NEXT_PUBLIC_ALLOW_ANON_HOST=false to turn the bypass off. See .env.example.
-const ALLOW_ANON_HOST = process.env.NEXT_PUBLIC_ALLOW_ANON_HOST !== "false";
-
 type Mode = "signin" | "register";
 
-export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
+/**
+ * The sign-in / register card. Laid out by whoever renders it — /login wraps it
+ * in the site chrome — so it owns no page-level spacing of its own.
+ *
+ * `next` is where a successful sign-in lands. It is already sanitised by the
+ * caller (see lib/auth/next-path.ts); it is threaded into every method because
+ * OAuth and the emailed links leave the page and come back through
+ * /auth/callback, which needs to know the destination.
+ */
+export function SignInCard({
+  supabase,
+  next = "/host",
+}: {
+  supabase: SupabaseClient;
+  next?: string;
+}) {
   const [mode, setMode] = useState<Mode>("signin");
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">
+    <>
       <Card className="animate-pop-in">
-        <h1 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
+        {/* h2, not h1: the page around this card owns the page heading. */}
+        <h2 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
           {mode === "signin" ? "Sign in" : "Create an account"}
-        </h1>
+        </h2>
         <p className="mt-1 font-editorial text-sm italic text-ink-muted">
           Hosting is tied to a verified identity, not a guessable secret. Students still join with
           just a code — no account needed.
@@ -38,21 +50,19 @@ export function HostSignIn({ supabase }: { supabase: SupabaseClient }) {
 
         <ModeTabs mode={mode} onChange={setMode} />
 
-        <GoogleButton supabase={supabase} />
+        <GoogleButton supabase={supabase} next={next} />
 
         <Divider />
 
         {mode === "signin" ? (
-          <SignInPanel supabase={supabase} />
+          <SignInPanel supabase={supabase} next={next} />
         ) : (
-          <RegisterPanel supabase={supabase} onSignedIn={() => setMode("signin")} />
+          <RegisterPanel supabase={supabase} next={next} onSignedIn={() => setMode("signin")} />
         )}
 
         {ALLOW_ANON_HOST ? <TestingBypass supabase={supabase} /> : null}
       </Card>
-
-      <Instructions role="professor" />
-    </main>
+    </>
   );
 }
 
@@ -104,7 +114,7 @@ function Divider() {
   );
 }
 
-function GoogleButton({ supabase }: { supabase: SupabaseClient }) {
+function GoogleButton({ supabase, next }: { supabase: SupabaseClient; next: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +123,7 @@ function GoogleButton({ supabase }: { supabase: SupabaseClient }) {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${siteUrl()}/auth/callback?next=/host` },
+      options: { redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     // On success the browser is already navigating to Google; only a failure
     // returns here.
@@ -138,7 +148,7 @@ function GoogleButton({ supabase }: { supabase: SupabaseClient }) {
 // Sign in: email OR username, plus password. Magic link stays available for
 // accounts that already exist.
 // ---------------------------------------------------------------------------
-function SignInPanel({ supabase }: { supabase: SupabaseClient }) {
+function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: string }) {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -162,7 +172,7 @@ function SignInPanel({ supabase }: { supabase: SupabaseClient }) {
         setError("Wrong email or password");
         setBusy(false);
       }
-      // success: onAuthStateChange swaps this page for the dashboard
+      // success: the page around this card watches the session and moves on
       return;
     }
 
@@ -174,7 +184,7 @@ function SignInPanel({ supabase }: { supabase: SupabaseClient }) {
     if (res.ok) {
       // The session cookies were written server-side; a full navigation is what
       // makes the browser client read them.
-      window.location.assign("/host");
+      window.location.assign(next);
       return;
     }
     const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -196,7 +206,10 @@ function SignInPanel({ supabase }: { supabase: SupabaseClient }) {
       // Sign-in only: accounts are created on the Create account tab, where a
       // username is chosen. This also stops the link being an account-creation
       // side door.
-      options: { shouldCreateUser: false, emailRedirectTo: `${siteUrl()}/auth/callback?next=/host` },
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
     });
     setBusy(false);
     if (error) setError(error.message);
@@ -267,9 +280,11 @@ function SignInPanel({ supabase }: { supabase: SupabaseClient }) {
 // ---------------------------------------------------------------------------
 function RegisterPanel({
   supabase,
+  next,
   onSignedIn,
 }: {
   supabase: SupabaseClient;
+  next: string;
   onSignedIn: () => void;
 }) {
   const [username, setUsername] = useState("");
@@ -307,7 +322,7 @@ function RegisterPanel({
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: `${siteUrl()}/auth/callback?next=/host`,
+        emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
         // Read once by the on_auth_user_created trigger to seed profiles.
         // Authorization NEVER lives here — see 0016_profiles.sql.
         data: { username: username.trim(), display_name: username.trim() },

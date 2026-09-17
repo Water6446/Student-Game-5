@@ -10,8 +10,9 @@ import { FinalCta } from "@/components/marketing/FinalCta";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 
 /**
- * The public landing page. Static Server Component: no Supabase call, no client
- * JS beyond the scroll-reveal wrapper and the native FAQ disclosures. Every
+ * The public landing page. Still a static Server Component; the only client JS
+ * is the scroll-reveal wrapper, the native FAQ disclosures, and the account menu
+ * in the header, which is the one piece that has to know who is signed in. Every
  * string lives in `lib/marketing/content.ts`.
  */
 export default function Home() {

@@ -29,10 +29,13 @@ to stay until then.
 | Export / deletion preview / delete | `0020_account_lifecycle.sql` |
 | Username → email lookup, secret-gated | `0021_username_login.sql` |
 | Brute-force throttle for the proxied path | `0022_login_throttle.sql` |
-| Sign-in / register card, Google, reset page | `components/host/HostSignIn.tsx`, `app/auth/reset/` |
+| Sign-in / register card, Google, reset page | `components/auth/SignInCard.tsx`, `app/auth/reset/` |
+| The one login URL, wearing the site's header and footer | `app/login/` |
+| Account dropdown in the site header | `components/marketing/AccountMenu.tsx` |
 | Account page | `app/account/`, `components/account/` |
 | "Keep your results?" prompt | `components/student/SaveResultsPrompt.tsx` |
 | 28 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
+| Open-redirect guard for `?next=` + 8 unit tests | `lib/auth/next-path.ts` |
 | 6 more live assertions | `scripts/security-check.ts` |
 
 **Before any of it works in production**, the dashboard steps in

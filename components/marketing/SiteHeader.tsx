@@ -1,11 +1,18 @@
 import Link from "next/link";
 import { Coins } from "@/components/icons";
+import { AccountMenuSlot } from "@/components/marketing/AccountMenuSlot";
 import { HEADER, NAV_LINKS, SITE } from "@/lib/marketing/content";
 
 /**
  * 64px bar on a hairline, not a slab. Wordmark left, anchors centred on large
- * screens, one amber action right. On phones only the wordmark and the action
- * survive; the anchors live in the footer rather than behind a hamburger.
+ * screens, the account area and one amber action right. On phones only the
+ * wordmark, the account area and the action survive; the anchors live in the
+ * footer rather than behind a hamburger.
+ *
+ * Still a Server Component. <AccountMenuSlot /> is the single client island, and
+ * it loads the account menu as an async chunk so supabase-js stays out of the
+ * landing page's first load. It reserves its own width throughout, so the bar
+ * never reflows.
  */
 export function SiteHeader() {
   return (
@@ -45,6 +52,7 @@ export function SiteHeader() {
           >
             {HEADER.joinCta.label}
           </Link>
+          <AccountMenuSlot />
           <Link
             href={HEADER.hostCta.href}
             className="inline-flex min-h-[44px] items-center rounded-full border-2 border-ink bg-brand px-5 font-display text-sm font-extrabold text-ink transition hover:bg-brand-strong active:translate-x-[1px] active:translate-y-[1px]"
