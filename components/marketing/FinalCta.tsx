@@ -1,6 +1,6 @@
-import { Coins } from "@/components/icons";
 import { Reveal } from "@/components/marketing/Reveal";
-import { DotField, Eyebrow, PillLink, Shell, TextLink } from "@/components/marketing/primitives";
+import { DotField, Eyebrow, Shell, TextLink } from "@/components/marketing/primitives";
+import { HostOrLoginCta } from "@/components/marketing/HostOrLoginCta";
 import { FINAL_CTA } from "@/lib/marketing/content";
 
 export function FinalCta() {
@@ -28,12 +28,7 @@ export function FinalCta() {
             </div>
 
             <div className="flex flex-col items-start gap-5 lg:col-span-5 lg:items-end">
-              <PillLink
-                href={FINAL_CTA.primary.href}
-                label={FINAL_CTA.primary.label}
-                icon={<Coins />}
-                tone="ink"
-              />
+              <HostOrLoginCta tone="ink" icon="coins" hostLabel={FINAL_CTA.primary.label} />
               <TextLink
                 href={FINAL_CTA.secondary.href}
                 label={FINAL_CTA.secondary.label}

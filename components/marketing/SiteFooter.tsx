@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Coins } from "@/components/icons";
 import { Eyebrow, Shell } from "@/components/marketing/primitives";
+import { HostOrLoginNavLink } from "@/components/marketing/HostOrLoginNavLink";
 import { FOOTER, SITE } from "@/lib/marketing/content";
 
 const LINK_CLASS =
@@ -40,6 +41,10 @@ export function SiteFooter() {
                   )}
                 </li>
               ))}
+              <li>
+                {/* Auth-aware: "Host a session" only for someone who can host. */}
+                <HostOrLoginNavLink hostLabel={FOOTER.hostLink} className={LINK_CLASS} />
+              </li>
             </ul>
           </nav>
 

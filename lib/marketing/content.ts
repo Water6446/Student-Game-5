@@ -424,8 +424,11 @@ export const FOOTER = {
   exploreLinks: [
     ...NAV_LINKS,
     { label: "Join a game", href: "/join" },
-    { label: "Host a session", href: "/host" },
+    // "Host a session" is NOT here: it depends on who is looking, so SiteFooter
+    // renders it through HostOrLoginNavLink after this list.
   ],
+  /** Label for that auth-aware entry once we know the visitor can host. */
+  hostLink: "Host a session",
   contactTitle: "Contact",
   email: SITE.email,
   personalSiteUrl: SITE.personalSiteUrl,

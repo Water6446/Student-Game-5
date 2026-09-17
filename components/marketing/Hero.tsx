@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { ArrowDown, ArrowRight, ArrowUp, Coins, Lock } from "@/components/icons";
-import { PillLink, Shell, TextLink } from "@/components/marketing/primitives";
+import { Shell, TextLink } from "@/components/marketing/primitives";
+import { HostOrLoginCta } from "@/components/marketing/HostOrLoginCta";
 import { HERO, isTodo } from "@/lib/marketing/content";
 
 /**
@@ -59,12 +60,9 @@ export function Hero() {
                 className="animate-rise mt-9 flex flex-wrap items-center gap-x-8 gap-y-4"
                 style={{ animationDelay: "500ms" }}
               >
-                <PillLink
-                  href={HERO.primary.href}
-                  label={HERO.primary.label}
-                  icon={<ArrowRight />}
-                  tone="cream"
-                />
+                {/* "Host a session" only once we know they can host; "Log in"
+                    otherwise. See HostOrLoginCta. */}
+                <HostOrLoginCta tone="cream" icon="arrow" hostLabel={HERO.primary.label} />
                 <TextLink
                   href={HERO.secondary.href}
                   label={HERO.secondary.label}
