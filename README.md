@@ -158,6 +158,10 @@ which asserts (and aborts on any failure) that:
 The full pre-class launch checklist, dashboard steps, smoke test, and rollback
 plan live in **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**.
 
+The plan for real accounts (host sign-in methods, optional student accounts,
+abuse limits, and where Vercel/Supabase limits actually bite) is in
+**[docs/ACCOUNTS.md](./docs/ACCOUNTS.md)**.
+
 ---
 
 ## Security model
