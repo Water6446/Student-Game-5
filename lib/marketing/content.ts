@@ -65,28 +65,11 @@ export const HEADER = {
 } as const;
 
 /**
- * The sign-in page. It sits under the same header and footer as the homepage, so
- * its copy lives here with the rest of the site's voice rather than inside the
- * auth component.
+ * The sign-in page. Deliberately almost empty: someone on it has already decided
+ * to sign in, so the only copy here is the way out for a student who wanted to
+ * join a game instead.
  */
 export const LOGIN = {
-  eyebrow: "Host access",
-  heading: "Sign in to run a session.",
-  sub: "Your sessions, their standings, and the settings you last used — all kept with your account.",
-  points: [
-    {
-      title: "Students never sign up",
-      body: "They join with a code or a QR. No accounts, no app, no email addresses collected.",
-    },
-    {
-      title: "Your sessions stay put",
-      body: "Every game you have run, with its standings and counterfactuals, waits on your dashboard.",
-    },
-    {
-      title: "Two ways in",
-      body: "Google, or a username and password — whichever your department prefers.",
-    },
-  ],
   joinPrompt: "Here to play rather than host?",
   joinCta: "Join a game with a code",
 } as const;

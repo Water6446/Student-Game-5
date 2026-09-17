@@ -42,14 +42,11 @@ export function SignInCard({
   return (
     <>
       <Card className="animate-pop-in">
-        {/* h2, not h1: the page around this card owns the page heading. */}
-        <h2 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
+        {/* The page's only heading, so h1. No subtitle: whoever is reading this
+            came here to sign in and does not need the product explained. */}
+        <h1 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
           {mode === "signin" ? "Sign in" : "Create an account"}
-        </h2>
-        <p className="mt-1 font-editorial text-sm italic text-ink-muted">
-          Hosting is tied to a verified identity, not a guessable secret. Students still join with
-          just a code — no account needed.
-        </p>
+        </h1>
 
         <ModeTabs mode={mode} onChange={setMode} />
 
