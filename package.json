@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "security-check": "tsx scripts/security-check.ts",
+    "test:accounts-db": "bash scripts/run-accounts-selftest.sh",
     "db:link": "supabase link --project-ref mftrhnwnvidxjdzenmip",
     "db:push": "supabase db push",
     "db:diff": "supabase db diff --linked",

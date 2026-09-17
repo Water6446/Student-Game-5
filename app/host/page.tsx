@@ -7,7 +7,7 @@ import { NewSessionPanel } from "@/components/host/CreateSessionForm";
 import { SessionsList } from "@/components/host/SessionsList";
 import { Instructions } from "@/components/Instructions";
 import { Button, Card } from "@/components/ui";
-import { ArrowLeft } from "@/components/icons";
+import { ArrowLeft, LogOut, User as UserIcon } from "@/components/icons";
 
 // ON unless explicitly disabled. Still in testing — set
 // NEXT_PUBLIC_ALLOW_ANON_HOST=false to turn the bypass off. See .env.example.
@@ -43,9 +43,16 @@ export default function HostPage() {
             {user.email ?? "Signed in for testing (no email)"}
           </p>
         </div>
-        <Button variant="secondary" onClick={() => supabase.auth.signOut()}>
-          Sign out
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/account">
+            <Button variant="secondary">
+              <UserIcon /> Account
+            </Button>
+          </Link>
+          <Button variant="secondary" onClick={() => supabase.auth.signOut()}>
+            <LogOut /> Sign out
+          </Button>
+        </div>
       </header>
 
       <div className="space-y-8">

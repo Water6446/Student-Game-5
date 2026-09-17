@@ -10,6 +10,37 @@ Companion docs: **[DEPLOYMENT.md](./DEPLOYMENT.md)** (launch checklist),
 (game numbers). Items marked **(I can do this)** are code changes done in a PR;
 the rest are dashboard steps only the project owner can do.
 
+---
+
+## Status — what is built
+
+Phases 1–4 are **implemented** (migrations `0016`–`0022` plus the UI). Phase 5,
+closing the anonymous-host testing bypass, is deliberately **not** done: it is a
+one-migration flip to make when you are ready, and CLAUDE.md asks for the bypass
+to stay until then.
+
+| Piece | Where |
+| --- | --- |
+| `profiles` (username, display name, institution, role, plan) | `0016_profiles.sql` |
+| Sign-up trigger, username generation/availability/rename | `0016_profiles.sql` |
+| Guest → account claim, cross-session history | `0017_claim_account.sql` |
+| Session quota + player cap (triggers) | `0018_quotas.sql` |
+| Guest retention: sever, don't cascade | `0019_guest_retention.sql` |
+| Export / deletion preview / delete | `0020_account_lifecycle.sql` |
+| Username → email lookup, secret-gated | `0021_username_login.sql` |
+| Brute-force throttle for the proxied path | `0022_login_throttle.sql` |
+| Sign-in / register card, Google, reset page | `components/host/HostSignIn.tsx`, `app/auth/reset/` |
+| Account page | `app/account/`, `components/account/` |
+| "Keep your results?" prompt | `components/student/SaveResultsPrompt.tsx` |
+| 26 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
+| 6 live assertions | `scripts/security-check.ts` |
+
+**Before any of it works in production**, the dashboard steps in
+[DEPLOYMENT.md § Accounts setup](./DEPLOYMENT.md#part-b--accounts-setup) have to
+be done: Google OAuth credentials, manual linking, custom SMTP, CAPTCHA, and the
+`USERNAME_LOOKUP_SECRET` pair. Username sign-in fails closed until the last of
+those exists — the form quietly accepts email addresses only.
+
 Decided scope for this plan:
 
 - **Hosts get real accounts** — magic link, email + password, and Google.
@@ -237,8 +268,11 @@ returns int language sql stable security definer set search_path = public, pg_te
 $$;
 ```
 
-Then, inside `create_session` (a `create or replace` carrying forward the whole
-`0008` body, after the sign-in guard):
+The shipped migration enforces this with a `BEFORE INSERT` trigger on
+`sessions` rather than by editing `create_session`. That function's body is ~220
+lines as of `0014`, and `create or replace`-ing it for every policy tweak is
+exactly how two definitions drift apart; a trigger also covers any future insert
+path for free. The equivalent inline check would have been:
 
 ```sql
   if (select count(*) from public.sessions s
@@ -258,15 +292,27 @@ else changes. That is the whole point of routing quotas through one function.
 
 ### 2.4 `0019_guest_retention.sql` — cleanup that doesn't eat history **(I can do this)**
 
-**This migration must land before any cleanup job runs.** Today
-`players.auth_uid` is `not null ... on delete cascade`, so purging a stale guest
-would cascade away their `players` row and every `allocations` row under it —
-silently destroying a past class's results.
+**This migration must land before any cleanup job runs.** `players.auth_uid`
+still carries `on delete cascade` from `0001`, so purging a stale guest would
+cascade away their `players` row and every `allocations` row under it — silently
+destroying a past class's results.
 
-Sever the identity, keep the record:
+Two corrections to the first draft of this plan, found while implementing it:
+
+1. `auth_uid` is **already nullable** — migration `0009` dropped `NOT NULL` so
+   benchmark bots could exist. Only the FK action needs changing.
+2. `0009` also added `players_auth_or_bot_chk: check (auth_uid is not null or
+   is_bot)`, which would **reject** a severed human row. The invariant has to be
+   widened, not just the FK relaxed.
+
+So the shipped migration does three things: relax the FK, stamp a new
+`purged_at` column from a `BEFORE UPDATE` trigger (which fires for the update
+that `ON DELETE SET NULL` performs, and runs before `CHECK` evaluation), and
+widen the constraint to `auth_uid is not null or is_bot or purged_at is not
+null`.
 
 ```sql
-alter table public.players alter column auth_uid drop not null;
+alter table public.players add column if not exists purged_at timestamptz;
 
 alter table public.players drop constraint if exists players_auth_uid_fkey;
 alter table public.players add constraint players_auth_uid_fkey
@@ -408,6 +454,44 @@ Supabase handles hashing (bcrypt), so the work is policy and flows:
 
 MFA (TOTP) is supported and is the natural next step for host accounts, but it
 is a later phase — see §7, Phase 6.
+
+### 3.4 Signing in with a username — and why it needs a server secret
+
+The requested flow is: register with **username + email + password**, get a
+confirmation link that signs you in, and from then on sign in with **either the
+email or the username** plus the password.
+
+Supabase Auth has no username login — `signInWithPassword` takes an email. So
+something has to map username → email *before* GoTrue sees the request, and that
+mapping is the whole security problem. Three ways to do it:
+
+| Option | Verdict |
+| --- | --- |
+| Open RPC `username → email`, callable by anyone | **Rejected.** That is an email harvester: guess handles, collect addresses, phish or credential-stuff them |
+| Verify the password in Postgres with `crypt()`, return the email only on success | **Rejected.** A home-rolled auth path outside GoTrue's rate limiting and lockout — an unthrottled password oracle |
+| **Shipped:** the lookup requires a server-only shared secret, so only our own Route Handler can do it | GoTrue still performs every password check and keeps its own limits; we only resolve an identifier |
+
+**Why a scoped secret rather than the `service_role` key.** The obvious
+implementation puts `service_role` in a Route Handler. But `service_role`
+bypasses RLS entirely, so leaking it means the whole database — `session_secrets`
+included. Leaking `app_secrets.username_lookup` means username → email
+enumeration and nothing else. Same setup cost, roughly a hundredfold smaller
+blast radius, and it preserves the property README.md advertises: the app holds
+no key that can bypass RLS.
+
+Two consequences worth knowing:
+
+- **It fails closed.** No secret configured → the function returns `NULL` for
+  every call and the sign-in form silently accepts email only. It never fails
+  open.
+- **The proxied path needs its own throttle** (`0022`). An email login goes
+  straight from the browser to Supabase, so GoTrue sees the real client IP. A
+  username login cannot, so from Supabase's side every attempt arrives from the
+  Vercel egress IP — one shared bucket that is both useless as a brute-force
+  limit and a self-inflicted DoS, since 30 guesses by an attacker would lock out
+  every legitimate username login. So the proxy counts failures itself, on the
+  targeted username *and* on a salted hash of the caller's IP (no IP is stored),
+  and locks a bucket for 15 minutes after 8 failures.
 
 ---
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
 import {
   buildPlayerResults,
@@ -21,15 +21,19 @@ import { Card } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { Trophy, ArrowLeft, Clover } from "@/components/icons";
+import { SaveResultsPrompt } from "@/components/student/SaveResultsPrompt";
 
 export function StudentFinished({
   supabase,
   session,
   me,
+  user,
 }: {
   supabase: SupabaseClient;
   session: SessionRow;
   me: PlayerRow;
+  /** Used only to offer a guest an account; null is a fine, quiet state. */
+  user?: User | null;
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
   const [result, setResult] = useState<PlayerResult | null>(null);
@@ -287,6 +291,9 @@ export function StudentFinished({
             className="mt-6 text-left"
           />
         ) : null}
+
+        {/* Offered only after the results they came for, and only to guests. */}
+        <SaveResultsPrompt supabase={supabase} user={user ?? null} />
 
         <Link
           href="/"

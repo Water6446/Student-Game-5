@@ -189,6 +189,50 @@ async function main() {
     await expectDenied("student reads hidden leaderboard", () =>
       attacker.rpc("get_leaderboard", { p_session_id: session.id }),
     );
+
+    // ---- account layer (migrations 0016-0022) ------------------------------
+    // 8. another account's profile is invisible (RLS filters, so: zero rows)
+    {
+      const { data, error } = await attacker
+        .from("profiles")
+        .select("*")
+        .eq("id", victimUser!.user!.id);
+      if (!error && Array.isArray(data) && data.length === 0)
+        pass("victim's profile is invisible to the attacker");
+      else fail(`attacker read ${Array.isArray(data) ? data.length : "?"} of victim's profiles`);
+    }
+    // 9. no self-promotion: role/plan/username have no client update grant
+    await expectDenied("student sets profiles.role = admin", () =>
+      attacker.from("profiles").update({ role: "admin" }).eq("id", victimUser!.user!.id),
+    );
+    await expectDenied("student upgrades profiles.plan", () =>
+      attacker.from("profiles").update({ plan: "dept" }).eq("id", victimUser!.user!.id),
+    );
+    await expectDenied("student writes profiles.username directly", () =>
+      attacker.from("profiles").update({ username: "stolen" }).eq("id", victimUser!.user!.id),
+    );
+    // 10. an anonymous user cannot turn itself into an account
+    await expectDenied("anonymous claim_my_account", () =>
+      attacker.rpc("claim_my_account", { p_username: "attacker1", p_display_name: "A" }),
+    );
+    // 11. the server-only secrets table is unreachable
+    await expectDenied("student reads app_secrets", () =>
+      attacker.from("app_secrets").select("*"),
+    );
+    // 12. the username -> email lookup is useless without the server secret.
+    //     This one must NOT return an address: that would be an email harvester.
+    {
+      const { data, error } = await attacker.rpc("email_for_username", {
+        p_username: "anyone",
+        p_secret: "not-the-secret-but-long-enough-to-pass-a-length-check",
+      });
+      if (error || data === null) pass("email_for_username discloses nothing without the secret");
+      else fail(`email_for_username leaked an address to an unauthenticated caller: ${data}`);
+    }
+    // 13. housekeeping functions are owner-only
+    await expectDenied("student runs purge_stale_guests", () =>
+      attacker.rpc("purge_stale_guests", { p_days: 45 }),
+    );
   } finally {
     await cleanup();
   }

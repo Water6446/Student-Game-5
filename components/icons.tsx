@@ -240,3 +240,68 @@ export function Globe(props: IconProps) {
     </Base>
   );
 }
+
+export function User(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="8" r="3.75" />
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+    </Base>
+  );
+}
+
+export function Key(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="8" cy="15" r="3.5" />
+      <path d="m10.6 12.6 7.2-7.2M15.5 7.7l2 2M18 5.2l2 2" />
+    </Base>
+  );
+}
+
+export function LogOut(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M14 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8" />
+      <path d="m17 15 3-3-3-3M20 12H10" />
+    </Base>
+  );
+}
+
+export function Trash(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
+      <path d="M6.5 7 7 19a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l.5-12" />
+      <path d="M10.5 11v6M13.5 11v6" />
+    </Base>
+  );
+}
+
+/**
+ * The Google "G". The only icon here that is not a monochrome line mark: brand
+ * marks have to keep their own colours, so this one opts out of `Base` and
+ * ignores currentColor by design.
+ */
+export function GoogleMark(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 48 48" width="1em" height="1em" aria-hidden="true" focusable="false" {...props}>
+      <path
+        fill="#4285F4"
+        d="M45.1 24.5c0-1.6-.1-2.8-.4-4H24v7.3h12.1c-.2 2-1.6 5-4.5 7l-.1.3 6.6 5.1.4.1c4.2-3.9 6.6-9.6 6.6-15.8Z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 46c6 0 11-2 14.6-5.3l-7-5.4c-1.9 1.3-4.4 2.2-7.6 2.2-5.8 0-10.7-3.8-12.5-9.1l-.3.02-6.9 5.3-.1.3C7.8 41 15.3 46 24 46Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M11.5 28.4a13.6 13.6 0 0 1 0-8.8l-.01-.3-7-5.4-.2.1a22 22 0 0 0 0 19.8l7.2-5.4Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M24 9.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 3.2 30 1 24 1 15.3 1 7.8 6 4.2 13.9l7.2 5.6C13.3 14.2 18.2 9.5 24 9.5Z"
+      />
+    </svg>
+  );
+}

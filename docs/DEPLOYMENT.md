@@ -74,7 +74,99 @@ Each isolated storage = its own anonymous user.
 
 ---
 
-## Part B — Launch checklist
+## Part B — Accounts setup
+
+The account layer (migrations `0016`–`0022`, see
+**[ACCOUNTS.md](./ACCOUNTS.md)**) is in the code, but **none of the sign-in
+methods work until these dashboard steps are done.** Everything here is a
+console/DNS task only the project owner can do.
+
+### 1. Google sign-in — do this one first
+
+It needs no email sending at all, which makes it the quickest way to get a real
+(non-anonymous) host account.
+
+- [ ] **Google Cloud console** → APIs & Services → Credentials → *Create OAuth
+      client ID* (Web application). Authorized redirect URI:
+      `https://mftrhnwnvidxjdzenmip.supabase.co/auth/v1/callback`
+- [ ] **Supabase** → Authentication → Sign In / Providers → **Google** → on,
+      paste the client ID and secret.
+- [ ] **Supabase** → Authentication → Settings → **Manual linking** → **on**.
+      Without it `linkIdentity()` fails, which is what the student "save my
+      results" flow uses.
+
+### 2. Email — required for register / reset / magic link
+
+The built-in sender allows **2 messages an hour on every plan**, Pro included.
+That is unusable for real registration, so custom SMTP is not optional.
+
+- [ ] **Custom SMTP** (Resend, Postmark, SES, SendGrid): Authentication →
+      Emails → SMTP Settings.
+- [ ] **SPF / DKIM / DMARC** on the sending domain, or university spam filters
+      will eat the links.
+- [ ] Raise the post-SMTP cap: Authentication → Rate Limits (it defaults to a
+      conservative 30/hour even once custom SMTP is on).
+- [ ] Authentication → Providers → Email → **Confirm email: ON**. Registration
+      depends on it; with it off, sign-up returns a session immediately and the
+      "check your email" step is skipped.
+
+### 3. Password policy
+
+- [ ] Authentication → Providers → Email → **Minimum password length ≥ 10**
+      (the app's own forms enforce 10; make the server agree).
+- [ ] **Leaked password protection: ON** — needs **Pro or above**. This is one
+      of the three reasons ACCOUNTS.md §6.4 calls Supabase Pro non-optional.
+
+### 4. Bot protection
+
+- [ ] Authentication → Settings → **CAPTCHA** (hCaptcha or Cloudflare
+      Turnstile) → on. Covers sign-up, sign-in and reset.
+- [ ] Keep it enabled for **anonymous sign-ins** too — that endpoint is the one
+      a bot uses to inflate `auth.users` and your MAU meter (ACCOUNTS.md T1).
+
+### 5. Username sign-in (optional — email login works without it)
+
+Two halves that must carry the **same** value:
+
+```bash
+openssl rand -hex 32          # generate it
+```
+
+- [ ] **Database** (SQL editor, as the owner):
+      ```sql
+      insert into public.app_secrets (key, value)
+      values ('username_lookup', '<the 64 hex chars>')
+      on conflict (key) do update set value = excluded.value;
+      ```
+- [ ] **Vercel** → Environment Variables → `USERNAME_LOOKUP_SECRET` = the same
+      value. **Server-only — never prefix it `NEXT_PUBLIC_`.**
+
+Leave either half unset and username sign-in turns itself off: the form accepts
+email addresses only. It fails closed, never open.
+
+### 6. Retention job
+
+Anonymous guests accumulate forever otherwise, and Supabase has no built-in
+cleanup. `purge_stale_guests()` severs them from their results rather than
+deleting the results (ACCOUNTS.md §2.4).
+
+- [ ] Run it by hand from the SQL editor, or schedule it:
+      ```sql
+      select cron.schedule('purge-stale-guests', '0 4 * * 0',
+                           $$select public.purge_stale_guests(45)$$);
+      ```
+
+### 7. Verify
+
+- [ ] `npm run test:accounts-db` — 26 offline assertions against the real
+      migrations (needs Docker).
+- [ ] `npm run security-check` — the same denials over the live network path.
+- [ ] Register an account, confirm the email, sign out, sign in **by username**,
+      then by **email**, then reset the password.
+
+---
+
+## Part C — Launch checklist
 
 Work top to bottom.
 

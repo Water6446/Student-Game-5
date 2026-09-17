@@ -14,8 +14,20 @@ create schema if not exists auth;
 create table if not exists auth.users (
   id           uuid primary key default gen_random_uuid(),
   email        text,
-  is_anonymous boolean not null default false
+  is_anonymous boolean not null default false,
+  -- Columns the account layer (0016-0022) reads. raw_user_meta_data is the
+  -- CLIENT-WRITABLE bag Supabase exposes through auth.updateUser({data}); it is
+  -- mocked here precisely so the self-test can prove nothing trusts it.
+  raw_user_meta_data jsonb       not null default '{}'::jsonb,
+  created_at         timestamptz not null default now(),
+  last_sign_in_at    timestamptz
 );
+
+-- Older mock databases predate the columns above; add them idempotently so a
+-- re-run against an existing container does not need a rebuild.
+alter table auth.users add column if not exists raw_user_meta_data jsonb not null default '{}'::jsonb;
+alter table auth.users add column if not exists created_at timestamptz not null default now();
+alter table auth.users add column if not exists last_sign_in_at timestamptz;
 
 -- auth.jwt(): the decoded JWT claims, supplied per-request via the GUC.
 create or replace function auth.jwt() returns jsonb

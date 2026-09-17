@@ -42,7 +42,7 @@ export default function PlayPage({ params }: { params: { sessionId: string } }) 
   }
 
   if (session.status === "finished") {
-    return <StudentFinished supabase={supabase} session={session} me={me} />;
+    return <StudentFinished supabase={supabase} session={session} me={me} user={user} />;
   }
 
   // active — wait for the current round row to load
