@@ -27,7 +27,22 @@ export function IdentitiesPanel({
 }) {
   const providers = new Set((user.identities ?? []).map((i) => i.provider));
   const hasGoogle = providers.has("google");
-  const hasEmail = providers.has("email") || Boolean(user.email);
+
+  // *** THERE IS DELIBERATELY NO "has a password" FLAG HERE ***
+  // Supabase gives the client no reliable way to know, and both obvious signals
+  // are wrong in opposite directions:
+  //
+  //   user.email          — Google supplies an address for an account that has
+  //                         no password at all. Trusting it claimed "email and
+  //                         password: ON" for every Google-only sign-up.
+  //   an `email` identity — updateUser({ password }) genuinely sets a password
+  //                         and the user CAN then sign in with it, but no email
+  //                         identity is created (supabase/auth issue 2085), so
+  //                         this reads OFF for accounts that do have one.
+  //
+  // So the rows below state only what is actually knowable: which address is on
+  // the account, and whether Google is linked. The password is presented as an
+  // action, never as a status. Please do not "fix" this back into a badge.
 
   return (
     <Card>
@@ -39,12 +54,7 @@ export function IdentitiesPanel({
       </p>
 
       <ul className="mt-5 space-y-2">
-        <MethodRow
-          icon={<Mail />}
-          label="Email and password"
-          detail={user.email ?? "Not set"}
-          active={hasEmail}
-        />
+        <MethodRow icon={<Mail />} label="Email address" detail={user.email ?? "Not set"} />
         <MethodRow
           icon={<GoogleMark />}
           label="Google"
@@ -58,7 +68,7 @@ export function IdentitiesPanel({
         {!user.email ? (
           <AddEmail supabase={supabase} onChanged={onChanged} />
         ) : (
-          <ChangePassword supabase={supabase} />
+          <ChangePassword supabase={supabase} hasGoogle={hasGoogle} />
         )}
       </div>
     </Card>
@@ -74,7 +84,8 @@ function MethodRow({
   icon: React.ReactNode;
   label: string;
   detail: string;
-  active: boolean;
+  /** Omit entirely when there is no honest on/off answer — see the note above. */
+  active?: boolean;
 }) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-paper-2 px-4 py-3">
@@ -85,7 +96,7 @@ function MethodRow({
           <span className="font-mono text-xs text-ink-subtle">{detail}</span>
         </span>
       </span>
-      {active ? (
+      {active === undefined ? null : active ? (
         <span className="flex items-center gap-1 font-display text-xs font-extrabold uppercase tracking-wide text-gain">
           <Check /> On
         </span>
@@ -170,7 +181,6 @@ function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged
         <TextInput
           type="email"
           inputMode="email"
-          placeholder="you@university.edu"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -187,7 +197,13 @@ function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged
   );
 }
 
-function ChangePassword({ supabase }: { supabase: SupabaseClient }) {
+function ChangePassword({
+  supabase,
+  hasGoogle,
+}: {
+  supabase: SupabaseClient;
+  hasGoogle: boolean;
+}) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -216,7 +232,6 @@ function ChangePassword({ supabase }: { supabase: SupabaseClient }) {
         <TextInput
           type="password"
           autoComplete="new-password"
-          placeholder="••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -227,6 +242,13 @@ function ChangePassword({ supabase }: { supabase: SupabaseClient }) {
         <Key />
         {busy ? "Saving…" : "Save password"}
       </Button>
+      {/* Only worth saying to someone who arrived via Google — for anyone else
+          it is advice about a situation they are not in. */}
+      {hasGoogle ? (
+        <p className="font-editorial text-xs italic text-ink-subtle">
+          Setting a password lets you sign in with your email address as well as Google.
+        </p>
+      ) : null}
     </div>
   );
 }

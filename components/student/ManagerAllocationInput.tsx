@@ -83,7 +83,6 @@ export function ManagerAllocationInput({
                   step={1}
                   inputMode="numeric"
                   value={p ?? ""}
-                  placeholder="0"
                   disabled={disabled}
                   onChange={(e) =>
                     setPercent(i, e.target.value === "" ? null : Number(e.target.value))

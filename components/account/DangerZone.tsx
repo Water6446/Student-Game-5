@@ -131,7 +131,6 @@ export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
               <TextInput
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                placeholder={CONFIRM_WORD}
               />
             </Field>
             <Button

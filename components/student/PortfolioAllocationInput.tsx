@@ -125,7 +125,6 @@ export function PortfolioAllocationInput({
                   step={0.01}
                   inputMode="decimal"
                   value={v ?? ""}
-                  placeholder="0.00"
                   disabled={disabled}
                   onChange={(e) =>
                     setAmount(i, e.target.value === "" ? null : Number(e.target.value))

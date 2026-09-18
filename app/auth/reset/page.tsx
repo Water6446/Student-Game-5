@@ -101,7 +101,6 @@ function RequestLink({ supabase }: { supabase: ReturnType<typeof useSupabaseUser
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="professor@university.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => {
@@ -165,7 +164,6 @@ function SetNewPassword({
           <TextInput
             type="password"
             autoComplete="new-password"
-            placeholder="••••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => {

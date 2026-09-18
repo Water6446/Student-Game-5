@@ -84,7 +84,6 @@ export function ProfilePanel({
         </Field>
         <Field label="Institution" hint="Optional">
           <TextInput
-            placeholder="University of —"
             value={institution}
             onChange={(e) => setInstitution(e.target.value)}
           />

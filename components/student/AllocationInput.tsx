@@ -128,7 +128,6 @@ export function AllocationInput({
               max={wealth}
               step={0.01}
               value={has ? r : ""}
-              placeholder="0.00"
               disabled={disabled}
               onChange={(e) =>
                 onChange(e.target.value === "" ? null : clamp(Number(e.target.value)))
@@ -142,7 +141,6 @@ export function AllocationInput({
               max={100}
               step={1}
               value={has ? Math.round(pct) : ""}
-              placeholder="0"
               disabled={disabled}
               onChange={(e) =>
                 onChange(e.target.value === "" ? null : clamp((Number(e.target.value) / 100) * wealth))

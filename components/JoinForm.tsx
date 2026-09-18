@@ -64,7 +64,6 @@ export function JoinForm() {
             <TextInput
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="ABC123"
               autoCapitalize="characters"
               autoComplete="off"
               maxLength={6}
@@ -76,7 +75,6 @@ export function JoinForm() {
             <TextInput
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Sam"
               maxLength={40}
             />
           </Field>

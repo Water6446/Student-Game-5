@@ -230,7 +230,6 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
       <Field label="Username or email">
         <TextInput
           autoComplete="username"
-          placeholder="jsmith or professor@university.edu"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
         />
@@ -239,7 +238,6 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
         <TextInput
           type="password"
           autoComplete="current-password"
-          placeholder="••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {
@@ -378,7 +376,6 @@ function RegisterPanel({
       >
         <TextInput
           autoComplete="username"
-          placeholder="jsmith"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -388,7 +385,6 @@ function RegisterPanel({
           type="email"
           inputMode="email"
           autoComplete="email"
-          placeholder="professor@university.edu"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -401,7 +397,6 @@ function RegisterPanel({
         <TextInput
           type="password"
           autoComplete="new-password"
-          placeholder="••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {

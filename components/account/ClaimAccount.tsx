@@ -162,7 +162,6 @@ function StartClaim({ supabase, next }: { supabase: SupabaseClient; next: string
       <Field label="Pick a username" hint="3–24 characters: letters, numbers, underscore">
         <TextInput
           autoComplete="username"
-          placeholder="jsmith"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -174,7 +173,6 @@ function StartClaim({ supabase, next }: { supabase: SupabaseClient; next: string
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="you@university.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -256,7 +254,6 @@ function FinishClaim({
       <Field label="Username" hint="3–24 characters: letters, numbers, underscore">
         <TextInput
           autoComplete="username"
-          placeholder="jsmith"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           onKeyDown={(e) => {
