@@ -177,9 +177,14 @@ fontFamily: {
     card: "3px 3px 0 rgb(var(--ink))",   // standard card / button
     lift: "6px 6px 0 rgb(var(--ink))",   // hero card, modal, big CTA
     pop:  "5px 5px 0 rgb(var(--ink))",   // primary CTA emphasis
+    "lift-brand": "6px 6px 0 rgb(var(--brand)), 6px 6px 0 2px rgb(var(--ink))",
   }
   ```
   Cards: `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
+  **On an ink-filled (`bg-ink`) panel use `shadow-lift-brand`, never
+  `shadow-lift`**: an ink offset under an ink panel is invisible except as a
+  jagged notch at two corners, which reads as a rendering glitch. The amber block
+  keeps the offset legible, and its ink outline ties it back to the system.
 - **Press affordance:** interactive elements shift down-right and drop their
   shadow on `:active` — `active:translate-x-[2px] active:translate-y-[2px]
   active:shadow-none`. Apply per interactive element.

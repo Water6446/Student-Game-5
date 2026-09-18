@@ -75,7 +75,10 @@ export function ManagerAllocationInput({
               <span className="w-28 shrink-0 truncate text-sm font-bold text-ink">
                 {managerName(config, i)}
               </span>
-              <div className="relative flex w-16 shrink-0 items-center">
+              {/* Room for three digits (up to the leverage cap, e.g. 200) plus the
+                  % suffix. The native spinner is hidden: at this width it sat on
+                  top of the digits, and arrow keys still step the value. */}
+              <div className="relative flex w-20 shrink-0 items-center">
                 <input
                   type="number"
                   min={0}
@@ -88,9 +91,9 @@ export function ManagerAllocationInput({
                     setPercent(i, e.target.value === "" ? null : Number(e.target.value))
                   }
                   aria-label={`Percent of wealth with ${managerName(config, i)}`}
-                  className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-2 pr-5 text-right font-mono text-base tabular-nums text-ink focus:border-brand"
+                  className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-2 pr-7 text-right font-mono text-base tabular-nums text-ink [appearance:textfield] focus:border-brand [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
                 />
-                <span className="pointer-events-none absolute right-2 font-mono text-sm text-ink-subtle">
+                <span className="pointer-events-none absolute right-3 font-mono text-sm text-ink-muted">
                   %
                 </span>
               </div>

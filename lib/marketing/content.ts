@@ -42,7 +42,6 @@ export const SITE = {
     "A live, in-class investment-risk simulation. Students participate from their phones while you run the market from the front of the room.",
   email: "maxalexjansen@gmail.com",
   personalSiteUrl: "https://max-jansen.com",
-  location: "Worcester, MA",
 } as const;
 
 // Absolute, not bare fragments: the header now rides on /login, /host and
@@ -85,7 +84,7 @@ export const LOGIN = {
 export const JOIN = {
   eyebrow: "Student",
   heading: "Join a game.",
-  sub: "Enter the code your professor is showing. No account, no app.",
+  sub: "Enter the code your professor is showing.",
   howEyebrow: "How to play",
   hostPrompt: "Running the class rather than playing?",
   hostCta: "Host a session",
@@ -122,6 +121,28 @@ export const HERO = {
   ],
   /** Chip floating over the stage next to the allocation card. */
   marketChip: { label: "Market up", detail: "risky ×1.1" },
+  /**
+   * Step three of the story the right-hand column tells: decide (the card),
+   * the market moves (the chip), then the reveal. A static replica of the
+   * student's post-reveal screen (StudentRound's result + StudentBoard), and
+   * its numbers follow from the card above it: $38 safe + $62 risky × 1.1 =
+   * $106.20, i.e. +$6.20. No bots in the list: 0013 keeps them out of every
+   * student-facing ranking, so showing them here would misrepresent the app.
+   */
+  standings: {
+    wealthLabel: "New wealth",
+    wealth: "$106.20",
+    delta: "+$6.20 this round",
+    rankLead: "You're",
+    rank: "3rd",
+    rankTail: "of 28",
+    rows: [
+      { rank: 1, name: "Priya", wealth: "$118.40", me: false },
+      { rank: 2, name: "Marcus", wealth: "$111.75", me: false },
+      { rank: 3, name: "Sam", wealth: "$106.20", me: true },
+      { rank: 4, name: "Dana", wealth: "$104.10", me: false },
+    ],
+  },
   /**
    * A static replica of the student allocation step, built from the same
    * classes as `components/student/AllocationInput.tsx` so the preview is
@@ -403,10 +424,6 @@ export const FAQ = {
       q: "Can students see each other's bets?",
       a: "Allocations are hidden until lock, and a student can never see another student's allocation at any point. The standings can also be hidden.",
     },
-    {
-      q: "What do I get afterward?",
-      a: "A CSV of every round, every allocation, and the counterfactual: what each student would have ended with under other strategies.",
-    },
   ],
 } as const;
 
@@ -432,7 +449,6 @@ export const FOOTER = {
   contactTitle: "Contact",
   email: SITE.email,
   personalSiteUrl: SITE.personalSiteUrl,
-  location: SITE.location,
   copyright: "© 2026 Max Jansen",
   builtWith: "Built with Next.js and Supabase.",
 } as const;

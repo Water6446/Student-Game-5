@@ -61,9 +61,6 @@ export function SiteFooter() {
                   max-jansen.com
                 </a>
               </li>
-              <li className="inline-flex min-h-[44px] items-center font-mono text-xs uppercase tracking-[0.2em] text-paper-inverse/60">
-                {FOOTER.location}
-              </li>
             </ul>
           </div>
         </div>

@@ -46,6 +46,10 @@ const config: Config = {
         card: "3px 3px 0 rgb(var(--ink))", // standard card / button
         lift: "6px 6px 0 rgb(var(--ink))", // hero card, modal, big CTA
         pop: "5px 5px 0 rgb(var(--ink))", // primary CTA emphasis
+        // lift for an INK-filled panel: an ink offset under an ink panel is
+        // invisible except as a jagged notch at two corners, so the block is
+        // amber with an ink outline instead.
+        "lift-brand": "6px 6px 0 rgb(var(--brand)), 6px 6px 0 2px rgb(var(--ink))",
       },
       keyframes: {
         "pop-in": {

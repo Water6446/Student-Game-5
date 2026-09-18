@@ -25,7 +25,7 @@ export function LiveSessionStrip({ session }: { session: SessionOverviewRow }) {
   return (
     <section
       aria-label="Session in progress"
-      className="relative overflow-hidden rounded-2xl border-2 border-ink bg-ink text-paper-inverse shadow-lift"
+      className="relative overflow-hidden rounded-2xl border-2 border-ink bg-ink text-paper-inverse shadow-lift-brand"
     >
       <DotField tone="cream" className="absolute right-0 top-0 h-24 w-1/3 opacity-20" />
 

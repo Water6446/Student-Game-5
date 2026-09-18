@@ -88,6 +88,7 @@ export function Hero() {
                 <MiniAllocation />
                 <MarketChip />
               </div>
+              <MiniStandings />
             </div>
           </div>
 
@@ -237,6 +238,65 @@ function MiniAllocation() {
       <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-ink bg-brand-soft py-2.5 font-display text-sm font-extrabold uppercase tracking-tight text-ink">
         <Lock /> {prop.lockedTitle}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Step three, the reveal: a compact copy of the student's post-reveal screen,
+ * using the same pieces as StudentRound (the "New wealth" figure, the
+ * this-round pill, "You're 3rd of N", and StudentBoard's rows, with the
+ * student's own row highlighted). Tilted the other way from the allocation
+ * card, and set in from the right edge, so the two read as a loose stack of
+ * screens rather than a column of panels.
+ *
+ * Desktop only. It fills the empty lower-right of the stage beside the copy;
+ * on a phone the column stacks under the copy and it would only lengthen the
+ * hero.
+ */
+function MiniStandings() {
+  const s = HERO.standings;
+  return (
+    // Stepped down and well to the left of the allocation card (about half its
+    // width past the market chip), so the column reads decide -> market ->
+    // result. Less at lg: between 1024 and 1280 the copy column is wide enough
+    // that the full shift would slide under the paragraph. A fixed width about
+    // the allocation card's own: this column sizes to its widest child, so
+    // anything wider here would silently stretch the card above.
+    <div className="mt-14 hidden rotate-[1.4deg] rounded-2xl border-2 border-ink bg-surface p-5 text-ink shadow-lift lg:-ml-16 lg:block lg:w-[15.5rem] xl:-ml-40">
+      <div className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+        {s.wealthLabel}
+      </div>
+      <div className="font-mono text-3xl font-black leading-none">{s.wealth}</div>
+      {/* Under the number, as on the real reveal screen. Soft tint + ink words,
+          as on the market chip: white on solid green is under 4.5:1 here. */}
+      <span className="mt-2 inline-flex items-center gap-1 rounded-full border-2 border-ink bg-gain-soft px-2.5 py-0.5 font-mono text-xs font-bold">
+        <ArrowUp className="text-gain" />
+        {s.delta}
+      </span>
+
+      <div className="mt-4 rounded-xl border-2 border-ink bg-brand-soft py-2 text-center text-sm font-semibold shadow-card">
+        {s.rankLead} <span className="font-display font-black">{s.rank}</span> {s.rankTail}
+      </div>
+
+      <ol className="mt-3 space-y-1">
+        {s.rows.map((r) => (
+          <li
+            key={r.rank}
+            className={
+              r.me
+                ? "flex justify-between rounded-lg bg-play-soft px-3 py-1.5 text-sm font-semibold ring-1 ring-play/30"
+                : "flex justify-between rounded-lg bg-paper-2 px-3 py-1.5 text-sm text-ink-muted"
+            }
+          >
+            <span>
+              {r.rank}. {r.name}
+              {r.me ? " (you)" : ""}
+            </span>
+            <span className="font-mono">{r.wealth}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
