@@ -8,6 +8,7 @@ import { ArrowLeft } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
 import { EMAIL_DELIVERY_READY } from "@/lib/auth/email-delivery";
+import { emailSendErrorMessage } from "@/lib/auth/errors";
 
 /**
  * Password reset, both halves in one page.
@@ -39,7 +40,7 @@ export default function ResetPasswordPage() {
           <ResetUnavailable />
         )}
         <Link
-          href="/host"
+          href="/login"
           className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
         >
           <ArrowLeft /> Back to sign-in
@@ -67,14 +68,11 @@ function RequestLink({ supabase }: { supabase: ReturnType<typeof useSupabaseUser
       redirectTo: `${siteUrl()}/auth/callback?next=/auth/reset`,
     });
     setBusy(false);
-    if (!error) {
-      setSent(true);
-      return;
-    }
-    // A rate-limit message is about OUR sending quota and is worth showing.
+    // Rate limits and outages are about OUR service and are worth showing.
     // Every other failure is swallowed into the same success screen, so this
     // form cannot be used to discover which addresses have accounts.
-    if (/rate|limit/i.test(error.message)) setError(error.message);
+    const shown = error ? emailSendErrorMessage(error) : null;
+    if (shown) setError(shown);
     else setSent(true);
   }
 

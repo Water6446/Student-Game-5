@@ -41,7 +41,9 @@ export default function AccountPage() {
             Sign in to see your account, or join a game with a code — no account needed for that.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/host">
+            {/* Straight to /login with a way back here. Via /host it landed on
+                the dashboard instead of the page they were trying to reach. */}
+            <Link href="/login?next=%2Faccount">
               <Button>Sign in</Button>
             </Link>
             <Link href="/join">

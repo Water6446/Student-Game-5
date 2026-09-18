@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { ClaimAccount } from "@/components/account/ClaimAccount";
+import { Banner } from "@/components/ui";
 import { X } from "@/components/icons";
 
 /**
@@ -47,12 +49,31 @@ export function SaveResultsPrompt({
   // prompt at someone who already said no.
   const [dismissed, setDismissed] = useState(true);
   const [open, setOpen] = useState(false);
+  const [claimed, setClaimed] = useState(false);
 
   useEffect(() => {
     setDismissed(isDismissed());
   }, []);
 
-  if (!user || !user.is_anonymous || dismissed) return null;
+  if (!user || dismissed) return null;
+  // Once they have started saving, stay put. Adding an email can convert the
+  // guest on the spot, and hiding the moment is_anonymous flips would drop them
+  // right before the step that picks their username and password.
+  if (!user.is_anonymous && !open) return null;
+
+  if (claimed) {
+    return (
+      <div className="mt-8 text-left">
+        <Banner kind="success">
+          Saved. Your sessions are on{" "}
+          <Link href="/account" className="underline underline-offset-4">
+            your account page
+          </Link>
+          .
+        </Banner>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-8 rounded-2xl border-2 border-ink bg-paper-2 p-5 text-left shadow-card">
@@ -80,7 +101,12 @@ export function SaveResultsPrompt({
 
       {open ? (
         <div className="mt-4">
-          <ClaimAccount supabase={supabase} user={user} next="/account" />
+          <ClaimAccount
+            supabase={supabase}
+            user={user}
+            next="/account"
+            onClaimed={() => setClaimed(true)}
+          />
         </div>
       ) : (
         <button

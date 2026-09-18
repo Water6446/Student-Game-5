@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { USERNAME_RE } from "@/lib/auth/validation";
+import { isRateLimited, signInErrorMessage } from "@/lib/auth/errors";
 
 /**
  * Username sign-in.
@@ -28,6 +29,10 @@ export const dynamic = "force-dynamic";
 
 const GENERIC = { error: "Wrong username or password" } as const;
 
+const MISCONFIGURED = {
+  error: "Username sign-in is not set up correctly. Sign in with your email address instead.",
+} as const;
+
 function clientIp(request: Request): string {
   const fwd = request.headers.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0]!.trim();
@@ -35,6 +40,16 @@ function clientIp(request: Request): string {
 }
 
 export async function POST(request: Request) {
+  // Login CSRF: a hostile page can auto-submit an HTML form here with a
+  // text/plain body shaped like JSON, and the response would sign the victim's
+  // browser into the ATTACKER's account (a form post is a top-level navigation,
+  // so SameSite=Lax does not stop the cookies being set). A form cannot send
+  // application/json without a CORS preflight, which this route never answers.
+  // Checked first, so it holds however the rest of the route is configured.
+  if (!(request.headers.get("content-type") ?? "").includes("application/json")) {
+    return NextResponse.json(GENERIC, { status: 415 });
+  }
+
   const secret = process.env.USERNAME_LOOKUP_SECRET;
   if (!secret) {
     // Fails closed and says so plainly — this is a deploy-configuration gap,
@@ -65,10 +80,21 @@ export async function POST(request: Request) {
     `ip:${createHash("sha256").update(`${clientIp(request)}${secret}`).digest("hex")}`,
   ];
 
-  const { data: allowed } = await supabase.rpc("login_gate", {
+  const { data: allowed, error: gateError } = await supabase.rpc("login_gate", {
     p_buckets: buckets,
     p_secret: secret,
   });
+  // login_gate answers NULL when the secret here does not match the one stored
+  // in app_secrets (0024), and an error when the migrations are missing. Both
+  // are deploy problems; reporting them as "too many attempts" sent people to
+  // wait out a lockout that did not exist.
+  if (gateError || allowed === null || allowed === undefined) {
+    console.error(
+      "username sign-in misconfigured: USERNAME_LOOKUP_SECRET does not match app_secrets.username_lookup, or migrations 0021/0022/0024 are not applied",
+      gateError?.message ?? "",
+    );
+    return NextResponse.json(MISCONFIGURED, { status: 503 });
+  }
   if (allowed !== true) {
     return NextResponse.json(
       { error: "Too many attempts. Try again in about 15 minutes." },
@@ -81,16 +107,39 @@ export async function POST(request: Request) {
     p_secret: secret,
   });
 
-  let ok = false;
+  // "wrong" is the only outcome booked as a failed guess. An outage or GoTrue's
+  // own rate limit says nothing about the password, so it must not count
+  // towards locking the username out.
+  let outcome: "ok" | "wrong" | { status: number; error: string; passwordWasRight: boolean } =
+    "wrong";
   if (typeof email === "string" && email.length > 0) {
     // GoTrue still does the password check. We only resolved the identifier.
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    ok = !error;
+    if (!error) {
+      outcome = "ok";
+    } else {
+      const shown = signInErrorMessage(error, GENERIC.error);
+      if (shown !== GENERIC.error) {
+        const passwordWasRight = error.code === "email_not_confirmed";
+        outcome = {
+          status: passwordWasRight ? 403 : isRateLimited(error) ? 429 : 503,
+          error: shown,
+          passwordWasRight,
+        };
+      }
+    }
   }
 
-  await supabase.rpc("login_record", { p_buckets: buckets, p_ok: ok, p_secret: secret });
+  const record = outcome === "ok" || outcome === "wrong" || outcome.passwordWasRight;
+  if (record) {
+    const ok = outcome !== "wrong";
+    await supabase.rpc("login_record", { p_buckets: buckets, p_ok: ok, p_secret: secret });
+  }
 
-  if (!ok) return NextResponse.json(GENERIC, { status: 401 });
+  if (outcome === "wrong") return NextResponse.json(GENERIC, { status: 401 });
+  if (outcome !== "ok") {
+    return NextResponse.json({ error: outcome.error }, { status: outcome.status });
+  }
 
   // On success the cookie-bound server client has already written the session
   // cookies onto this response. @supabase/ssr sets them without httpOnly, so the

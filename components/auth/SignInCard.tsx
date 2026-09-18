@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
 import { clsx } from "@/components/clsx";
@@ -9,6 +10,7 @@ import { GoogleMark } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { ALLOW_ANON_HOST } from "@/lib/auth/can-host";
 import { EMAIL_DELIVERY_READY } from "@/lib/auth/email-delivery";
+import { emailSendErrorMessage, signInErrorMessage, signUpErrorMessage } from "@/lib/auth/errors";
 import {
   emailError,
   looksLikeEmail,
@@ -61,7 +63,7 @@ export function SignInCard({
           <RegisterPanel supabase={supabase} next={next} onSignedIn={() => setMode("signin")} />
         )}
 
-        {ALLOW_ANON_HOST ? <TestingBypass supabase={supabase} /> : null}
+        {ALLOW_ANON_HOST ? <TestingBypass supabase={supabase} next={next} /> : null}
       </Card>
     </>
   );
@@ -170,18 +172,27 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
       // rate limiting. Only the username path needs our proxy.
       const { error } = await supabase.auth.signInWithPassword({ email: id, password });
       if (error) {
-        setError("Wrong email or password");
+        setError(signInErrorMessage(error, "Wrong email or password"));
         setBusy(false);
       }
       // success: the page around this card watches the session and moves on
       return;
     }
 
-    const res = await fetch("/api/auth/sign-in", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ username: id, password }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: id, password }),
+      });
+    } catch {
+      // A dropped connection throws rather than returning a response; without
+      // this the button would sit on "Signing in…" forever.
+      setError("Could not reach the server. Check your connection and try again.");
+      setBusy(false);
+      return;
+    }
     if (res.ok) {
       // The session cookies were written server-side; a full navigation is what
       // makes the browser client read them.
@@ -213,7 +224,12 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
       },
     });
     setBusy(false);
-    if (error) setError(error.message);
+    // With shouldCreateUser off, an unknown address comes back as an error.
+    // Showing it would contradict the "if it has an account" promise below and
+    // turn this button into an account-existence oracle, so only failures that
+    // say nothing about the address are shown.
+    const shown = error ? emailSendErrorMessage(error) : null;
+    if (shown) setError(shown);
     else setMagicSent(true);
   }
 
@@ -226,8 +242,17 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
     );
   }
 
+  // A real <form>: Enter submits from either field, and password managers
+  // recognise the pair as a login.
   return (
-    <div className="space-y-4">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!busy) void signIn();
+      }}
+      className="space-y-4"
+    >
       <Field label="Username or email">
         <TextInput
           autoComplete="username"
@@ -241,15 +266,12 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void signIn();
-          }}
         />
       </Field>
 
       {error ? <Banner kind="error">{error}</Banner> : null}
 
-      <Button onClick={signIn} disabled={busy} className="w-full">
+      <Button type="submit" disabled={busy} className="w-full">
         {busy ? "Signing in…" : "Sign in"}
       </Button>
 
@@ -273,7 +295,7 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
       <p className="text-center font-editorial text-xs italic text-ink-subtle">
         Signed up with Google? Use the button above — that account has no password.
       </p>
-    </div>
+    </form>
   );
 }
 
@@ -346,7 +368,7 @@ function RegisterPanel({
     });
 
     if (error) {
-      setError(error.message);
+      setError(signUpErrorMessage(error));
       setBusy(false);
       return;
     }
@@ -376,7 +398,14 @@ function RegisterPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!busy) void register();
+      }}
+      className="space-y-4"
+    >
       <Field
         label="Username"
         hint="3–24 characters: letters, numbers, underscore"
@@ -407,18 +436,15 @@ function RegisterPanel({
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void register();
-          }}
         />
       </Field>
 
       {error ? <Banner kind="error">{error}</Banner> : null}
 
-      <Button onClick={register} disabled={busy} className="w-full">
+      <Button type="submit" disabled={busy} className="w-full">
         {busy ? "Creating…" : "Create account"}
       </Button>
-    </div>
+    </form>
   );
 }
 
@@ -427,17 +453,31 @@ function RegisterPanel({
  * hosting can be exercised without any email or OAuth setup. The real methods
  * above are untouched. See CLAUDE.md for the pre-deploy checklist that removes
  * this together with migration 0008.
+ *
+ * It navigates itself: /login only moves on for a real account (a guest may be
+ * here to make one), so without this the button signed you in and then sat
+ * there looking broken.
  */
-function TestingBypass({ supabase }: { supabase: SupabaseClient }) {
+function TestingBypass({ supabase, next }: { supabase: SupabaseClient; next: string }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function skip() {
     setBusy(true);
     setError(null);
-    const { error } = await supabase.auth.signInAnonymously();
-    setBusy(false);
-    if (error) setError(error.message);
+    // Already a guest? Reuse it. signInAnonymously() always mints a NEW user,
+    // which would strand every session this guest has hosted or played.
+    const { data } = await supabase.auth.getSession();
+    if (!data.session?.user.is_anonymous) {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) {
+        setError(error.message);
+        setBusy(false);
+        return;
+      }
+    }
+    router.replace(next);
   }
 
   return (

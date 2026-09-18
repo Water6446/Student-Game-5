@@ -1,18 +1,42 @@
 import Link from "next/link";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { Card } from "@/components/ui";
+import { AUTH_FAILURE_COPY, parseAuthFailure } from "@/lib/auth/errors";
 
-export default function AuthError() {
+/**
+ * Where /auth/callback sends a redirect that did not end in a session.
+ *
+ * The copy comes from a fixed table keyed by `reason` — nothing from the URL is
+ * printed, because this page is reachable through a link anyone can craft.
+ */
+export default function AuthError({
+  searchParams,
+}: {
+  searchParams: { reason?: string | string[] };
+}) {
+  const copy = AUTH_FAILURE_COPY[parseAuthFailure(searchParams.reason)];
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
-      <h1 className="text-2xl font-bold text-ink">Sign-in link expired</h1>
-      <p className="text-ink-muted">
-        That magic link is invalid or has already been used. Request a fresh one.
-      </p>
-      <Link
-        href="/host"
-        className="rounded-xl bg-brand px-5 py-3 font-semibold text-white shadow-card transition hover:bg-brand-strong active:scale-[0.98]"
-      >
-        Back to host sign-in
-      </Link>
-    </main>
+    <>
+      <SiteHeader />
+      <main className="min-h-dvh bg-paper-2">
+        <div className="mx-auto w-full max-w-md px-5 py-12 sm:py-16">
+          <Card className="animate-pop-in">
+            <h1 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
+              {copy.title}
+            </h1>
+            <p className="mt-2 text-sm text-ink-muted">{copy.body}</p>
+            <Link
+              href="/login"
+              className="mt-6 inline-flex w-full items-center justify-center rounded-xl border-2 border-ink bg-brand px-5 py-3 font-display font-extrabold text-ink shadow-card transition hover:bg-brand-strong active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            >
+              Back to sign-in
+            </Link>
+          </Card>
+        </div>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

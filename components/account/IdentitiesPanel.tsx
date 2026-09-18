@@ -6,6 +6,7 @@ import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
 import { Check, GoogleMark, Key, Mail } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
+import { linkErrorMessage } from "@/lib/auth/errors";
 
 /**
  * The ways this account can sign in.
@@ -121,9 +122,9 @@ function LinkGoogle({ supabase }: { supabase: SupabaseClient }) {
       options: { redirectTo: `${siteUrl()}/auth/callback?next=/account` },
     });
     if (error) {
-      // "Manual linking is disabled" means the dashboard toggle is off —
-      // Authentication → Settings → Manual linking. Worth saying plainly.
-      setError(error.message);
+      // manual_linking_disabled means the dashboard toggle is off:
+      // Authentication → Sign In / Providers → "Allow manual linking".
+      setError(linkErrorMessage(error));
       setBusy(false);
     }
   }

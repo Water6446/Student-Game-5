@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SignInCard } from "@/components/auth/SignInCard";
+import { Banner } from "@/components/ui";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { hasAccount } from "@/lib/auth/can-host";
 import { safeNext } from "@/lib/auth/next-path";
@@ -57,8 +58,25 @@ function LoginBody() {
     if (!loading && signedIn) router.replace(next);
   }, [loading, signedIn, next, router]);
 
+  // Every method on this card creates or enters a DIFFERENT user and drops the
+  // guest session, stranding whatever it played or hosted. The claim flow on
+  // /account is the one that keeps the same user id, so point at it.
+  const guest = !loading && Boolean(user?.is_anonymous);
+
   return (
     <div className="mx-auto w-full max-w-md px-5 py-12 sm:py-16">
+      {guest ? (
+        <div className="mb-5">
+          <Banner kind="info">
+            You&apos;re a guest. Signing in here starts fresh —{" "}
+            <Link href="/account" className="underline underline-offset-4">
+              save your guest games to an account
+            </Link>{" "}
+            instead.
+          </Banner>
+        </div>
+      ) : null}
+
       {loading || signedIn ? (
         <div className="flex min-h-[18rem] items-center justify-center rounded-2xl border-2 border-dashed border-ink/30 text-ink-subtle">
           {signedIn ? "Signing you in…" : "Loading…"}

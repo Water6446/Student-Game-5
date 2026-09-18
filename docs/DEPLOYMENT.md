@@ -113,9 +113,10 @@ It needs no email sending at all, which makes it the quickest way to get a real
       `https://mftrhnwnvidxjdzenmip.supabase.co/auth/v1/callback`
 - [ ] **Supabase** → Authentication → Sign In / Providers → **Google** → on,
       paste the client ID and secret.
-- [ ] **Supabase** → Authentication → Settings → **Manual linking** → **on**.
-      Without it `linkIdentity()` fails, which is what the student "save my
-      results" flow uses.
+- [ ] **Supabase** → Authentication → **Sign In / Providers** → **Allow manual
+      linking** → **on** → Save. Without it `linkIdentity()` fails with
+      `manual_linking_disabled`, which breaks both "Link a Google account" on
+      /account and the student "save my results → Continue with Google" flow.
 
 ### 2. Email — currently switched OFF
 

@@ -5,7 +5,13 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { Banner, Button, Field, TextInput } from "@/components/ui";
 import { GoogleMark, Mail } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
-import { emailError, usernameError } from "@/lib/auth/validation";
+import { linkErrorMessage, signUpErrorMessage } from "@/lib/auth/errors";
+import {
+  emailError,
+  MIN_PASSWORD_LENGTH,
+  passwordError,
+  usernameError,
+} from "@/lib/auth/validation";
 
 /**
  * Turning a guest into an account.
@@ -22,6 +28,15 @@ import { emailError, usernameError } from "@/lib/auth/validation";
  *            the email round trip leaves the page.
  *   finish — back with a real identity but no profile row yet: confirm the
  *            username and call claim_my_account().
+ *
+ * With "Confirm email" OFF in Supabase, the email route skips the round trip:
+ * updateUser({ email }) converts the guest on the spot and nothing is mailed, so
+ * the finish step follows immediately.
+ *
+ * The finish step also sets a password for an account with no Google linked.
+ * Without one, an email-only account has no way back in once this browser
+ * session ends — there is no password, and magic links / resets need working
+ * SMTP.
  *
  * localStorage is best-effort here: if it is unavailable or cleared, the finish
  * step just asks for the username again.
@@ -65,15 +80,34 @@ export function ClaimAccount({
   next?: string;
   onClaimed?: () => void;
 }) {
-  const anonymous = Boolean(user.is_anonymous);
+  // Set when the email was applied on the spot. The parent's `user` catches up
+  // through USER_UPDATED too, but this step must not depend on it.
+  const [converted, setConverted] = useState(false);
+  const anonymous = Boolean(user.is_anonymous) && !converted;
+  // Google is the only other way back in, so without it a password is required.
+  const hasGoogle = (user.identities ?? []).some((i) => i.provider === "google");
   return anonymous ? (
-    <StartClaim supabase={supabase} next={next} />
+    <StartClaim supabase={supabase} next={next} onConverted={() => setConverted(true)} />
   ) : (
-    <FinishClaim supabase={supabase} onClaimed={onClaimed} />
+    <FinishClaim supabase={supabase} needsPassword={!hasGoogle} onClaimed={onClaimed} />
   );
 }
 
-function StartClaim({ supabase, next }: { supabase: SupabaseClient; next: string }) {
+/** Every redirect goes through /auth/callback, so a failure (a Google account
+ *  already linked elsewhere, say) reaches /auth/error instead of vanishing. */
+function callbackUrl(next: string): string {
+  return `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
+}
+
+function StartClaim({
+  supabase,
+  next,
+  onConverted,
+}: {
+  supabase: SupabaseClient;
+  next: string;
+  onConverted: () => void;
+}) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [showEmail, setShowEmail] = useState(false);
@@ -115,10 +149,10 @@ function StartClaim({ supabase, next }: { supabase: SupabaseClient; next: string
     stashUsername(name);
     const { error } = await supabase.auth.linkIdentity({
       provider: "google",
-      options: { redirectTo: `${siteUrl()}${next}` },
+      options: { redirectTo: callbackUrl(next) },
     });
     if (error) {
-      setError(error.message);
+      setError(linkErrorMessage(error));
       setBusy(false);
     }
   }
@@ -138,12 +172,18 @@ function StartClaim({ supabase, next }: { supabase: SupabaseClient; next: string
       return;
     }
     stashUsername(name);
-    const { error } = await supabase.auth.updateUser(
+    const { data, error } = await supabase.auth.updateUser(
       { email: email.trim() },
-      { emailRedirectTo: `${siteUrl()}${next}` },
+      { emailRedirectTo: callbackUrl(next) },
     );
     setBusy(false);
-    if (error) setError(error.message);
+    if (error) {
+      setError(signUpErrorMessage(error));
+      return;
+    }
+    // Applied on the spot ("Confirm email" off): nothing was mailed, so saying
+    // "check your email" would send them looking for a message that never comes.
+    if (data.user && !data.user.is_anonymous) onConverted();
     else setSent(true);
   }
 
@@ -216,23 +256,39 @@ function StartClaim({ supabase, next }: { supabase: SupabaseClient; next: string
 
 function FinishClaim({
   supabase,
+  needsPassword,
   onClaimed,
 }: {
   supabase: SupabaseClient;
+  needsPassword: boolean;
   onClaimed?: () => void;
 }) {
   const [username, setUsername] = useState(() => readStashedUsername());
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function claim() {
     const uErr = usernameError(username);
-    if (uErr) {
-      setError(uErr);
+    const pErr = needsPassword ? passwordError(password) : null;
+    if (uErr || pErr) {
+      setError(uErr ?? pErr);
       return;
     }
     setBusy(true);
     setError(null);
+
+    // Password first: if the username is then rejected, a retry re-sends the
+    // same password, which GoTrue answers with same_password — already done.
+    if (needsPassword) {
+      const { error: pwError } = await supabase.auth.updateUser({ password });
+      if (pwError && pwError.code !== "same_password") {
+        setError(pwError.message);
+        setBusy(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.rpc("claim_my_account", {
       p_username: username.trim(),
       p_display_name: username.trim(),
@@ -247,7 +303,14 @@ function FinishClaim({
   }
 
   return (
-    <div className="space-y-4 text-left">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!busy) void claim();
+      }}
+      className="space-y-4 text-left"
+    >
       <Banner kind="info">
         Almost there — confirm your username and your past sessions are saved to this account.
       </Banner>
@@ -256,15 +319,25 @@ function FinishClaim({
           autoComplete="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void claim();
-          }}
         />
       </Field>
+      {needsPassword ? (
+        <Field
+          label="Password"
+          hint={`At least ${MIN_PASSWORD_LENGTH} characters — how you'll sign back in`}
+        >
+          <TextInput
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </Field>
+      ) : null}
       {error ? <Banner kind="error">{error}</Banner> : null}
-      <Button onClick={claim} disabled={busy} className="w-full">
+      <Button type="submit" disabled={busy} className="w-full">
         {busy ? "Saving…" : "Finish setting up"}
       </Button>
-    </div>
+    </form>
   );
 }
