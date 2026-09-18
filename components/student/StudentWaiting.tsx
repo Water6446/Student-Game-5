@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlayerRow, SessionRow } from "@/lib/game/db";
-import { Banner, Button, Card, TextInput } from "@/components/ui";
+import { Banner, Button, Card, InfoTip, TextInput } from "@/components/ui";
 import { money } from "@/lib/game/format";
 import { Sparkle } from "@/components/icons";
 import { isManager } from "@/lib/game/types";
@@ -112,12 +112,14 @@ export function StudentWaiting({
           — it is the only time a student can study the line-up unhurried. */}
       {manager ? (
         <div className="mt-6">
-          <h2 className="mb-1 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
-            Who will you hire?
-          </h2>
-          <p className="mb-3 font-editorial text-sm italic text-ink-muted">
-            Read the prospectuses. Every figure below is net of fees.
-          </p>
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+              Who will you hire?
+            </h2>
+            <InfoTip label="About the prospectuses">
+              Read the prospectuses before the game starts. Every figure is net of fees.
+            </InfoTip>
+          </div>
           <ManagerProspectus config={session.config} />
         </div>
       ) : null}

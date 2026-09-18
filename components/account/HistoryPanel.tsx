@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HistoryRow } from "@/lib/auth/account";
-import { Card } from "@/components/ui";
+import { Card, InfoTip } from "@/components/ui";
 import { money, ordinal } from "@/lib/game/format";
 
 /**
@@ -28,12 +28,14 @@ export function HistoryPanel({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <Card>
-      <h2 className="font-display text-xl font-black uppercase tracking-tight text-ink">
-        Your sessions
-      </h2>
-      <p className="mt-1 font-editorial text-sm italic text-ink-muted">
-        Games you played as a student. Sessions you hosted are on the host dashboard.
-      </p>
+      <div className="flex items-center gap-2">
+        <h2 className="font-display text-xl font-black uppercase tracking-tight text-ink">
+          Your sessions
+        </h2>
+        <InfoTip label="About your sessions">
+          Games you played as a student. Sessions you hosted are on the host dashboard.
+        </InfoTip>
+      </div>
 
       {rows === null ? (
         <p className="mt-5 text-sm text-ink-subtle">Loading…</p>

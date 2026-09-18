@@ -14,7 +14,7 @@ import { useSessionHistory } from "@/components/use-session-history";
 import { MarketOddsControl } from "@/components/host/MarketOddsControl";
 import { AllocationsBreakdown } from "@/components/host/AllocationsBreakdown";
 import { WealthChart } from "@/components/host/WealthChart";
-import { SessionHistoryTable } from "@/components/host/SessionHistoryTable";
+import { SessionHistoryTable, historyInfo } from "@/components/host/SessionHistoryTable";
 import { OutcomeChips } from "@/components/OutcomeChips";
 import {
   buildPlayerResults,
@@ -40,7 +40,7 @@ import { FeeCounter, feesByPlayer, sumFees } from "@/components/FeeCounter";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { cost, money, signedPct } from "@/lib/game/format";
-import { Banner, Button, Card } from "@/components/ui";
+import { Banner, Button, Card, InfoTip } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
@@ -649,21 +649,23 @@ export function HostRoundControl({
 
         {/* Live standings — each player's last 5 markets shown inline */}
         <Card>
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <h2 className="text-xl font-bold text-ink">
-              {gameOver ? "Final standings" : "Standings"}
-            </h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-ink">
+                {gameOver ? "Final standings" : "Standings"}
+              </h2>
+              <InfoTip label="About the standings">
+                {managerGame
+                  ? "Arrows show each player's last 5 years (up = gained, down = lost)"
+                  : portfolioGame
+                    ? "Arrows show each player's last 5 rounds (up = gained, down = lost)"
+                    : "Arrows show each player's last 5 markets"}
+                {independent ? ". ± is their luck vs the expected odds" : ""}
+                {feesFor ? ". Red figures are fees paid to managers so far" : ""}.
+              </InfoTip>
+            </div>
             {hasBots ? <BotToggle showBots={showBots} onToggle={setShowBots} /> : null}
           </div>
-          <p className="mb-3 text-xs text-ink-subtle">
-            {managerGame
-              ? "Last 5 years per player (up = gained, down = lost)"
-              : portfolioGame
-                ? "Last 5 rounds per player (up = gained, down = lost)"
-                : "Last 5 markets per player"}
-            {independent ? " · ± = luck vs expected odds" : ""}
-            {hasBots && !showBots ? " · bots hidden" : ""}.
-          </p>
           {marketLine ? (
             <p className="mb-3 font-editorial text-sm italic text-ink-muted">
               Market: <span className={marketLine.latest >= 0 ? "text-gain" : "text-loss"}>
@@ -774,9 +776,12 @@ export function HostRoundControl({
 
       {/* Per-round history */}
       <Card className="mt-6">
-        <h2 className="mb-3 text-xl font-bold text-ink">
-          {managerGame ? "Year" : "Round"} history
-        </h2>
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-ink">
+            {managerGame ? "Year" : "Round"} history
+          </h2>
+          <InfoTip label="About the history table">{historyInfo(managerGame)}</InfoTip>
+        </div>
         <SessionHistoryTable
           rounds={history.rounds}
           allocations={history.allocations}

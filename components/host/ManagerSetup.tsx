@@ -14,7 +14,7 @@ import { ChevronDown } from "@/components/icons";
 
 /**
  * The host's manager setup. Guardrails matter more than flexibility here: every
- * numeric input carries min/max/step and a hint naming the default, and the
+ * numeric input carries min/max/step and an info tip naming the default, and the
  * derived volatility and information ratio are shown so the host can see what
  * they have actually built.
  *
@@ -57,7 +57,7 @@ export function ManagerSetup({
 
   return (
     <div className="space-y-4">
-      <Field label="Manager line-up" hint="A one-click starting point; edit anything below.">
+      <Field label="Manager line-up" info="A one-click starting point; edit anything below.">
         <div className="grid gap-2 sm:grid-cols-3">
           {(["default", "hedge_fund", "market_neutral"] as const).map((key) => (
             <button
@@ -82,7 +82,7 @@ export function ManagerSetup({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Years" hint="One round is one year. Default 25.">
+        <Field label="Years" info="One round is one year. Default 25.">
           <TextInput
             type="number"
             min={1}
@@ -92,7 +92,7 @@ export function ManagerSetup({
             onChange={(e) => set("num_rounds", clampInt(e.target.value, 1, 200, 25))}
           />
         </Field>
-        <Field label="Number of managers" hint="1-8. Default 5.">
+        <Field label="Number of managers" info="1-8. Default 5.">
           <TextInput
             type="number"
             min={1}
@@ -102,7 +102,7 @@ export function ManagerSetup({
             onChange={(e) => setCount(Number(e.target.value))}
           />
         </Field>
-        <Field label="Index return %/yr" hint="Average market return. Default 8%.">
+        <Field label="Index return %/yr" info="Average market return. Default 8%.">
           <TextInput
             type="number"
             min={-50}
@@ -112,7 +112,7 @@ export function ManagerSetup({
             onChange={(e) => set("market_mean", frac(e.target.value, -0.5, 0.5, 0.08))}
           />
         </Field>
-        <Field label="Index volatility %" hint="Year-to-year swing. Default 16%.">
+        <Field label="Index volatility %" info="Year-to-year swing. Default 16%.">
           <TextInput
             type="number"
             min={0}
@@ -122,7 +122,7 @@ export function ManagerSetup({
             onChange={(e) => set("market_sd", frac(e.target.value, 0, 1, 0.16))}
           />
         </Field>
-        <Field label="Risk-free rate %/yr" hint="What uninvested cash earns. Default 3%.">
+        <Field label="Risk-free rate %/yr" info="What uninvested cash earns. Default 3%.">
           <TextInput
             type="number"
             min={0}
@@ -134,7 +134,7 @@ export function ManagerSetup({
         </Field>
         <Field
           label="Borrow spread %"
-          hint={`Added to the risk-free rate - students borrow at ${borrowPct}%/yr. Default 5%.`}
+          info={`Added to the risk-free rate - students borrow at ${borrowPct}%/yr. Default 5%.`}
         >
           <TextInput
             type="number"
@@ -145,7 +145,7 @@ export function ManagerSetup({
             onChange={(e) => set("borrow_spread", frac(e.target.value, 0, 0.5, 0.05))}
           />
         </Field>
-        <Field label="Leverage cap (x)" hint="1.0 disables borrowing. Default 2.0 (Reg-T).">
+        <Field label="Leverage cap (x)" info="1.0 disables borrowing. Default 2.0 (Reg-T).">
           <TextInput
             type="number"
             min={1}
@@ -155,7 +155,7 @@ export function ManagerSetup({
             onChange={(e) => set("leverage_cap", clampNum(e.target.value, 1, 3, 2))}
           />
         </Field>
-        <Field label="Shuffle which manager is skilled" hint="Keeps the answer fresh each session.">
+        <Field label="Shuffle which manager is skilled" info="Keeps the answer fresh each session.">
           <Select
             value={cfg.shuffle_skill === false ? "no" : "yes"}
             onChange={(e) => set("shuffle_skill", e.target.value === "yes")}
@@ -236,14 +236,14 @@ function ManagerFields({
               className="px-3 py-2 text-sm"
             />
           </Field>
-          <Field label="Strategy line" hint="One sentence, shown on the prospectus.">
+          <Field label="Strategy line" info="One sentence, shown on the prospectus.">
             <TextInput
               value={manager.strategy_line}
               onChange={(e) => onChange({ strategy_line: e.target.value })}
               className="px-3 py-2 text-sm"
             />
           </Field>
-          <Field label="Beta" hint="Market exposure. 1.0 tracks the index.">
+          <Field label="Beta" info="Market exposure. 1.0 tracks the index.">
             <TextInput
               type="number"
               min={-2}
@@ -254,7 +254,7 @@ function ManagerFields({
               className="px-3 py-2 text-sm"
             />
           </Field>
-          <Field label="Alpha %/yr" hint="True skill. Plus or minus 2% is already generous.">
+          <Field label="Alpha %/yr" info="True skill. Plus or minus 2% is already generous.">
             <TextInput
               type="number"
               min={-50}
@@ -265,7 +265,7 @@ function ManagerFields({
               className="px-3 py-2 text-sm"
             />
           </Field>
-          <Field label="Tracking error %" hint="Noise around the market. Default 5%.">
+          <Field label="Tracking error %" info="Noise around the market. Default 5%.">
             <TextInput
               type="number"
               min={0}
@@ -289,7 +289,7 @@ function ManagerFields({
               <option value="performance">Management + performance</option>
             </Select>
           </Field>
-          <Field label="Management fee %/yr" hint="Charged even in a losing year. Max 10%.">
+          <Field label="Management fee %/yr" info="Charged even in a losing year. Max 10%.">
             <TextInput
               type="number"
               min={0}
@@ -300,7 +300,7 @@ function ManagerFields({
               className="px-3 py-2 text-sm"
             />
           </Field>
-          <Field label="Performance fee %" hint="Of the positive gross return. Max 50%.">
+          <Field label="Performance fee %" info="Of the positive gross return. Max 50%.">
             <TextInput
               type="number"
               min={0}

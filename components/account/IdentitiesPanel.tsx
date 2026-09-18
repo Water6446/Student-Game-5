@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
+import { Banner, Button, Card, Field, InfoTip, TextInput } from "@/components/ui";
 import { Check, GoogleMark, Key, Mail } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
@@ -47,12 +47,14 @@ export function IdentitiesPanel({
 
   return (
     <Card>
-      <h2 className="font-display text-xl font-black uppercase tracking-tight text-ink">
-        Sign-in methods
-      </h2>
-      <p className="mt-1 font-editorial text-sm italic text-ink-muted">
-        Keep at least one that you can still get into.
-      </p>
+      <div className="flex items-center gap-2">
+        <h2 className="font-display text-xl font-black uppercase tracking-tight text-ink">
+          Sign-in methods
+        </h2>
+        <InfoTip label="About sign-in methods">
+          Keep at least one that you can still get into.
+        </InfoTip>
+      </div>
 
       <ul className="mt-5 space-y-2">
         <MethodRow icon={<Mail />} label="Email address" detail={user.email ?? "Not set"} />
@@ -242,7 +244,17 @@ function ChangePassword({
 
   return (
     <div className="space-y-3">
-      <Field label="Set or change password" hint={`At least ${MIN_PASSWORD_LENGTH} characters`}>
+      {/* Only worth saying to someone who arrived via Google — for anyone else
+          it is advice about a situation they are not in. */}
+      <Field
+        label="Set or change password"
+        hint={`At least ${MIN_PASSWORD_LENGTH} characters`}
+        info={
+          hasGoogle
+            ? "Setting a password lets you sign in with your email address as well as Google."
+            : undefined
+        }
+      >
         <TextInput
           type="password"
           autoComplete="new-password"
@@ -256,13 +268,6 @@ function ChangePassword({
         <Key />
         {busy ? "Saving…" : "Save password"}
       </Button>
-      {/* Only worth saying to someone who arrived via Google — for anyone else
-          it is advice about a situation they are not in. */}
-      {hasGoogle ? (
-        <p className="font-editorial text-xs italic text-ink-subtle">
-          Setting a password lets you sign in with your email address as well as Google.
-        </p>
-      ) : null}
     </div>
   );
 }

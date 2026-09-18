@@ -49,6 +49,16 @@ export function TrendUp(props: IconProps) {
   );
 }
 
+export function Info(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 7.5h.01" />
+    </Base>
+  );
+}
+
 export function Lock(props: IconProps) {
   return (
     <Base {...props}>

@@ -8,7 +8,7 @@ import type { SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
 import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
-import { Banner, Button, Card } from "@/components/ui";
+import { Banner, Button, Card, InfoTip } from "@/components/ui";
 import { Users, Monitor } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
@@ -177,12 +177,14 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
 
       {isManager(session.config) ? (
         <div className="mt-8">
-          <h2 className="mb-1 font-display text-xl font-extrabold uppercase tracking-tight text-ink">
-            The manager line-up
-          </h2>
-          <p className="mb-3 font-editorial text-sm italic text-ink-muted">
-            What your students see before they hire. Regenerated for every session.
-          </p>
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
+              The manager line-up
+            </h2>
+            <InfoTip label="About the manager line-up">
+              What your students see before they hire. Regenerated for every session.
+            </InfoTip>
+          </div>
           <ManagerProspectus config={session.config} />
         </div>
       ) : null}

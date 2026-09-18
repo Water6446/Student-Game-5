@@ -5,6 +5,7 @@ import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Bot } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 import { LuckChip } from "@/components/LuckChip";
+import { InfoTip } from "@/components/ui";
 
 /**
  * What the Allocations panel becomes once the FINAL round is revealed: the last
@@ -26,15 +27,17 @@ export function FinalResults({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-center gap-1.5">
         <span className="font-display text-sm font-extrabold uppercase tracking-tight text-ink">
           Final results
         </span>
-        {independent ? (
-          <span className="font-editorial text-xs italic text-ink-subtle">
-            ± luck vs {Math.round(expected * 100)}% expected
-          </span>
-        ) : null}
+        <InfoTip label="About the final results">
+          Each player&apos;s final wealth, total return and Sharpe ratio (return per unit of risk
+          taken).
+          {independent
+            ? ` ± is their luck: GOOD-draw rate vs the expected ${Math.round(expected * 100)}%.`
+            : ""}
+        </InfoTip>
       </div>
 
       <CondensedList

@@ -5,6 +5,7 @@ import type { ManagerPublic, SessionConfig } from "@/lib/game/types";
 import { rollingProspectuses } from "@/lib/game/manager";
 import { signedPct } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
+import { InfoTip } from "@/components/ui";
 
 /**
  * The manager line-up as a student sees it before hiring: names, fee terms, a
@@ -74,21 +75,19 @@ export function ProspectusCard({
         <span className="font-display text-base font-extrabold uppercase tracking-tight text-ink">
           {manager.name}
         </span>
-        <span
-          className="shrink-0 rounded-full border-2 border-ink bg-brand px-2 py-0.5 font-mono text-[11px] font-bold text-ink"
-          title={feeSentence(manager)}
-        >
-          {feeLine(manager)}
+        {/* The badge alone was a bare "1% / yr" and read as an unexplained
+            statistic — a host asked outright what it meant. Fees stay prominent
+            (paying for skill you cannot verify is the module): the badge names
+            them, and the InfoTip spells the terms out in words. */}
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="rounded-full border-2 border-ink bg-brand px-2 py-0.5 font-mono text-[11px] font-bold text-ink">
+            {feeLine(manager)}
+          </span>
+          <InfoTip label={`About ${manager.name}'s fees`}>{feeSentence(manager)}</InfoTip>
         </span>
       </div>
 
       <p className="mt-1 font-editorial text-sm italic text-ink-muted">{manager.strategy_line}</p>
-
-      {/* The badge alone was a bare "1% / yr" and read as an unexplained
-          statistic — a host asked outright what it meant. Fees stay prominent
-          (paying for skill you cannot verify is the module), but the terms are
-          now named in the badge and spelled out in words underneath. */}
-      <p className="mt-1 text-xs text-ink-subtle">{feeSentence(manager)}</p>
 
       <Sparkline yearly={t.yearly} playedYears={playedYears} />
 
@@ -97,29 +96,35 @@ export function ProspectusCard({
         <Figure label="5 yr" value={t.five_yr} annualized />
         <Figure label="10 yr" value={t.ten_yr} annualized />
       </dl>
-      <p className="mt-1 text-center font-mono text-[10px] uppercase tracking-wide text-ink-subtle">
-        net of fees · 5 &amp; 10 yr annualized
-      </p>
-      {playedYears > 0 ? (
-        <p className="mt-0.5 text-center font-editorial text-[11px] italic text-ink-subtle">
-          {playedYears >= 10
-            ? "All ten years are from this game."
-            : `Last ${playedYears} year${playedYears === 1 ? "" : "s"} ${
-                playedYears === 1 ? "is" : "are"
-              } from this game.`}
-        </p>
-      ) : null}
-
-      <div className="mt-2 flex items-baseline justify-between border-t border-line pt-2">
-        <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
-          Volatility
-        </span>
-        <span className="font-mono text-sm font-bold text-ink">{manager.vol_label}</span>
+      {/* "Net of fees" stays visible: the year result shows GROSS returns, and
+          without the label the two look like a contradiction. */}
+      <div className="mt-1 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide text-ink-subtle">
+        net of fees
+        <InfoTip label="About this track record" className="text-ink-subtle hover:text-ink">
+          <p>
+            Returns after the manager&apos;s fees. The 5 and 10 yr figures are annualized.
+            {playedYears > 0
+              ? playedYears >= 10
+                ? " All ten years are from this game."
+                : ` The last ${playedYears} year${playedYears === 1 ? "" : "s"} ${
+                    playedYears === 1 ? "is" : "are"
+                  } from this game.`
+              : ""}
+          </p>
+          <p>Past performance reflects both skill and luck and cannot reliably predict the future.</p>
+        </InfoTip>
       </div>
 
-      <p className="mt-auto pt-2 text-xs text-ink-subtle">
-        Past performance reflects both skill and luck and cannot reliably predict the future.
-      </p>
+      {/* mt-auto pins the row to the card's foot, so a grid of cards with
+          strategy lines of different lengths still lines up. */}
+      <div className="mt-auto pt-2">
+        <div className="flex items-baseline justify-between border-t border-line pt-2">
+          <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+            Volatility
+          </span>
+          <span className="font-mono text-sm font-bold text-ink">{manager.vol_label}</span>
+        </div>
+      </div>
     </div>
   );
 }

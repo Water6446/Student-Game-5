@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RoundRow, SessionRow } from "@/lib/game/db";
 import { managerName, numManagers } from "@/lib/game/manager";
 import { signedPct } from "@/lib/game/format";
-import { Card } from "@/components/ui";
+import { Card, InfoTip } from "@/components/ui";
 import { CondensedList } from "@/components/CondensedList";
 import { useManagerTruth } from "@/components/use-manager-truth";
 
@@ -95,13 +95,36 @@ export function ManagerReveal({
 
   return (
     <Card className={className}>
-      <h2 className="text-xl font-bold text-ink">Who was actually skilled</h2>
-      <p className="mb-3 mt-1 text-sm text-ink-muted">
-        The true parameters, hidden until now. <span className="font-semibold">Delivered</span> is
-        what each manager actually produced over these {years} year{years === 1 ? "" : "s"} — the
-        gap between it and the true alpha is how little {years} observation
-        {years === 1 ? "" : "s"} can tell you.
-      </p>
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-ink">Who was actually skilled</h2>
+        {/* Derived from THIS line-up and THIS many years — the numbers were once
+            hardcoded to the default preset and a 25-year game, and quietly lied
+            whenever the host changed either. */}
+        <InfoTip label="About who was actually skilled">
+          <p>
+            The true parameters, hidden until now. <span className="font-semibold">Delivered</span>{" "}
+            is what each manager actually produced over these {years} year
+            {years === 1 ? "" : "s"} — the gap between it and the true alpha is how little {years}{" "}
+            observation{years === 1 ? "" : "s"} can tell you.
+          </p>
+          <p>
+            {stat ? (
+              <>
+                The best manager here ran {signedPct(stat.alpha * 100, 1)} of alpha against{" "}
+                {Math.round(stat.te * 100)}% tracking error — an information ratio of{" "}
+                {stat.ir.toFixed(2)}. Over {years} year{years === 1 ? "" : "s"} the standard error on
+                that estimate is {(stat.se * 100).toFixed(1)}%, so even the truth is only{" "}
+                {stat.sigma.toFixed(1)} sigma. Nobody in the room could have known.
+              </>
+            ) : (
+              <>
+                Skill this small cannot be separated from luck at this sample size. That is the
+                lesson, not a flaw in the game.
+              </>
+            )}
+          </p>
+        </InfoTip>
+      </div>
 
       <div className="mb-2 hidden gap-3 px-3 text-xs font-bold uppercase tracking-wide text-ink-subtle sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
         <span>Manager</span>
@@ -140,26 +163,6 @@ export function ManagerReveal({
           </li>
         )}
       />
-
-      {/* Derived from THIS line-up and THIS many years — the numbers were once
-          hardcoded to the default preset and a 25-year game, and quietly lied
-          whenever the host changed either. */}
-      <p className="mt-3 font-editorial text-sm italic text-ink-muted">
-        {stat ? (
-          <>
-            The best manager here ran {signedPct(stat.alpha * 100, 1)} of alpha against{" "}
-            {Math.round(stat.te * 100)}% tracking error — an information ratio of{" "}
-            {stat.ir.toFixed(2)}. Over {years} year{years === 1 ? "" : "s"} the standard error on
-            that estimate is {(stat.se * 100).toFixed(1)}%, so even the truth is only{" "}
-            {stat.sigma.toFixed(1)} sigma. Nobody in the room could have known.
-          </>
-        ) : (
-          <>
-            Skill this small cannot be separated from luck at this sample size. That is the
-            lesson, not a flaw in the game.
-          </>
-        )}
-      </p>
     </Card>
   );
 }

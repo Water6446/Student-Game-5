@@ -8,6 +8,7 @@ import { portfolioStrategyFraction } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { Bot } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
+import { InfoTip } from "@/components/ui";
 
 /**
  * Per-student breakdown of how much each player put at risk this round. Shown to
@@ -103,24 +104,21 @@ export function AllocationsBreakdown({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
-        <span className="text-sm font-semibold text-ink">Allocations</span>
+      <div className="flex items-center justify-between pb-1">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          Allocations
+          {/* The legend: teaches the red=risky / green=safe encoding once,
+              replacing per-column headers so each row stays compact. */}
+          <InfoTip label="About the allocations">
+            Each bar is one player: red is the share at risk, green the share kept safe. The %
+            is how much of their wealth is at risk.
+            {manager ? " A multiple like 1.5× means they borrowed to invest." : ""}
+          </InfoTip>
+        </span>
         <span className="text-xs text-ink-subtle">
           {submittedHumans}/{totalHumans} in · <span className="font-mono">{money(totalRisky)}</span>{" "}
           at risk
         </span>
-      </div>
-
-      {/* Legend: teaches the red=risky / green=safe encoding once, replacing
-          per-column headers so each row can stay compact and scannable. */}
-      <div className="flex items-center gap-3 pb-1 text-[11px] text-ink-subtle">
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-loss" /> risky
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-gain" /> safe
-        </span>
-        <span className="ml-auto">% = share at risk</span>
       </div>
 
       {/* Sorted biggest gambler first, so the top/bottom split reads as

@@ -13,7 +13,7 @@ import {
 import type { AllocationRow, PlayerRow, RoundRow } from "@/lib/game/db";
 import { money } from "@/lib/game/format";
 import { COLOR, SERIES_COLORS } from "@/lib/design/colors";
-import { Toggle } from "@/components/ui";
+import { InfoTip, Toggle } from "@/components/ui";
 import { useSyncedPreference } from "@/components/use-synced-preference";
 
 type ChartRow = { round: number } & Record<string, number>;
@@ -241,20 +241,27 @@ export const WealthChart = memo(function WealthChart({
         </ResponsiveContainer>
       </div>
 
-      {featured ? (
-        <p className="text-center font-editorial text-xs italic text-ink-subtle">
-          Showing the top 8 and bottom 2 by name; the rest are shown in grey.
-        </p>
-      ) : null}
-
-      {!hideToggle ? (
-        <div className="flex justify-start">
-          <Toggle
-            label="Log scale"
-            checked={useLogScale}
-            onChange={setUseLogScale}
-            className="w-auto gap-4"
-          />
+      {!hideToggle || featured ? (
+        <div className="flex items-center justify-between gap-3">
+          {!hideToggle ? (
+            <Toggle
+              label="Log scale"
+              checked={useLogScale}
+              onChange={setUseLogScale}
+              className="w-auto gap-4"
+            />
+          ) : (
+            <span />
+          )}
+          {featured ? (
+            <span className="flex items-center gap-1.5 font-editorial text-xs italic text-ink-subtle">
+              Grey lines
+              <InfoTip label="About the grey lines">
+                Only the top 8 and bottom 2 players get a named, coloured line; everyone else is
+                drawn in grey.
+              </InfoTip>
+            </span>
+          ) : null}
         </div>
       ) : null}
     </div>

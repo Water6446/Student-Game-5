@@ -5,6 +5,7 @@ import { assetName, equalSplitAmounts, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { ArrowDown, ArrowUp } from "@/components/icons";
 import { roundCents } from "@/lib/game/math";
+import { InfoTip } from "@/components/ui";
 
 /**
  * Per-asset allocation for the portfolio game: one $ field per risky asset,
@@ -62,7 +63,16 @@ export function PortfolioAllocationInput({
       {/* Safe vs invested totals — same read as the basic game's split boxes */}
       <div className="flex items-stretch gap-3">
         <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white shadow-card">
-          <div className="font-display text-xs font-extrabold uppercase tracking-wide">Safe</div>
+          <div className="flex items-center justify-center gap-1 font-display text-xs font-extrabold uppercase tracking-wide">
+            Safe
+            <InfoTip label="About the safe pot" className="text-white/80 hover:text-white">
+              Anything you don&apos;t invest stays in the safe pot
+              {(config.risk_free_rate ?? 0) > 0
+                ? ` and earns ${Math.round((config.risk_free_rate ?? 0) * 100)}% a round`
+                : ""}
+              .
+            </InfoTip>
+          </div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
             {touched ? money(safe) : "—"}
           </div>
@@ -159,14 +169,6 @@ export function PortfolioAllocationInput({
           All safe
         </button>
       </div>
-
-      <p className="text-center font-editorial text-xs italic text-ink-subtle">
-        Anything you don&apos;t invest stays in the safe pot
-        {(config.risk_free_rate ?? 0) > 0
-          ? ` (earns ${Math.round((config.risk_free_rate ?? 0) * 100)}%/round)`
-          : ""}
-        .
-      </p>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import type { SessionRow } from "@/lib/game/db";
 import { usePlayers } from "@/components/use-players";
 import { useSessionHistory } from "@/components/use-session-history";
 import { WealthChart } from "@/components/host/WealthChart";
-import { SessionHistoryTable } from "@/components/host/SessionHistoryTable";
+import { SessionHistoryTable, historyInfo } from "@/components/host/SessionHistoryTable";
 import { OutcomeChips } from "@/components/OutcomeChips";
 import {
   buildPlayerResults,
@@ -23,7 +23,7 @@ import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/port
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, InfoTip } from "@/components/ui";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { FeeCounter, sumFees } from "@/components/FeeCounter";
@@ -250,11 +250,13 @@ export function HostSummary({
           card came out at the starting wealth. This is what replaces it. */}
       {managerGame ? (
         <Card className="mb-6">
-          <h2 className="mb-1 text-xl font-bold text-ink">How the class did against the index</h2>
-          <p className="mb-4 text-sm text-ink-muted">
-            The index charges no fees and nobody could buy it. Starting wealth was{" "}
-            {money(session.config.starting_wealth)}.
-          </p>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-ink">How the class did against the index</h2>
+            <InfoTip label="About the index comparison">
+              The index charges no fees and nobody could buy it. Starting wealth was{" "}
+              {money(session.config.starting_wealth)}.
+            </InfoTip>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StrategyCard
               label="The Index"
@@ -292,13 +294,15 @@ export function HostSummary({
       {/* Counterfactual */}
       {managerGame ? null : (
       <Card className="mb-6">
-        <h2 className="mb-1 text-xl font-bold text-ink">If everyone had picked one strategy…</h2>
-        <p className="mb-4 text-sm text-ink-muted">
-          {hasBots
-            ? "Your 4 benchmark students' actual final wealth."
-            : `Final wealth under the actual market outcomes (${avgLabel}).`}{" "}
-          Starting wealth was {money(cf.startWealth)}.
-        </p>
+        <div className="mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-ink">If everyone had picked one strategy…</h2>
+          <InfoTip label="About the strategy comparison">
+            {hasBots
+              ? "Your 4 benchmark students' actual final wealth."
+              : `Final wealth under the actual market outcomes (${avgLabel}).`}{" "}
+            Starting wealth was {money(cf.startWealth)}.
+          </InfoTip>
+        </div>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           {portfolio ? (
             <>
@@ -366,10 +370,16 @@ export function HostSummary({
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Final standings — click a player to see their whole-match outcomes */}
         <Card>
-          <h2 className="mb-1 text-xl font-bold text-ink">Final standings</h2>
+          <div className="mb-1 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-ink">Final standings</h2>
+            <InfoTip label="About the final standings">
+              S = Sharpe ratio: return per unit of risk taken.
+              {independent ? " The clover is each player's luck vs the expected odds." : ""}
+            </InfoTip>
+          </div>
+          {/* Kept on screen: it is how the rows work, not background. */}
           <p className="mb-3 text-xs text-ink-subtle">
-            S = Sharpe Ratio (return per unit of risk). Click a player to see every market outcome
-            they faced.
+            Click a player to see {managerGame ? "their full record" : "every market they faced"}.
           </p>
           <CondensedList
             items={visibleResults}
@@ -487,22 +497,27 @@ export function HostSummary({
             breakpoint, and print variants unbind it so every round makes it
             onto paper regardless of collapse state. */}
         <Card>
-          <button
-            type="button"
-            onClick={() => setHistoryOpen((v) => !v)}
-            aria-expanded={historyOpen}
-            className="flex w-full items-center justify-between text-left focus:outline-none"
-          >
-            <h2 className="text-xl font-bold text-ink">
-              {managerGame ? "Year" : "Round"} history
-            </h2>
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+          {/* The heading sits outside the toggle so its InfoTip is not a
+              button nested inside another button. */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-ink">
+                {managerGame ? "Year" : "Round"} history
+              </h2>
+              <InfoTip label="About the history table">{historyInfo(managerGame)}</InfoTip>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((v) => !v)}
+              aria-expanded={historyOpen}
+              className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-ink"
+            >
               {historyOpen ? "Collapse" : "Show all"}
               <ChevronDown
                 className={`text-ink transition-transform ${historyOpen ? "rotate-180" : ""}`}
               />
-            </span>
-          </button>
+            </button>
+          </div>
           <div className="mt-3 border-t border-line-strong pt-3">
             <SessionHistoryTable
               rounds={rounds}
@@ -521,24 +536,26 @@ export function HostSummary({
           would read "no draws". */}
       {managerGame ? null : (
       <Card className="mt-6">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-ink">
-          <Clover className="text-gain" /> Luck
-        </h2>
-        <p className="mb-3 mt-1 text-sm text-ink-muted">
-          ± = GOOD-draw rate vs the expected {Math.round(expected * 100)}%. Expected{" "}
-          <span className="font-semibold text-gain">
-            ~{expectedGood.toFixed(1)} of {totalDraws}
-          </span>{" "}
-          good
-          {sigma > 0 ? (
-            <>
-              {" "}
-              · <span className="font-semibold text-ink">±{Math.round(sigma * 100)}%</span> spread
-              is normal chance
-            </>
-          ) : null}
-          .{!independent ? " Everyone faced the same draws." : ""}
-        </p>
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-ink">
+            <Clover className="text-gain" /> Luck
+          </h2>
+          <InfoTip label="About luck">
+            ± = GOOD-draw rate vs the expected {Math.round(expected * 100)}%. Expected{" "}
+            <span className="font-semibold text-gain">
+              ~{expectedGood.toFixed(1)} of {totalDraws}
+            </span>{" "}
+            good
+            {sigma > 0 ? (
+              <>
+                {" "}
+                · <span className="font-semibold">±{Math.round(sigma * 100)}%</span> spread is
+                normal chance
+              </>
+            ) : null}
+            .{!independent ? " Everyone faced the same draws." : ""}
+          </InfoTip>
+        </div>
         <CondensedList
           items={luck}
           keyOf={(l) => l.id}

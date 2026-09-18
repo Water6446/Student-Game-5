@@ -255,7 +255,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     if (shownRef.current !== round.id) {
       shownRef.current = round.id;
       setRevealFor(round.id);
-      const t = setTimeout(() => setRevealFor(null), 5000);
+      const t = setTimeout(() => setRevealFor(null), 2500);
       return () => clearTimeout(t);
     }
   }, [round, phase]);

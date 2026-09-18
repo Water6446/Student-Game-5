@@ -31,6 +31,12 @@ interface Delta {
   pct: number;
 }
 
+/** What the table's columns mean — for the InfoTip beside each card's heading. */
+export function historyInfo(manager: boolean): string {
+  const unit = manager ? "year" : "round";
+  return `How players did in that ${unit}: each player's wealth change, summarized across the class. High and low are the best and worst ${unit}s by percent.`;
+}
+
 function medianOf(sorted: Delta[]): Delta {
   const mid = Math.floor(sorted.length / 2);
   if (sorted.length % 2) return sorted[mid];
@@ -113,11 +119,6 @@ export function SessionHistoryTable({
 
   return (
     <div>
-      {/* Caption stays outside the scroller so it never scrolls out of view. */}
-      <p className="mb-2 font-editorial text-xs italic text-ink-muted">
-        How players did <span className="font-semibold">in that {manager ? "year" : "round"}</span>{" "}
-        — each player&apos;s wealth change, summarized across the class.
-      </p>
       {/* One scroll container for BOTH axes so the sticky header sticks to it
           (a nested overflow-x box would capture the vertical scroll instead). */}
       <div className={`overflow-auto rounded-xl border-2 border-ink ${scrollClassName ?? ""}`}>

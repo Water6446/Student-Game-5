@@ -17,7 +17,7 @@ import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { sumFees } from "@/components/FeeCounter";
 import { money, ordinal, sharpeText, signedMoney, signedPct } from "@/lib/game/format";
-import { Card } from "@/components/ui";
+import { Card, InfoTip } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { Trophy, ArrowLeft, Clover } from "@/components/icons";
@@ -146,14 +146,15 @@ export function StudentFinished({
         </div>
 
         {result ? (
-          <div className="mt-3 text-sm text-ink-muted">
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
             Sharpe ratio:{" "}
             <span className="font-mono font-bold text-ink">
               {sharpeText(result.sharpe)}
             </span>
-            <div className="font-editorial text-xs italic text-ink-subtle">
-              return per unit of risk taken{result.sharpe == null ? " (— = no risk)" : ""}
-            </div>
+            <InfoTip label="About the Sharpe ratio">
+              Return per unit of risk taken — higher is better.
+              {result.sharpe == null ? " A dash (—) means you took no risk." : ""}
+            </InfoTip>
           </div>
         ) : null}
 
@@ -212,9 +213,7 @@ export function StudentFinished({
 
         {portfolio && pfCf ? (
           <div className="mt-6 text-left">
-            <h2 className="mb-2 text-center text-xs font-bold uppercase tracking-wide text-ink-subtle">
-              How other strategies would have done
-            </h2>
+            <StrategiesHeading outcomes="asset outcomes" />
             <ul className="space-y-2">
               <CfRow
                 label="All safe"
@@ -241,17 +240,12 @@ export function StudentFinished({
                 actual={me.current_wealth}
               />
             </ul>
-            <p className="mt-3 text-center text-xs text-ink-subtle">
-              Same asset outcomes you faced — only your strategy changes.
-            </p>
           </div>
         ) : null}
 
         {!portfolio && cf ? (
           <div className="mt-6 text-left">
-            <h2 className="mb-2 text-center text-xs font-bold uppercase tracking-wide text-ink-subtle">
-              How other strategies would have done
-            </h2>
+            <StrategiesHeading outcomes="market outcomes" />
             <ul className="space-y-2">
               <CfRow
                 label="All safe"
@@ -273,9 +267,6 @@ export function StudentFinished({
                 actual={me.current_wealth}
               />
             </ul>
-            <p className="mt-3 text-center text-xs text-ink-subtle">
-              Same market outcomes you faced — only your strategy changes.
-            </p>
           </div>
         ) : null}
 
@@ -303,6 +294,19 @@ export function StudentFinished({
         </Link>
       </Card>
     </main>
+  );
+}
+
+function StrategiesHeading({ outcomes }: { outcomes: string }) {
+  return (
+    <div className="mb-2 flex items-center justify-center gap-1.5">
+      <h2 className="text-xs font-bold uppercase tracking-wide text-ink-subtle">
+        How other strategies would have done
+      </h2>
+      <InfoTip label="About the strategy comparison">
+        Same {outcomes} you faced — only your strategy changes.
+      </InfoTip>
+    </div>
   );
 }
 

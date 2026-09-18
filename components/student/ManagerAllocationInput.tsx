@@ -4,6 +4,7 @@ import type { SessionConfig } from "@/lib/game/types";
 import { borrowRate, managerMathConfig, managerName, numManagers } from "@/lib/game/manager";
 import { money } from "@/lib/game/format";
 import { roundCents } from "@/lib/game/math";
+import { InfoTip } from "@/components/ui";
 
 /**
  * Manager-game allocation: one percent-of-wealth field per manager, plus
@@ -134,7 +135,14 @@ export function ManagerAllocationInput({
         <span className="font-mono text-ink">
           Invested <span className="font-bold">{total}%</span>
         </span>
-        <span className="font-mono text-ink-muted">Cash {money(cash)}</span>
+        <span className="flex items-center gap-1.5 font-mono text-ink-muted">
+          Cash {money(cash)}
+          <InfoTip label="About cash and percentages">
+            Anything you don&apos;t invest earns the risk-free{" "}
+            {Math.round((config.risk_free_rate ?? 0.03) * 100)}%/yr. Percentages are of your
+            current wealth, so they hold from year to year while the dollars move.
+          </InfoTip>
+        </span>
       </div>
 
       {/* The cost of leverage is never one click away — it names the rate. */}
@@ -160,12 +168,6 @@ export function ManagerAllocationInput({
           />
         ) : null}
       </div>
-
-      <p className="text-center font-editorial text-xs italic text-ink-subtle">
-        Anything you don&apos;t invest earns the risk-free{" "}
-        {Math.round((config.risk_free_rate ?? 0.03) * 100)}%/yr. Percentages are of your
-        current wealth, so they hold from year to year while the dollars move.
-      </p>
     </div>
   );
 }

@@ -252,7 +252,16 @@ gets `border-2 border-ink` + `shadow-card` + the press shift.
   a busy label while async.
 - **`Field` / `TextInput` / `Select`** — visible bold label, optional hint,
   `border-2 border-ink bg-surface shadow-card font-semibold`, focus → brand/ink
-  ring. Use semantic input `type`/`inputMode`.
+  ring. Use semantic input `type`/`inputMode`. `hint` stays on screen (format
+  limits like "0–1", why a control is disabled); `info` puts background (what the
+  setting does, its default) behind an `InfoTip` beside the label.
+- **`InfoTip`** — a small ink-muted `Info` icon that reveals an explanation on
+  hover, keyboard focus or tap (a tap pins it; tap elsewhere / Escape / blur
+  closes). The panel is a `bg-surface` card with an ink border and `shadow-card`,
+  portalled and fixed-positioned so no scroller clips it, clamped to a 16px
+  gutter. Give it a `label` naming what it explains ("About the standings").
+  Place it **beside** a heading (a flex row with the `h2`), never inside the
+  `h2`, a `<label>`, or another button.
 - **`Toggle`** — switch with `role="switch"`; ink `border-2`, track on = `bg-play`
   (blue), knob white with a thin ink border.
 - **`Banner`** — `kind`: `error` (loss), `info` (play/blue), `success` (gain);
@@ -283,6 +292,14 @@ number and exact dollars quiet beneath. Big SAFE/RISKY stat blocks use solid
 **GOOD / BAD outcomes.** Soft-tint pill with an arrow icon inline; the dramatic
 version (present mode) is a full-bleed `bg-gain`/`bg-loss` banner with an ink
 bottom border + huge arrow + Archivo headline + confetti on good / shake on bad.
+
+**Explain on demand.** Screens show what a player needs to act; the "why" sits
+behind an `InfoTip`. A subtitle that explains a card ("The index charges no
+fees…"), a legend, a statistical aside or a disclaimer goes in the tip next to
+the card's heading. Keep on screen: instructions for the current step ("Choose
+how much to put at risk, then lock it in"), why a button is disabled, validation
+rules and warnings. On the projector a tip opens only when the host hovers it,
+so the room sees the tip only when the host chooses to show it.
 
 **Collapse the rarely-used.** Tuck infrequent controls behind a styled native
 `<details>` disclosure (chevron rotates with `group-open:rotate-180`) to keep
@@ -348,7 +365,7 @@ route `app/host/[sessionId]/present/page.tsx`): the stage is an ink-bordered
 app/globals.css          tokens, base type, focus rings, body dot texture, motion reset, slider/confetti CSS
 tailwind.config.ts       color tokens, font families, hard-offset shadows, keyframes/animations
 app/layout.tsx           next/font wiring (Archivo / Hanken Grotesk / Fraunces italic / JetBrains Mono)
-components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner
+components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner, InfoTip
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti
 lib/design/colors.ts      the tokens as literal colour strings, for Recharts and inline styles

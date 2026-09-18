@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DeletionPreview } from "@/lib/auth/account";
-import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
+import { Banner, Button, Card, Field, InfoTip, TextInput } from "@/components/ui";
 import { Download, Trash } from "@/components/icons";
 
 const CONFIRM_WORD = "DELETE";
@@ -77,14 +77,14 @@ export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
         Your data
       </h2>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 flex items-center gap-2">
         <Button variant="secondary" onClick={exportData} disabled={busy}>
           <Download />
           Download everything
         </Button>
-        <p className="font-editorial text-xs italic text-ink-subtle">
+        <InfoTip label="About the data download">
           A JSON file with your profile, the sessions you hosted, and every round you played.
-        </p>
+        </InfoTip>
       </div>
 
       <div className="mt-6 border-t-2 border-loss/30 pt-5">

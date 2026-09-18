@@ -11,7 +11,7 @@ import {
 } from "@/lib/game/types";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
-import { Button, Banner, Card, Field, Select, TextInput, Toggle } from "@/components/ui";
+import { Button, Banner, Card, Field, InfoTip, Select, TextInput, Toggle } from "@/components/ui";
 import { ArrowLeft, Coins, TrendUp, Trophy } from "@/components/icons";
 import { ManagerSetup } from "@/components/host/ManagerSetup";
 import { MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
@@ -82,12 +82,14 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
   if (gameType === null) {
     return (
       <Card>
-        <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
-          Host a game
-        </h2>
-        <p className="mt-1 font-editorial text-sm italic text-ink-muted">
-          Pick which simulation to run, then tune its settings.
-        </p>
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
+            Host a game
+          </h2>
+          <InfoTip label="About hosting a game">
+            Pick which simulation to run, then tune its settings.
+          </InfoTip>
+        </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <GameCard
             title="Basic Risk Game"
@@ -363,14 +365,16 @@ export function CreateSessionForm({
           <ArrowLeft /> Change game
         </button>
       ) : null}
-      <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
-        {manager ? "New manager session" : portfolio ? "New portfolio session" : "New basic session"}
-      </h2>
-      <p className="mt-1 font-editorial text-sm italic text-ink-muted">
-        {advanced
-          ? "Customize the simulation, then start the lobby."
-          : "Start with the standard setup, or flip on Advanced to change anything."}
-      </p>
+      <div className="flex items-center gap-2">
+        <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
+          {manager ? "New manager session" : portfolio ? "New portfolio session" : "New basic session"}
+        </h2>
+        <InfoTip label="About session setup">
+          {advanced
+            ? "Customize the simulation, then start the lobby."
+            : "Start with the standard setup, or flip on Advanced to change anything."}
+        </InfoTip>
+      </div>
 
       {/* Shown in the simple flow too: a join code is unrecognisable a week
           later, and anyone running several sections needs to tell them apart. */}
@@ -395,7 +399,7 @@ export function CreateSessionForm({
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {portfolio ? (
-              <Field label="Risky assets" hint="2–10 independent assets students can invest in">
+              <Field label="Risky assets" info="2–10 independent assets students can invest in.">
                 <TextInput
                   type="number"
                   min={2}
@@ -406,7 +410,10 @@ export function CreateSessionForm({
               </Field>
             ) : null}
 
-            <Field label="Payoff mode" hint="moderate: ×1.1/×0.9 · extreme: ×2/×0">
+            <Field
+              label="Payoff mode"
+              info="Moderate: the risky bet pays ×1.1 in a good market, ×0.9 in a bad one. Extreme: ×2 or ×0."
+            >
               <Select
                 value={cfg.payoff_mode}
                 onChange={(e) => set("payoff_mode", e.target.value as SessionConfig["payoff_mode"])}
@@ -435,7 +442,11 @@ export function CreateSessionForm({
               />
             </Field>
 
-            <Field label="Good-market probability" hint="0–1, used in auto mode">
+            <Field
+              label="Good-market probability"
+              hint="0–1"
+              info="The chance each market comes up good, as a decimal (0.6 = 60%). Only used when the server rolls the market (auto mode)."
+            >
               <TextInput
                 type="number"
                 min={0}
@@ -447,7 +458,11 @@ export function CreateSessionForm({
             </Field>
 
             {portfolio ? (
-              <Field label="Risk-free rate per round" hint="0–0.5 · e.g. 0.05 = safe asset grows 5%/round">
+              <Field
+                label="Risk-free rate per round"
+                hint="0–0.5"
+                info="What the safe asset earns each round, as a decimal: 0.05 means it grows 5% a round."
+              >
                 <TextInput
                   type="number"
                   min={0}
@@ -462,7 +477,7 @@ export function CreateSessionForm({
             {portfolio ? (
               <Field
                 label={`Correlation ρ = ${(cfg.correlation ?? 0).toFixed(2)}`}
-                hint="0 = independent · 1 = one market. Per-asset odds unchanged."
+                info="How much the risky assets move together. 0 = fully independent, 1 = they all share one market. Each asset's own odds are unchanged."
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -497,7 +512,11 @@ export function CreateSessionForm({
 
             <Field
               label="Market mode"
-              hint={portfolio ? "manual: you pick each asset's outcome" : undefined}
+              info={
+                portfolio
+                  ? "Auto: the server rolls each asset's market. Manual: you pick each asset's outcome every round."
+                  : "Auto: the server rolls the market. Manual: you pick good or bad every round."
+              }
             >
               <Select
                 value={cfg.market_mode}
@@ -512,12 +531,12 @@ export function CreateSessionForm({
 
             <Field
               label="Market scope"
-              hint={
-                cfg.market_mode === "manual"
-                  ? "manual forces shared"
-                  : portfolio
-                    ? "shared: one class-wide outcome per asset · independent: per student"
-                    : "shared: one outcome · independent: per player"
+              // The one line that explains a disabled control stays on screen.
+              hint={cfg.market_mode === "manual" ? "Manual mode forces shared" : undefined}
+              info={
+                portfolio
+                  ? "Shared: one class-wide outcome per asset. Independent: every student draws their own."
+                  : "Shared: one outcome for the whole class. Independent: every player draws their own."
               }
             >
               <Select

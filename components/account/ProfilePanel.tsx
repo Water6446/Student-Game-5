@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProfileRow } from "@/lib/auth/account";
-import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
+import { Banner, Button, Card, Field, InfoTip, TextInput } from "@/components/ui";
 import { usernameError } from "@/lib/auth/validation";
 
 /**
@@ -70,10 +70,12 @@ export function ProfilePanel({
 
   return (
     <Card>
-      <h2 className="font-display text-xl font-black uppercase tracking-tight text-ink">Profile</h2>
-      <p className="mt-1 font-editorial text-sm italic text-ink-muted">
-        Your username is how you sign in. Your display name is what students see.
-      </p>
+      <div className="flex items-center gap-2">
+        <h2 className="font-display text-xl font-black uppercase tracking-tight text-ink">Profile</h2>
+        <InfoTip label="About your profile">
+          Your username is how you sign in. Your display name is what students see.
+        </InfoTip>
+      </div>
 
       <div className="mt-5 space-y-4">
         <Field label="Username" hint="3–24 characters: letters, numbers, underscore">
