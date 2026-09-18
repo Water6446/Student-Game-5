@@ -29,14 +29,25 @@ to stay until then.
 | Export / deletion preview / delete | `0020_account_lifecycle.sql` |
 | Username → email lookup, secret-gated | `0021_username_login.sql` |
 | Brute-force throttle for the proxied path | `0022_login_throttle.sql` |
+| Host dashboard overview RPC | `0023_session_overview.sql` |
+| **Signed-out callers locked out of every RPC but sign-in**; purge spares anonymous hosts; throttle fixes | `0024_account_edge_cases.sql` |
 | Sign-in / register card, Google, reset page | `components/auth/SignInCard.tsx`, `app/auth/reset/` |
 | The one login URL, wearing the site's header and footer | `app/login/` |
 | Account dropdown in the site header | `components/marketing/AccountMenu.tsx` |
 | Account page | `app/account/`, `components/account/` |
 | "Keep your results?" prompt | `components/student/SaveResultsPrompt.tsx` |
-| 32 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
+| 40 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
 | Open-redirect guard for `?next=` + 8 unit tests | `lib/auth/next-path.ts` |
 | 6 more live assertions | `scripts/security-check.ts` |
+
+> **Grants on Supabase are not what they look like.** Supabase grants EXECUTE on
+> every new `public` function *directly* to `anon`, so `revoke all ... from public`
+> does not stop a signed-out caller. And a host check written
+> `host_id <> auth.uid()` is skipped when there is no JWT (`auth.uid()` is NULL,
+> `if NULL` is false). `0024` revokes `anon` from everything but the four sign-in
+> functions, and the self-test now asserts that exact list, so a new function
+> that forgets to revoke `anon` fails `npm run test:accounts-db`. Prefer
+> `host_id is distinct from auth.uid()` in new host checks.
 
 **Before any of it works in production**, the dashboard steps in
 [DEPLOYMENT.md § Accounts setup](./DEPLOYMENT.md#part-b--accounts-setup) have to

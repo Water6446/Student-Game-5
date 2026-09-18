@@ -59,6 +59,18 @@ grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid(), auth.jwt(), auth.role() to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
 
+-- What every Supabase project ships with: objects created in public are granted
+-- DIRECTLY to anon/authenticated/service_role. Without this line the mock was
+-- more locked-down than production — `revoke all on function f from public`
+-- looked sufficient here, while on Supabase anon kept its own direct grant and
+-- could call host-only RPCs with no JWT at all (fixed in 0024).
+alter default privileges in schema public
+  grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on functions to anon, authenticated, service_role;
+
 -- realtime publication stand-in (our 0002 migration adds tables to it)
 do $$ begin
   if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then

@@ -233,6 +233,26 @@ async function main() {
     await expectDenied("student runs purge_stale_guests", () =>
       attacker.rpc("purge_stale_guests", { p_days: 45 }),
     );
+
+    // 14. a caller who never signs in at all. With no JWT auth.uid() is NULL,
+    //     and the host checks (`host_id <> auth.uid()`) are NULL-unsafe, so the
+    //     EXECUTE grant is the only thing stopping this (0024). Every attacker
+    //     above signed in first, which is why this hole went unnoticed.
+    const signedOut: SupabaseClient = createClient(URL!, ANON!, {
+      auth: { persistSession: false },
+    });
+    await expectDenied("signed-out finish_session", () =>
+      signedOut.rpc("finish_session", { p_session_id: session.id }),
+    );
+    await expectDenied("signed-out delete_session", () =>
+      signedOut.rpc("delete_session", { p_session_id: session.id }),
+    );
+    {
+      const { data } = await admin.from("sessions").select("status").eq("id", session.id);
+      if (Array.isArray(data) && data.length === 1 && data[0].status === "active")
+        pass("the session survived the signed-out attacker");
+      else fail(`signed-out attacker changed the session: ${JSON.stringify(data)}`);
+    }
   } finally {
     await cleanup();
   }

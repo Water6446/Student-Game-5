@@ -348,8 +348,10 @@ begin
       v_before_players, v_before_allocs;
   end if;
 
-  -- Age the guest past the retention window, then purge.
+  -- Age the guest past the retention window — both the account and its last
+  -- game, since recent play keeps a guest alive (0024) — then purge.
   update auth.users set created_at = now() - interval '90 days' where id = v_uid;
+  update public.players set joined_at = now() - interval '90 days' where id = v_pid;
   v_purged := public.purge_stale_guests(45);
   if v_purged < 1 then raise exception 'FAIL: purge removed nothing'; end if;
 
@@ -389,6 +391,63 @@ begin
   select count(*) into v_n from auth.users where id = v_uid;
   if v_n <> 1 then raise exception 'FAIL: purged a guest who is still in a live session'; end if;
   raise notice 'PASS: a guest in an unfinished session survives the purge';
+end $$;
+
+-- THE OTHER BIG ONE: an anonymous HOST (the "Skip email" testing bypass, 0008).
+-- sessions.host_id cascades, so purging them would delete the whole class —
+-- here a FINISHED one, which the live-session check alone would not protect.
+\set anon_host_jwt '{"sub":"b1000000-0000-0000-0000-00000000000b","role":"authenticated","is_anonymous":true}'
+insert into auth.users (id, is_anonymous, created_at)
+values ('b1000000-0000-0000-0000-00000000000b', true, now() - interval '90 days');
+select set_config('request.jwt.claims', :'anon_host_jwt', false);
+set role authenticated;
+select id as ah_sid from public.create_session('{"num_rounds":1}'::jsonb) \gset
+reset role;
+select set_config('app.ah_sid', :'ah_sid', false);
+
+do $$
+declare
+  v_host uuid := 'b1000000-0000-0000-0000-00000000000b';
+  v_sid  uuid := current_setting('app.ah_sid')::uuid;
+  v_pid  uuid;
+  v_n    int;
+begin
+  update public.sessions set status = 'finished' where id = v_sid;
+  insert into public.players (session_id, auth_uid, display_name, current_wealth, purged_at)
+  values (v_sid, null, 'Their student', 130, now()) returning id into v_pid;
+
+  perform public.purge_stale_guests(45);
+
+  select count(*) into v_n from auth.users where id = v_host;
+  if v_n <> 1 then
+    raise exception 'FAIL: purged an anonymous guest who hosts a session';
+  end if;
+  if not exists (select 1 from public.sessions where id = v_sid) then
+    raise exception 'FAIL: purging an anonymous host CASCADED away their session';
+  end if;
+  if not exists (select 1 from public.players where id = v_pid) then
+    raise exception 'FAIL: purging an anonymous host deleted their students'' results';
+  end if;
+  raise notice 'PASS: an anonymous host and their class survive the purge';
+end $$;
+
+-- A guest whose account is old but who played recently is still active (0024).
+-- Joins the anonymous host's finished session, so section 12's roster counts
+-- for the section-5 session are untouched.
+do $$
+declare v_uid uuid := 'b1000000-0000-0000-0000-00000000000a'; v_n int;
+begin
+  insert into auth.users (id, is_anonymous, created_at)
+  values (v_uid, true, now() - interval '90 days');
+  insert into public.players (session_id, auth_uid, display_name, current_wealth)
+  values (current_setting('app.ah_sid')::uuid, v_uid, 'Returning guest', 100);
+
+  perform public.purge_stale_guests(45);
+  select count(*) into v_n from auth.users where id = v_uid;
+  if v_n <> 1 then
+    raise exception 'FAIL: purged a guest who joined a game inside the retention window';
+  end if;
+  raise notice 'PASS: an old guest who played recently survives the purge';
 end $$;
 
 -- The window itself is guarded.
@@ -466,10 +525,49 @@ begin
   end if;
   raise notice 'PASS: a successful sign-in clears the throttle';
 
-  if public.login_gate(array['u:jsmith'], 'wrong') then
-    raise exception 'SECURITY FAIL: throttle gate opened without the secret';
+  if public.login_gate(array['u:jsmith'], 'wrong') is not null then
+    raise exception 'SECURITY FAIL: throttle gate answered without the secret';
   end if;
-  raise notice 'PASS: the throttle gate also requires the server secret';
+  -- NULL, not FALSE: a secret mismatch is a deploy problem, and FALSE is what
+  -- the route reports to the person as "too many attempts" (0024).
+  raise notice 'PASS: the throttle gate requires the secret, and says so with NULL';
+end $$;
+
+-- The IP bucket is shared by a whole NAT'd lecture theatre, so it trips later.
+do $$
+declare i int;
+begin
+  for i in 1..8 loop
+    perform public.login_record(array['ip:campus'], false, repeat('a', 64));
+  end loop;
+  if not public.login_gate(array['ip:campus'], repeat('a', 64)) then
+    raise exception 'FAIL: an IP bucket locked at the per-username threshold';
+  end if;
+  for i in 9..30 loop
+    perform public.login_record(array['ip:campus'], false, repeat('a', 64));
+  end loop;
+  if public.login_gate(array['ip:campus'], repeat('a', 64)) then
+    raise exception 'SECURITY FAIL: IP bucket not locked after 30 failures';
+  end if;
+  raise notice 'PASS: an IP bucket locks after 30 failures, not 8';
+end $$;
+
+-- One good login must not launder a spray. Before 0024 a success cleared the
+-- IP bucket too, so an attacker could reset it with their own account.
+-- (Owner role: reading login_throttle directly needs it, by design.)
+reset role;
+do $$
+declare i int; v_fails int;
+begin
+  for i in 1..7 loop
+    perform public.login_record(array['u:victim' || i, 'ip:sprayer'], false, repeat('a', 64));
+  end loop;
+  perform public.login_record(array['u:attacker', 'ip:sprayer'], true, repeat('a', 64));
+  select fails into v_fails from public.login_throttle where bucket = 'ip:sprayer';
+  if coalesce(v_fails, 0) <> 7 then
+    raise exception 'SECURITY FAIL: a successful login reset the IP bucket (fails now %)', v_fails;
+  end if;
+  raise notice 'PASS: a successful sign-in clears its username bucket, not the IP bucket';
 end $$;
 reset role;
 
@@ -571,6 +669,76 @@ begin
     raise exception 'FAIL: a blank label should be removed, not stored empty';
   end if;
   raise notice 'PASS: session label is trimmed, capped at 80 and dropped when blank';
+end $$;
+
+-- =============================================================================
+-- 13. A caller with NO JWT (just the public key) can do nothing but sign in
+--     (0024). The host checks compare host_id <> auth.uid(), which is NULL —
+--     so skipped — when there is no JWT; the grant is the only thing in the way.
+-- =============================================================================
+select id as victim_sid from public.sessions
+ where host_id = 'a1000000-0000-0000-0000-000000000001' and status = 'lobby'
+ limit 1 \gset
+select set_config('app.victim_sid', :'victim_sid', false);
+select set_config('request.jwt.claims', '', false);
+set role anon;
+do $$
+declare
+  v_sid uuid := current_setting('app.victim_sid')::uuid;
+  v_fn  text;
+begin
+  foreach v_fn in array array['start_round', 'finish_session', 'delete_session'] loop
+    begin
+      execute format('select public.%I($1)', v_fn) using v_sid;
+      raise exception 'SECURITY FAIL: a signed-out caller ran % on someone else''s session', v_fn;
+    exception when others then
+      if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    end;
+  end loop;
+  raise notice 'PASS: a signed-out caller cannot start, finish or delete a session';
+end $$;
+reset role;
+
+do $$
+declare
+  v_sid    uuid := current_setting('app.victim_sid')::uuid;
+  v_status text;
+begin
+  select status into v_status from public.sessions where id = v_sid;
+  if v_status is distinct from 'lobby' then
+    raise exception 'SECURITY FAIL: the session was changed by a signed-out caller (now %)',
+      coalesce(v_status, 'DELETED');
+  end if;
+  raise notice 'PASS: the session is untouched';
+end $$;
+
+-- The whole anon surface, exactly. A new function that forgets to revoke anon
+-- fails HERE, before it can ship.
+do $$
+declare v_got text;
+begin
+  select string_agg(distinct p.proname, ',' order by p.proname) into v_got
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE');
+  if v_got is distinct from 'email_for_username,login_gate,login_record,username_available' then
+    raise exception 'SECURITY FAIL: anon can execute an unexpected set of functions: %', v_got;
+  end if;
+  raise notice 'PASS: anon can execute only the four sign-in functions';
+end $$;
+
+-- Internal helpers are for their SECURITY DEFINER callers only.
+do $$
+declare v_fn text;
+begin
+  foreach v_fn in array array[
+    'public._open_next_round(uuid)', 'public._unique_username(text)',
+    'public.session_quota(uuid)', 'public._throttle_window()',
+    'public.purge_stale_guests(integer)', 'public.purge_login_throttle()'] loop
+    if has_function_privilege('authenticated', v_fn, 'EXECUTE') then
+      raise exception 'SECURITY FAIL: clients can call internal helper %', v_fn;
+    end if;
+  end loop;
+  raise notice 'PASS: internal helpers are not client-callable';
 end $$;
 
 select '*** ALL ACCOUNT SELF-TESTS PASSED ***' as result;
