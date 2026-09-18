@@ -13,6 +13,8 @@ import { LiveSessionStrip } from "@/components/host/LiveSessionStrip";
 import { liveSession } from "@/lib/game/session-format";
 import { Instructions } from "@/components/Instructions";
 import { canHost } from "@/lib/auth/can-host";
+import { Banner } from "@/components/ui";
+import { clsx } from "@/components/clsx";
 import type { SessionOverviewRow } from "@/lib/game/db";
 
 /**
@@ -28,10 +30,13 @@ import type { SessionOverviewRow } from "@/lib/game/db";
 export default function HostPage() {
   const router = useRouter();
   const { supabase, user, loading } = useSupabaseUser();
-  const { profile } = useProfile(supabase, user?.id ?? null);
+  const { profile, loading: profileLoading } = useProfile(supabase, user?.id ?? null);
 
   const [rows, setRows] = useState<SessionOverviewRow[]>([]);
   const [rowsLoading, setRowsLoading] = useState(true);
+  // A failed load must not read as "you have no sessions". It did: with
+  // migration 0023 missing from the project, every host saw an empty list.
+  const [rowsError, setRowsError] = useState<string | null>(null);
 
   // Signing in happens at /login, so there is one login URL. canHost() documents
   // why these two pages cannot bounce each other forever.
@@ -41,8 +46,9 @@ export default function HostPage() {
   }, [loading, allowed, router]);
 
   const reload = useCallback(async () => {
-    const { data } = await supabase.rpc("get_my_sessions_overview");
+    const { data, error } = await supabase.rpc("get_my_sessions_overview");
     setRows((data as SessionOverviewRow[]) ?? []);
+    setRowsError(error ? error.message : null);
     setRowsLoading(false);
   }, [supabase]);
 
@@ -50,9 +56,10 @@ export default function HostPage() {
     if (!allowed) return;
     let active = true;
     setRowsLoading(true);
-    void supabase.rpc("get_my_sessions_overview").then(({ data }) => {
+    void supabase.rpc("get_my_sessions_overview").then(({ data, error }) => {
       if (!active) return;
       setRows((data as SessionOverviewRow[]) ?? []);
+      setRowsError(error ? error.message : null);
       setRowsLoading(false);
     });
     return () => {
@@ -77,8 +84,15 @@ export default function HostPage() {
         <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
           <header>
             <Eyebrow className="text-ink-muted">Host dashboard</Eyebrow>
-            <h1 className="mt-5 font-display text-[clamp(1.9rem,4vw,3rem)] font-black uppercase leading-[0.95] tracking-tight text-ink">
-              {greeting(profile?.username, user!.email)}
+            {/* Held invisible (same height, no reflow) until the profile is
+                known, so it never reads one name and then another. */}
+            <h1
+              className={clsx(
+                "mt-5 font-display text-[clamp(1.9rem,4vw,3rem)] font-black uppercase leading-[0.95] tracking-tight text-ink",
+                profileLoading && "invisible",
+              )}
+            >
+              {greeting(profile?.username)}
             </h1>
           </header>
 
@@ -93,12 +107,18 @@ export default function HostPage() {
           </Section>
 
           <Section eyebrow="02 / Your sessions" className="mt-14">
-            <SessionsList
-              supabase={supabase}
-              rows={rows}
-              loading={rowsLoading}
-              onChanged={reload}
-            />
+            {/* Instead of the list, not above it: the list's empty state would
+                otherwise sit under the error still saying there is nothing. */}
+            {rowsError ? (
+              <Banner kind="error">Couldn&apos;t load your sessions: {rowsError}</Banner>
+            ) : (
+              <SessionsList
+                supabase={supabase}
+                rows={rows}
+                loading={rowsLoading}
+                onChanged={reload}
+              />
+            )}
           </Section>
 
           <Section eyebrow="03 / Running a game" className="mt-14">
@@ -134,12 +154,13 @@ function Section({
 /**
  * The account's username, which is the name the person actually chose.
  *
- * The email local part is only a stopgap for the moment before the profile
- * arrives: for a Google sign-up it is whatever happened to be in front of the @,
- * which is not what anyone calls themselves. Falls back to something neutral
- * rather than guessing at a person's name.
+ * Deliberately never the email: its local part is not what anyone calls
+ * themselves (for a Google sign-up it is whatever sat in front of the @), and
+ * using it as a stand-in while the profile loaded made the heading flash the
+ * email before settling on the username. No username (a guest host) gets
+ * something neutral rather than a guess at a person's name.
  */
-function greeting(username: string | undefined, email: string | undefined): string {
-  const name = username?.trim() || email?.split("@")[0]?.trim();
+function greeting(username: string | undefined): string {
+  const name = username?.trim();
   return name ? `Welcome back, ${name}` : "Your sessions";
 }

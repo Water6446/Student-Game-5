@@ -30,9 +30,17 @@ import { HEADER } from "@/lib/marketing/content";
  */
 export function AccountMenu() {
   const { supabase, user, loading } = useSupabaseUser();
-  const { profile } = useProfile(supabase, user?.id ?? null);
+  const { profile, loading: profileLoading } = useProfile(supabase, user?.id ?? null);
   const [open, setOpen] = useState(false);
+  // A guest cannot sign back in: an anonymous session, once dropped, is gone,
+  // and with it their seat in any game still running (and, while the testing
+  // bypass is on, every session they hosted). So for a guest, sign-out asks once.
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) setConfirmLeave(false);
+  }, [open]);
 
   // Close on outside click and on Escape — a dropdown that can only be closed by
   // picking something from it is a trap, especially on a phone.
@@ -57,14 +65,20 @@ export function AccountMenu() {
   // Hold the slot while the session resolves, so the header does not reflow.
   // Holds the amber action's footprint so the bar neither reflows nor overflows
   // while the session resolves.
-  if (loading) {
+  //
+  // Also while a real account's profile is on its way (only when nothing is
+  // cached, e.g. a fresh tab). Filling the gap with the email address showed
+  // the email for a split second before the username on every reload.
+  const guest = Boolean(user?.is_anonymous);
+  if (loading || (user && !guest && profileLoading)) {
     return <span aria-hidden className="inline-block h-[44px] w-[92px]" />;
   }
 
   // Signed out: no dropdown, and the amber action is the way in.
   if (!user) return <AmberCta href={HEADER.loginCta.href} label={HEADER.loginCta.label} />;
 
-  const guest = Boolean(user.is_anonymous);
+  // The email is a fallback ONLY for an account that really has no profile row
+  // (a guest partway through claiming one); `profileLoading` is false by now.
   const name = guest ? "Guest" : profile?.username ?? user.email ?? "Account";
   const initial = (name.trim()[0] ?? "?").toUpperCase();
   // What the panel leads with. Falls back through display name -> username ->
@@ -154,18 +168,27 @@ export function AccountMenu() {
                 </>
               )}
               <li role="none" className="my-1.5 border-t border-line" />
+              {guest && confirmLeave ? (
+                <li role="none" className="px-3 pb-1 pt-0.5 font-editorial text-xs italic text-ink-muted">
+                  Guests can&apos;t sign back in. You&apos;ll lose your games.
+                </li>
+              ) : null}
               <li role="none">
                 <button
                   role="menuitem"
                   type="button"
                   onClick={() => {
+                    if (guest && !confirmLeave) {
+                      setConfirmLeave(true);
+                      return;
+                    }
                     setOpen(false);
                     void supabase.auth.signOut();
                   }}
                   className="flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm font-semibold text-loss transition hover:bg-loss-soft"
                 >
                   <LogOut />
-                  Sign out
+                  {guest && confirmLeave ? "Sign out anyway" : "Sign out"}
                 </button>
               </li>
             </ul>

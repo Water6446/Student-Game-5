@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { forgetCachedProfiles } from "@/components/use-profile";
 
 /** Tracks the current auth user (null when signed out) and loading state. */
 export function useSupabaseUser() {
@@ -24,7 +25,10 @@ export function useSupabaseUser() {
       // refresh" in production.
       supabase.realtime.setAuth(data.session?.access_token ?? null);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // Every sign-out path (header menu, /account, account deletion) lands
+      // here, so this is the one place the cached profile is dropped.
+      if (event === "SIGNED_OUT") forgetCachedProfiles();
       setUser(session?.user ?? null);
       setLoading(false);
       supabase.realtime.setAuth(session?.access_token ?? null);
