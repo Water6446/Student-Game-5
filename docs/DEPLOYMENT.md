@@ -117,7 +117,27 @@ It needs no email sending at all, which makes it the quickest way to get a real
       Without it `linkIdentity()` fails, which is what the student "save my
       results" flow uses.
 
-### 2. Email — required for register / reset / magic link
+### 2. Email — currently switched OFF
+
+**As shipped, `NEXT_PUBLIC_EMAIL_DELIVERY` is not `true`**, so the app hides the
+magic-link sign-in and the password reset rather than offering flows that cannot
+complete. Registration is email + username + password, and the account works
+immediately.
+
+For that to hold, **Supabase → Authentication → Providers → Email → "Confirm
+email" must be OFF**. With it on, sign-up withholds the session and waits for a
+link that will never arrive.
+
+Two consequences while it is off:
+
+- A forgotten password cannot be recovered unless that account has Google linked.
+- Anyone can register with an address they do not own, since nothing checks it.
+  Fine for a pilot; not something to leave on once real classes depend on it.
+
+Turning it back on is the checklist below plus `NEXT_PUBLIC_EMAIL_DELIVERY=true`
+and a redeploy (`NEXT_PUBLIC_*` is baked in at build time).
+
+### 2b. Email — when you are ready to turn it on
 
 The built-in sender allows **2 messages an hour on every plan**, Pro included.
 That is unusable for real registration, so custom SMTP is not optional.

@@ -8,6 +8,7 @@ import { clsx } from "@/components/clsx";
 import { GoogleMark } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { ALLOW_ANON_HOST } from "@/lib/auth/can-host";
+import { EMAIL_DELIVERY_READY } from "@/lib/auth/email-delivery";
 import {
   emailError,
   looksLikeEmail,
@@ -252,19 +253,23 @@ function SignInPanel({ supabase, next }: { supabase: SupabaseClient; next: strin
         {busy ? "Signing in…" : "Sign in"}
       </Button>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <Link href="/auth/reset" className="font-semibold text-ink-muted hover:text-ink">
-          Forgot password?
-        </Link>
-        <button
-          type="button"
-          onClick={sendMagicLink}
-          disabled={busy}
-          className="font-semibold text-ink-muted hover:text-ink disabled:opacity-60"
-        >
-          Email me a sign-in link instead
-        </button>
-      </div>
+      {/* Both of these only work if a message can actually be delivered. Until
+          SMTP is configured they are hidden rather than shipped as dead ends. */}
+      {EMAIL_DELIVERY_READY ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <Link href="/auth/reset" className="font-semibold text-ink-muted hover:text-ink">
+            Forgot password?
+          </Link>
+          <button
+            type="button"
+            onClick={sendMagicLink}
+            disabled={busy}
+            className="font-semibold text-ink-muted hover:text-ink disabled:opacity-60"
+          >
+            Email me a sign-in link instead
+          </button>
+        </div>
+      ) : null}
       <p className="text-center font-editorial text-xs italic text-ink-subtle">
         Signed up with Google? Use the button above — that account has no password.
       </p>
@@ -357,6 +362,9 @@ function RegisterPanel({
     setBusy(false);
   }
 
+  // Only reached when Supabase withheld a session, i.e. it really did send a
+  // confirmation. Driven by the response, not by the flag, so it stays right
+  // whichever way the dashboard setting is flipped.
   if (sent) {
     return (
       <Banner kind="success">

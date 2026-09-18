@@ -77,6 +77,20 @@ export const LOGIN = {
   joinCta: "Join a game with a code",
 } as const;
 
+/**
+ * The student join page. Same frame as the rest of the site, but the copy stays
+ * short: whoever is reading it is standing in a lecture theatre with a code on
+ * the screen behind them.
+ */
+export const JOIN = {
+  eyebrow: "Student",
+  heading: "Join a game.",
+  sub: "Enter the code your professor is showing. No account, no app.",
+  howEyebrow: "How to play",
+  hostPrompt: "Running the class rather than playing?",
+  hostCta: "Host a session",
+} as const;
+
 export const HERO = {
   eyebrow: "In-class market simulation",
   /** The headline is set in two faces: Archivo black, then Fraunces italic. */

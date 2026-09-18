@@ -7,6 +7,7 @@ import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
 import { ArrowLeft } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
+import { EMAIL_DELIVERY_READY } from "@/lib/auth/email-delivery";
 
 /**
  * Password reset, both halves in one page.
@@ -28,8 +29,14 @@ export default function ResetPasswordPage() {
       <Card className="animate-pop-in">
         {user && !user.is_anonymous ? (
           <SetNewPassword supabase={supabase} />
-        ) : (
+        ) : EMAIL_DELIVERY_READY ? (
           <RequestLink supabase={supabase} />
+        ) : (
+          // Someone can still reach this URL directly. Sending a reset that
+          // cannot be delivered leaves them waiting for a message that never
+          // arrives, so say so. Setting a new password while signed in still
+          // works, which is the branch above.
+          <ResetUnavailable />
         )}
         <Link
           href="/host"
@@ -176,6 +183,21 @@ function SetNewPassword({
           {busy ? "Saving…" : "Save password"}
         </Button>
       </div>
+    </>
+  );
+}
+
+/** Shown while this deployment has no working outgoing email. */
+function ResetUnavailable() {
+  return (
+    <>
+      <h1 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
+        Password reset is off
+      </h1>
+      <p className="mt-2 text-sm text-ink-muted">
+        This site cannot send email yet, so a reset link would never arrive. If your account has
+        Google linked you can still get in that way.
+      </p>
     </>
   );
 }

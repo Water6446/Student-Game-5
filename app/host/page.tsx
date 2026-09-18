@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
+import { useProfile } from "@/components/use-profile";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Eyebrow } from "@/components/marketing/primitives";
@@ -27,6 +28,7 @@ import type { SessionOverviewRow } from "@/lib/game/db";
 export default function HostPage() {
   const router = useRouter();
   const { supabase, user, loading } = useSupabaseUser();
+  const { profile } = useProfile(supabase, user?.id ?? null);
 
   const [rows, setRows] = useState<SessionOverviewRow[]>([]);
   const [rowsLoading, setRowsLoading] = useState(true);
@@ -76,7 +78,7 @@ export default function HostPage() {
           <header>
             <Eyebrow className="text-ink-muted">Host dashboard</Eyebrow>
             <h1 className="mt-5 font-display text-[clamp(1.9rem,4vw,3rem)] font-black uppercase leading-[0.95] tracking-tight text-ink">
-              {greeting(user!.email)}
+              {greeting(profile?.username, user!.email)}
             </h1>
           </header>
 
@@ -130,12 +132,14 @@ function Section({
 }
 
 /**
- * The email is the only name we are sure of before the profile loads, and a bare
- * address as a page headline is ugly. Fall back to something neutral rather than
- * guessing at a person's name.
+ * The account's username, which is the name the person actually chose.
+ *
+ * The email local part is only a stopgap for the moment before the profile
+ * arrives: for a Google sign-up it is whatever happened to be in front of the @,
+ * which is not what anyone calls themselves. Falls back to something neutral
+ * rather than guessing at a person's name.
  */
-function greeting(email: string | undefined): string {
-  const handle = email?.split("@")[0]?.trim();
-  if (!handle) return "Your sessions";
-  return `Welcome back, ${handle}`;
+function greeting(username: string | undefined, email: string | undefined): string {
+  const name = username?.trim() || email?.split("@")[0]?.trim();
+  return name ? `Welcome back, ${name}` : "Your sessions";
 }

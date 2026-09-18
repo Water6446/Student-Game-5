@@ -143,7 +143,7 @@ function LinkGoogle({ supabase }: { supabase: SupabaseClient }) {
 function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged: () => void }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [done, setDone] = useState<"pending" | "applied" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function add() {
@@ -154,23 +154,36 @@ function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged
     }
     setBusy(true);
     setError(null);
-    const { error } = await supabase.auth.updateUser(
+    const { data, error } = await supabase.auth.updateUser(
       { email: email.trim() },
       { emailRedirectTo: `${siteUrl()}/auth/callback?next=/account` },
     );
     setBusy(false);
-    if (error) setError(error.message);
-    else {
-      setSent(true);
-      onChanged();
+    if (error) {
+      setError(error.message);
+      return;
     }
+    // Whether a confirmation was actually sent depends on the project's "Confirm
+    // email" setting, so read it off the result rather than guessing: if the
+    // address is already on the user, it applied directly and telling them to go
+    // and click a link would send them looking for mail that never arrives.
+    setDone(data.user?.email === email.trim() ? "applied" : "pending");
+    onChanged();
   }
 
-  if (sent) {
+  if (done) {
     return (
       <Banner kind="success">
-        Confirm the link sent to <span className="font-semibold">{email.trim()}</span>. Until you do,
-        the address is not attached to this account.
+        {done === "applied" ? (
+          <>
+            <span className="font-semibold">{email.trim()}</span> is now on this account.
+          </>
+        ) : (
+          <>
+            Confirm the link sent to <span className="font-semibold">{email.trim()}</span>. Until you
+            do, the address is not attached to this account.
+          </>
+        )}
       </Banner>
     );
   }
@@ -191,7 +204,7 @@ function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged
         {busy ? "Sending…" : "Send confirmation"}
       </Button>
       <p className="font-editorial text-xs italic text-ink-subtle">
-        You can set a password once the address is confirmed.
+        You can set a password once the address is on the account.
       </p>
     </div>
   );
