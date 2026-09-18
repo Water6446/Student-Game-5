@@ -62,6 +62,21 @@ export interface AllocationRow {
   submitted_at: string;
 }
 
+/**
+ * One row of get_my_sessions_overview() — a session plus the roster size the
+ * dashboard needs, counted server-side so listing 40 sessions does not mean
+ * pulling every player row the host has ever had. Bots are excluded.
+ */
+export interface SessionOverviewRow {
+  id: string;
+  join_code: string;
+  status: SessionStatus;
+  current_round: number;
+  config: SessionConfig;
+  created_at: string;
+  player_count: number;
+}
+
 export interface LeaderboardRow {
   player_id: string;
   display_name: string;

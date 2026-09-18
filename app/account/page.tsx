@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useProfile } from "@/components/use-profile";
 import { ProfilePanel } from "@/components/account/ProfilePanel";
@@ -105,6 +107,15 @@ export default function AccountPage() {
   );
 }
 
+/** Same chrome as the dashboard and the homepage — one frame across the site. */
 function Shell({ children }: { children: React.ReactNode }) {
-  return <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">{children}</main>;
+  return (
+    <>
+      <SiteHeader />
+      <main className="min-h-dvh">
+        <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14">{children}</div>
+      </main>
+      <SiteFooter />
+    </>
+  );
 }

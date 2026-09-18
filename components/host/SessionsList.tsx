@@ -1,91 +1,178 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SessionRow } from "@/lib/game/db";
+import type { SessionOverviewRow } from "@/lib/game/db";
+import { configForRerun, createSession } from "@/lib/game/create-session";
+import { clsx } from "@/components/clsx";
+import { Banner, Button } from "@/components/ui";
+import { Shuffle, Trash, Users } from "@/components/icons";
+import { gameLabel, sessionTitle, whenText } from "@/lib/game/session-format";
 
 const STATUS_STYLES: Record<string, string> = {
-  lobby: "bg-brand-soft text-ink",
-  active: "bg-gain-soft text-gain",
+  lobby: "bg-brand text-ink",
+  active: "bg-gain text-white",
   finished: "bg-paper-2 text-ink-subtle",
 };
 
-export function SessionsList({ supabase, hostId }: { supabase: SupabaseClient; hostId: string }) {
-  const [rows, setRows] = useState<SessionRow[] | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+/**
+ * The list a host comes back to. Each row has to answer "which class was that?"
+ * without opening it, so it carries the name, roster size and round progress —
+ * not just a join code and a timestamp.
+ */
+export function SessionsList({
+  rows,
+  loading,
+  onChanged,
+  supabase,
+}: {
+  rows: SessionOverviewRow[];
+  loading: boolean;
+  onChanged: () => void;
+  supabase: SupabaseClient;
+}) {
+  const router = useRouter();
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase
-      .from("sessions")
-      .select("*")
-      .eq("host_id", hostId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setRows((data as SessionRow[]) ?? []));
-  }, [supabase, hostId]);
-
-  async function remove(s: SessionRow) {
-    const ok = window.confirm(
-      `Delete session ${s.join_code}? This permanently removes its players, rounds and allocations. This cannot be undone.`,
-    );
-    if (!ok) return;
-    setDeletingId(s.id);
+  async function remove(s: SessionOverviewRow) {
+    setBusyId(s.id);
     setError(null);
     const { error } = await supabase.rpc("delete_session", { p_session_id: s.id });
-    setDeletingId(null);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    setRows((prev) => (prev ?? []).filter((r) => r.id !== s.id));
+    setBusyId(null);
+    setPendingDelete(null);
+    if (error) setError(error.message);
+    else onChanged();
   }
 
-  if (rows === null) return <p className="text-sm text-ink-subtle">Loading your sessions…</p>;
-  if (rows.length === 0)
-    return <p className="text-sm text-ink-subtle">No sessions yet — create one above.</p>;
+  async function runAgain(s: SessionOverviewRow) {
+    setBusyId(s.id);
+    setError(null);
+    // configForRerun strips the manager line-up: the stored copy is public-only,
+    // so resubmitting it would build a game with no real alpha. See its comment.
+    const result = await createSession(supabase, configForRerun(s.config));
+    if (!result.ok) {
+      setError(result.error);
+      setBusyId(null);
+      return;
+    }
+    if (result.warning) setError(result.warning);
+    router.push(`/host/${result.id}`);
+  }
+
+  if (loading) return <p className="text-sm text-ink-subtle">Loading your sessions…</p>;
+
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-2xl border-2 border-dashed border-ink/30 px-6 py-10 text-center">
+        <p className="font-display text-base font-extrabold uppercase tracking-tight text-ink">
+          No sessions yet
+        </p>
+        <p className="mx-auto mt-2 max-w-sm font-editorial text-sm italic text-ink-muted">
+          Pick a game above and you will get a join code to put on the projector. Everything you run
+          stays here afterwards.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
       {error ? (
-        <p className="mb-2 rounded-lg bg-loss-soft px-3 py-2 text-sm text-loss">{error}</p>
+        <div className="mb-3">
+          <Banner kind="error">{error}</Banner>
+        </div>
       ) : null}
-      <ul className="divide-y divide-line">
-        {rows.map((s) => (
-          <li key={s.id} className="flex items-center gap-2">
-            <Link
-              href={`/host/${s.id}`}
-              className="flex flex-1 items-center justify-between gap-4 rounded-lg px-2 py-3 transition hover:bg-paper-2"
+
+      <ul className="space-y-2">
+        {rows.map((s) => {
+          const confirming = pendingDelete === s.id;
+          const busy = busyId === s.id;
+          const rounds = s.config.num_rounds ?? 0;
+
+          return (
+            <li
+              key={s.id}
+              className="rounded-xl border-2 border-ink bg-surface shadow-card transition hover:bg-paper-2"
             >
-              <div>
-                <span className="font-mono text-lg font-bold tracking-widest text-ink">
-                  {s.join_code}
-                </span>
-                <span className="ml-3 rounded-full bg-play-soft px-2 py-0.5 text-xs font-bold text-play">
-                  {s.config.game_type === "portfolio" ? "Portfolio" : "Basic"}
-                </span>
-                <span className="ml-3 text-sm text-ink-subtle">
-                  {new Date(s.created_at).toLocaleString()}
-                </span>
+              <div className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
+                <Link href={`/host/${s.id}`} className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className="truncate font-display text-base font-extrabold text-ink">
+                      {sessionTitle(s)}
+                    </span>
+                    <span
+                      className={clsx(
+                        "rounded-full border-2 border-ink px-2.5 py-0.5 font-display text-[11px] font-extrabold uppercase tracking-wide",
+                        STATUS_STYLES[s.status] ?? "",
+                      )}
+                    >
+                      {s.status}
+                    </span>
+                  </span>
+                  <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-subtle">
+                    <span className="font-bold tracking-widest text-ink-muted">{s.join_code}</span>
+                    <span>{gameLabel(s.config)}</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Users /> {s.player_count}
+                    </span>
+                    {rounds > 0 ? (
+                      <span>
+                        {Math.min(s.current_round, rounds)}/{rounds} rounds
+                      </span>
+                    ) : null}
+                    <span>{whenText(s.created_at)}</span>
+                  </span>
+                </Link>
+
+                {confirming ? (
+                  <span className="flex shrink-0 items-center gap-2">
+                    <Button variant="danger" onClick={() => remove(s)} disabled={busy}>
+                      {busy ? "Deleting…" : "Delete for good"}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setPendingDelete(null)}>
+                      Keep
+                    </Button>
+                  </span>
+                ) : (
+                  <span className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => runAgain(s)}
+                      disabled={busy}
+                      title="Create a new session with these settings"
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
+                    >
+                      <Shuffle />
+                      {busy ? "Starting…" : "Run again"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setPendingDelete(s.id);
+                      }}
+                      aria-label={`Delete session ${sessionTitle(s)}`}
+                      title="Delete session"
+                      className="inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-loss transition hover:bg-loss-soft"
+                    >
+                      <Trash />
+                    </button>
+                  </span>
+                )}
               </div>
-              <span
-                className={`rounded-full border-2 border-ink px-3 py-1 text-xs font-display font-extrabold capitalize shadow-card ${STATUS_STYLES[s.status] ?? ""}`}
-              >
-                {s.status}
-              </span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => remove(s)}
-              disabled={deletingId === s.id}
-              aria-label={`Delete session ${s.join_code}`}
-              title="Delete session"
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-loss transition hover:bg-loss-soft disabled:opacity-50"
-            >
-              {deletingId === s.id ? "Deleting…" : "Delete"}
-            </button>
-          </li>
-        ))}
+
+              {confirming ? (
+                <p className="border-t-2 border-ink px-4 py-2 text-xs font-semibold text-loss">
+                  This permanently removes its students, rounds and allocations. It cannot be undone.
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
     </>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useProfile } from "@/components/use-profile";
 import { clsx } from "@/components/clsx";
@@ -197,6 +198,11 @@ function AmberCta({
   /** Optional phone-width label; falls back to `label`. */
   shortLabel?: string;
 }) {
+  // A prominent button that reloads the page you are already on is worse than
+  // no button: now that this header rides on /host and /login, drop it there.
+  const pathname = usePathname();
+  if (pathname === href) return null;
+
   return (
     <Link
       href={href}

@@ -45,10 +45,13 @@ export const SITE = {
   location: "Worcester, MA",
 } as const;
 
+// Absolute, not bare fragments: the header now rides on /login, /host and
+// /account too, where "#how" would scroll nowhere. On the homepage itself the
+// path is unchanged, so the browser still treats it as an in-page scroll.
 export const NAV_LINKS = [
-  { label: "How it works", href: "#how" },
-  { label: "The games", href: "#games" },
-  // { label: "Pricing", href: "#pricing" },  ← restore with the Pricing section
+  { label: "How it works", href: "/#how" },
+  { label: "The games", href: "/#games" },
+  // { label: "Pricing", href: "/#pricing" },  ← restore with the Pricing section
 ] as const;
 
 export const HEADER = {

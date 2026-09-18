@@ -1,29 +1,62 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { Eyebrow } from "@/components/marketing/primitives";
 import { NewSessionPanel } from "@/components/host/CreateSessionForm";
 import { SessionsList } from "@/components/host/SessionsList";
+import { LiveSessionStrip } from "@/components/host/LiveSessionStrip";
+import { liveSession } from "@/lib/game/session-format";
 import { Instructions } from "@/components/Instructions";
-import { Button, Card } from "@/components/ui";
-import { ArrowLeft, LogOut, User as UserIcon } from "@/components/icons";
 import { canHost } from "@/lib/auth/can-host";
+import type { SessionOverviewRow } from "@/lib/game/db";
 
+/**
+ * The host dashboard.
+ *
+ * It wears the site header and footer, because signing in should not feel like
+ * leaving the product. Inside that chrome it keeps the app's own chassis —
+ * bordered cards for things you click — and borrows only the marketing page's
+ * structural devices (eyebrow, hairline rule) to separate sections. DESIGN.md is
+ * explicit that a page built entirely from cards "reads as a pile of boxes", and
+ * that is exactly what this page was.
+ */
 export default function HostPage() {
   const router = useRouter();
   const { supabase, user, loading } = useSupabaseUser();
 
-  // Hosting requires a real, verified account — except that anonymous "skip
-  // email" sessions are let through while the testing flag is on (the default).
-  // Signing in happens at /login now, so there is one login URL rather than a
-  // card that appears in two places. canHost() documents why these two pages
-  // cannot bounce each other forever.
+  const [rows, setRows] = useState<SessionOverviewRow[]>([]);
+  const [rowsLoading, setRowsLoading] = useState(true);
+
+  // Signing in happens at /login, so there is one login URL. canHost() documents
+  // why these two pages cannot bounce each other forever.
   const allowed = canHost(user);
   useEffect(() => {
     if (!loading && !allowed) router.replace("/login?next=%2Fhost");
   }, [loading, allowed, router]);
+
+  const reload = useCallback(async () => {
+    const { data } = await supabase.rpc("get_my_sessions_overview");
+    setRows((data as SessionOverviewRow[]) ?? []);
+    setRowsLoading(false);
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    let active = true;
+    setRowsLoading(true);
+    void supabase.rpc("get_my_sessions_overview").then(({ data }) => {
+      if (!active) return;
+      setRows((data as SessionOverviewRow[]) ?? []);
+      setRowsLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [supabase, allowed]);
 
   if (loading || !allowed) {
     return (
@@ -33,43 +66,76 @@ export default function HostPage() {
     );
   }
 
+  const live = liveSession(rows);
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
-          >
-            <ArrowLeft /> Home
-          </Link>
-          <h1 className="mt-1 text-3xl font-black text-ink">Host dashboard</h1>
-          <p className="text-sm text-ink-subtle">
-            {user!.email ?? "Signed in for testing (no email)"}
-          </p>
+    <>
+      <SiteHeader />
+      <main className="min-h-dvh">
+        <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
+          <header>
+            <Eyebrow className="text-ink-muted">Host dashboard</Eyebrow>
+            <h1 className="mt-5 font-display text-[clamp(1.9rem,4vw,3rem)] font-black uppercase leading-[0.95] tracking-tight text-ink">
+              {greeting(user!.email)}
+            </h1>
+          </header>
+
+          {live ? (
+            <div className="mt-8">
+              <LiveSessionStrip session={live} />
+            </div>
+          ) : null}
+
+          <Section eyebrow="01 / Start a game" className="mt-12">
+            <NewSessionPanel supabase={supabase} />
+          </Section>
+
+          <Section eyebrow="02 / Your sessions" className="mt-14">
+            <SessionsList
+              supabase={supabase}
+              rows={rows}
+              loading={rowsLoading}
+              onChanged={reload}
+            />
+          </Section>
+
+          <Section eyebrow="03 / Running a game" className="mt-14">
+            <Instructions role="professor" />
+          </Section>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/account">
-            <Button variant="secondary">
-              <UserIcon /> Account
-            </Button>
-          </Link>
-          <Button variant="secondary" onClick={() => supabase.auth.signOut()}>
-            <LogOut /> Sign out
-          </Button>
-        </div>
-      </header>
-
-      <div className="space-y-8">
-        <NewSessionPanel supabase={supabase} />
-
-        <Card>
-          <h2 className="mb-4 text-xl font-bold text-ink">Your sessions</h2>
-          <SessionsList supabase={supabase} hostId={user!.id} />
-        </Card>
-
-        <Instructions role="professor" />
-      </div>
-    </main>
+      </main>
+      <SiteFooter />
+    </>
   );
+}
+
+/** A hairline rule + eyebrow above the section's own content. */
+function Section({
+  eyebrow,
+  className,
+  children,
+}: {
+  eyebrow: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={className}>
+      <div className="border-t border-ink/15 pt-5">
+        <Eyebrow className="text-ink-muted">{eyebrow}</Eyebrow>
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * The email is the only name we are sure of before the profile loads, and a bare
+ * address as a page headline is ugly. Fall back to something neutral rather than
+ * guessing at a person's name.
+ */
+function greeting(email: string | undefined): string {
+  const handle = email?.split("@")[0]?.trim();
+  if (!handle) return "Your sessions";
+  return `Welcome back, ${handle}`;
 }

@@ -15,6 +15,7 @@ import { Button, Banner, Card, Field, Select, TextInput, Toggle } from "@/compon
 import { ArrowLeft, Coins, TrendUp, Trophy } from "@/components/icons";
 import { ManagerSetup } from "@/components/host/ManagerSetup";
 import { MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
+import { createSession } from "@/lib/game/create-session";
 
 // "Base setup": the recommended one-click default per game. The professor's
 // basic game is the extreme 2×/0× payoff with an INDEPENDENT outcome per
@@ -196,6 +197,7 @@ export function CreateSessionForm({
   const [drafts, setDrafts] = useState<ManagerDraft[]>(() =>
     MANAGER_PRESETS.default.map((m) => ({ ...m })),
   );
+  const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -266,31 +268,25 @@ export function CreateSessionForm({
         : { managers: undefined, num_managers: undefined }),
       ...(portfolio || manager ? {} : { risk_free_rate: undefined }),
     };
-    const { data, error } = await supabase
-      .rpc("create_session", { p_config: payload })
-      .select()
-      .single();
-    if (error) {
-      setError(error.message);
+    // One creation path, shared with "run it again" on the dashboard, so the
+    // create-then-seed-bots sequence cannot drift between the two.
+    const result = await createSession(supabase, {
+      ...payload,
+      label: label.trim() || undefined,
+    } as Record<string, unknown>);
+
+    if (!result.ok) {
+      setError(result.error);
       setBusy(false);
       return;
     }
-    const created = data as { id: string; join_code: string };
-
-    // optionally add the 4 fixed-strategy benchmark "bot" players (the server
-    // picks the right strategy set for the game type)
-    if (payload.add_benchmark_bots) {
-      const { error: botErr } = await supabase.rpc("add_benchmark_bots", {
-        p_session_id: created.id,
-      });
-      if (botErr) {
-        // non-fatal: the session exists; just surface the issue and stay put
-        setError(`Session created, but adding benchmark students failed: ${botErr.message}`);
-        setBusy(false);
-        return;
-      }
+    if (result.warning) {
+      // The session exists and is playable; stay put and say what went wrong.
+      setError(result.warning);
+      setBusy(false);
+      return;
     }
-    router.push(`/host/${created.id}`);
+    router.push(`/host/${result.id}`);
   }
 
   // Plain-language summary of the current config (stays accurate even if the host
@@ -375,6 +371,19 @@ export function CreateSessionForm({
           ? "Customize the simulation, then start the lobby."
           : "Start with the standard setup, or flip on Advanced to change anything."}
       </p>
+
+      {/* Shown in the simple flow too: a join code is unrecognisable a week
+          later, and anyone running several sections needs to tell them apart. */}
+      <div className="mt-6">
+        <Field label="Name this session" hint="Optional — only you see it">
+          <TextInput
+            value={label}
+            maxLength={80}
+            onChange={(e) => setLabel(e.target.value)}
+            aria-label="Session name"
+          />
+        </Field>
+      </div>
 
       {advanced && manager ? (
         <div className="mt-6">

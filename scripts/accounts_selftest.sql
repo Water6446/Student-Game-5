@@ -502,4 +502,75 @@ do $$ begin
 end $$;
 reset role;
 
+-- =============================================================================
+-- 12. Host dashboard overview (0023)
+-- =============================================================================
+select set_config('request.jwt.claims', :'prof_jwt', false);
+set role authenticated;
+do $$
+declare r record; n int;
+begin
+  select count(*)::int into n from public.get_my_sessions_overview();
+  if n < 1 then raise exception 'FAIL: overview returned no sessions for their host'; end if;
+
+  -- Section 5's session took one guest, and section 8 added a second that was
+  -- then purged. Both players rows survive the purge, and neither is a bot, so
+  -- the roster count must still be 2.
+  select * into r from public.get_my_sessions_overview()
+   where get_my_sessions_overview.id = current_setting('app.s_id')::uuid;
+  if r.player_count <> 2 then
+    raise exception 'FAIL: roster count should be 2 (bots excluded, purged guest kept), got %',
+      r.player_count;
+  end if;
+  raise notice 'PASS: overview returns % session(s) with correct roster counts', n;
+end $$;
+reset role;
+
+-- Another account sees none of them.
+select set_config('request.jwt.claims', :'sneaky_jwt', false);
+set role authenticated;
+do $$
+declare n int;
+begin
+  select count(*)::int into n from public.get_my_sessions_overview();
+  if n <> 0 then
+    raise exception 'SECURITY FAIL: overview leaked % of another host''s sessions', n;
+  end if;
+  raise notice 'PASS: the overview shows nothing of another host''s sessions';
+end $$;
+reset role;
+
+-- The label is trimmed, capped and dropped when blank.
+do $$
+declare v_sid uuid; v_cfg jsonb;
+begin
+  select id into v_sid from public.sessions
+   where host_id = 'a1000000-0000-0000-0000-000000000001' limit 1;
+
+  update public.sessions
+     set config = jsonb_set(config, '{label}', to_jsonb('   ECON 101   '::text))
+   where id = v_sid;
+  select config into v_cfg from public.sessions where id = v_sid;
+  if v_cfg->>'label' <> 'ECON 101' then
+    raise exception 'FAIL: label not trimmed, got %', v_cfg->>'label';
+  end if;
+
+  update public.sessions
+     set config = jsonb_set(config, '{label}', to_jsonb(repeat('x', 300)))
+   where id = v_sid;
+  select config into v_cfg from public.sessions where id = v_sid;
+  if length(v_cfg->>'label') <> 80 then
+    raise exception 'FAIL: label not capped at 80, got %', length(v_cfg->>'label');
+  end if;
+
+  update public.sessions
+     set config = jsonb_set(config, '{label}', to_jsonb('    '::text))
+   where id = v_sid;
+  select config into v_cfg from public.sessions where id = v_sid;
+  if v_cfg ? 'label' then
+    raise exception 'FAIL: a blank label should be removed, not stored empty';
+  end if;
+  raise notice 'PASS: session label is trimmed, capped at 80 and dropped when blank';
+end $$;
+
 select '*** ALL ACCOUNT SELF-TESTS PASSED ***' as result;

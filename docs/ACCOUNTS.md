@@ -34,7 +34,7 @@ to stay until then.
 | Account dropdown in the site header | `components/marketing/AccountMenu.tsx` |
 | Account page | `app/account/`, `components/account/` |
 | "Keep your results?" prompt | `components/student/SaveResultsPrompt.tsx` |
-| 29 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
+| 32 SQL assertions | `scripts/accounts_selftest.sql` (`npm run test:accounts-db`) |
 | Open-redirect guard for `?next=` + 8 unit tests | `lib/auth/next-path.ts` |
 | 6 more live assertions | `scripts/security-check.ts` |
 

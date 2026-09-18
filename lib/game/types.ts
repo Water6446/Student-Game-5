@@ -58,6 +58,9 @@ export interface ManagerTruth {
 export interface SessionConfig {
   /** absent on pre-portfolio sessions → treat as "basic" (see isPortfolio) */
   game_type?: GameType;
+  /** host's own name for the run ("ECON 101 — Section B"). Trimmed, capped at
+   *  80 chars and dropped when blank by the trigger in 0023. */
+  label?: string;
   payoff_mode: PayoffMode;
   num_rounds: number;
   starting_wealth: number;
