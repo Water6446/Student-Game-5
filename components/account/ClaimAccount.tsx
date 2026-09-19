@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { Banner, Button, Field, TextInput } from "@/components/ui";
 import { GoogleMark, Mail } from "@/components/icons";
@@ -248,7 +249,11 @@ function StartClaim({
 
       <p className="font-editorial text-xs italic text-ink-subtle">
         We store your username and, if you use one, your email. Nothing else. You can delete the
-        account at any time from your account page.
+        account at any time from your account page. See the{" "}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">
+          privacy policy
+        </Link>
+        .
       </p>
     </div>
   );

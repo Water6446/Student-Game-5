@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SignInCard } from "@/components/auth/SignInCard";
-import { Banner } from "@/components/ui";
+import { Banner, Skeleton } from "@/components/ui";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { hasAccount } from "@/lib/auth/can-host";
 import { safeNext } from "@/lib/auth/next-path";
@@ -29,8 +29,8 @@ export default function LoginPage() {
       <main className="min-h-dvh bg-paper-2">
         <Suspense
           fallback={
-            <div className="flex min-h-[60vh] items-center justify-center text-ink-subtle">
-              Loading…
+            <div className="mx-auto w-full max-w-md px-5 py-12 sm:py-16">
+              <LoginCardSkeleton />
             </div>
           }
         >
@@ -78,9 +78,7 @@ function LoginBody() {
       ) : null}
 
       {loading || signedIn ? (
-        <div className="flex min-h-[18rem] items-center justify-center rounded-2xl border-2 border-dashed border-ink/30 text-ink-subtle">
-          {signedIn ? "Signing you in…" : "Loading…"}
-        </div>
+        <LoginCardSkeleton label={signedIn ? "Signing you in" : "Loading"} />
       ) : (
         <SignInCard supabase={supabase} next={next} />
       )}
@@ -94,6 +92,21 @@ function LoginBody() {
           </Link>
         </p>
       )}
+    </div>
+  );
+}
+
+/** The sign-in card's shape while the session resolves. */
+function LoginCardSkeleton({ label = "Loading" }: { label?: string }) {
+  return (
+    <div role="status" className="rounded-2xl border-2 border-ink/15 p-6">
+      <span className="sr-only">{label}…</span>
+      <Skeleton className="h-8 w-32" />
+      <Skeleton className="mt-5 h-11 w-full" />
+      <Skeleton className="mt-5 h-12 w-full" />
+      <Skeleton className="mt-6 h-12 w-full" />
+      <Skeleton className="mt-4 h-12 w-full" />
+      <Skeleton className="mt-6 h-12 w-full" />
     </div>
   );
 }

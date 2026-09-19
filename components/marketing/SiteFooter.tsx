@@ -67,6 +67,17 @@ export function SiteFooter() {
 
         <div className="mt-14 flex flex-col gap-2 border-t border-paper-inverse/20 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-mono text-xs text-paper-inverse/60">{FOOTER.copyright}</p>
+          <nav aria-label="Legal" className="flex items-center gap-5">
+            {FOOTER.legalLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="inline-flex min-h-[44px] items-center font-mono text-xs text-paper-inverse/75 transition hover:text-paper-inverse"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
           <p className="font-mono text-xs text-paper-inverse/60">{FOOTER.builtWith}</p>
         </div>
       </Shell>

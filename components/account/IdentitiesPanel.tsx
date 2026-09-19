@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { Banner, Button, Card, Field, InfoTip, TextInput } from "@/components/ui";
-import { Check, GoogleMark, Key, Mail } from "@/components/icons";
+import { useToast } from "@/components/Toast";
+import { Check, GoogleMark, Key, Mail, Pencil } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
 import { linkErrorMessage } from "@/lib/auth/errors";
@@ -71,7 +72,10 @@ export function IdentitiesPanel({
         {!user.email ? (
           <AddEmail supabase={supabase} onChanged={onChanged} />
         ) : (
-          <ChangePassword supabase={supabase} hasGoogle={hasGoogle} />
+          <>
+            <ChangeEmail supabase={supabase} current={user.email} onChanged={onChanged} />
+            <ChangePassword supabase={supabase} hasGoogle={hasGoogle} />
+          </>
         )}
       </div>
     </Card>
@@ -213,6 +217,122 @@ function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged
   );
 }
 
+/**
+ * Change the address on an account that has one. Mirrors AddEmail: whether the
+ * change applies at once or waits on a confirmation link depends on the
+ * project's email settings, so the result — not a guess — decides which message
+ * to show. (With "Confirm email" off, as now, it applies immediately.)
+ *
+ * Signing in by username keeps working either way: the username is looked up
+ * to whatever address is current.
+ */
+function ChangeEmail({
+  supabase,
+  current,
+  onChanged,
+}: {
+  supabase: SupabaseClient;
+  current: string;
+  onChanged: () => void;
+}) {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    const next = email.trim();
+    const err = emailError(next);
+    if (err) {
+      setError(err);
+      return;
+    }
+    if (next.toLowerCase() === current.toLowerCase()) {
+      setError("That's already the address on this account.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { data, error } = await supabase.auth.updateUser(
+      { email: next },
+      { emailRedirectTo: `${siteUrl()}/auth/callback?next=/account` },
+    );
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    if (data.user?.email?.toLowerCase() === next.toLowerCase()) {
+      toast(`Email changed to ${next}`);
+      setOpen(false);
+      setEmail("");
+    } else {
+      setPending(next);
+    }
+    onChanged();
+  }
+
+  if (pending) {
+    return (
+      <Banner kind="success">
+        Confirm the link sent to <span className="font-semibold">{pending}</span>. Until you do, the
+        account keeps <span className="font-semibold">{current}</span>.
+      </Banner>
+    );
+  }
+
+  if (!open) {
+    return (
+      <Button variant="secondary" onClick={() => setOpen(true)}>
+        <Pencil />
+        Change email address
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!busy) void save();
+      }}
+      className="space-y-3"
+    >
+      <Field label="New email address">
+        <TextInput
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          autoFocus
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </Field>
+      {error ? <Banner kind="error">{error}</Banner> : null}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={busy || !email.trim()}>
+          <Mail />
+          {busy ? "Saving…" : "Change email"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            setOpen(false);
+            setEmail("");
+            setError(null);
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function ChangePassword({
   supabase,
   hasGoogle,
@@ -220,9 +340,9 @@ function ChangePassword({
   supabase: SupabaseClient;
   hasGoogle: boolean;
 }) {
+  const toast = useToast();
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
@@ -237,7 +357,7 @@ function ChangePassword({
     setBusy(false);
     if (error) setError(error.message);
     else {
-      setDone(true);
+      toast("Password updated");
       setPassword("");
     }
   }
@@ -263,7 +383,6 @@ function ChangePassword({
         />
       </Field>
       {error ? <Banner kind="error">{error}</Banner> : null}
-      {done ? <Banner kind="success">Password updated.</Banner> : null}
       <Button onClick={save} disabled={busy || !password}>
         <Key />
         {busy ? "Saving…" : "Save password"}

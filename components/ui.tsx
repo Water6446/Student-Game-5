@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useId,
@@ -33,14 +34,74 @@ export function Card({ children, className }: { children: ReactNode; className?:
   );
 }
 
-export function Button({
-  children,
-  variant = "primary",
-  className,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "gold" | "secondary" | "success" | "danger";
+/**
+ * A placeholder block for content still loading. Size it with `className`
+ * (`h-6 w-40`). Decorative only — the page around it should say "Loading" to
+ * assistive tech once, via `PageSkeleton`'s status label or its own.
+ */
+export function Skeleton({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={clsx("block animate-pulse-soft rounded-xl bg-ink/10", className)}
+    />
+  );
+}
+
+/**
+ * The body of a loading page — a heading and a couple of cards — for pages that
+ * render their own <main> and chrome. DESIGN.md §8 asks for a skeleton over a
+ * bare "Loading…" for anything slower than ~300ms. `label` is what a screen
+ * reader hears.
+ */
+export function SkeletonCards({ label = "Loading" }: { label?: string }) {
+  return (
+    <div role="status" aria-busy="true">
+      <span className="sr-only">{label}…</span>
+      <Skeleton className="h-4 w-28" />
+      <Skeleton className="mt-4 h-10 w-2/3" />
+      <div className="mt-8 space-y-6">
+        <div className="rounded-2xl border-2 border-ink/15 p-6">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="mt-5 h-12 w-full" />
+          <Skeleton className="mt-3 h-12 w-full" />
+        </div>
+        <div className="rounded-2xl border-2 border-ink/15 p-6">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="mt-5 h-24 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A whole loading page: `SkeletonCards` in a <main> at the page's own width. */
+export function PageSkeleton({
+  label,
+  width = "max-w-2xl",
+}: {
+  label?: string;
+  /** match the page's own container so nothing jumps when it arrives */
+  width?: string;
 }) {
+  return (
+    <main className="min-h-dvh">
+      <div className={clsx("mx-auto px-5 py-10 sm:px-8 sm:py-14", width)}>
+        <SkeletonCards label={label} />
+      </div>
+    </main>
+  );
+}
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "gold" | "secondary" | "success" | "danger";
+};
+
+// forwardRef so a dialog can put focus on a specific button.
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { children, variant = "primary", className, ...props },
+  ref,
+) {
   const variants = {
     primary: "bg-play text-white shadow-card hover:brightness-110", // electric blue
     gold: "bg-brand text-ink shadow-card hover:bg-brand-strong", // amber, INK text
@@ -50,6 +111,7 @@ export function Button({
   };
   return (
     <button
+      ref={ref}
       className={clsx(
         "inline-flex items-center justify-center gap-2 rounded-xl border-2 border-ink px-5 py-3 text-base",
         "font-display font-extrabold transition active:translate-x-[2px] active:translate-y-[2px]",
@@ -63,7 +125,7 @@ export function Button({
       {children}
     </button>
   );
-}
+});
 
 export function Field({
   label,

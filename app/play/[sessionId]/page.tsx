@@ -1,13 +1,18 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useSession } from "@/components/use-session";
 import { usePlayers } from "@/components/use-players";
 import { useRound } from "@/components/use-round";
+import { useDocumentTitle } from "@/components/use-document-title";
 import { StudentWaiting } from "@/components/student/StudentWaiting";
 import { StudentRound } from "@/components/student/StudentRound";
 import { StudentFinished } from "@/components/student/StudentFinished";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { StatusPage } from "@/components/StatusPage";
+import { PageSkeleton } from "@/components/ui";
+import { sessionTabTitle } from "@/lib/game/session-format";
 
 export default function PlayPage({ params }: { params: { sessionId: string } }) {
   const { supabase, user, loading: authLoading } = useSupabaseUser();
@@ -16,42 +21,58 @@ export default function PlayPage({ params }: { params: { sessionId: string } }) 
   const round = useRound(supabase, params.sessionId, session?.current_round ?? 0);
 
   const me = user ? players.find((p) => p.auth_uid === user.id) ?? null : null;
+  useDocumentTitle(session && me ? sessionTabTitle(session, "student") : null);
 
-  if (authLoading || loading) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-subtle">Loading…</main>
-    );
+  // The session row usually lands before the player list, and for that moment
+  // a student who HAS joined looks like one who hasn't. A member always sees at
+  // least their own row, so an empty list is "still loading" — for a couple of
+  // seconds, after which it really does mean not joined (RLS shows a
+  // non-member nothing).
+  const [grace, setGrace] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setGrace(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (authLoading || loading || (session && !me && players.length === 0 && grace)) {
+    return <PageSkeleton label="Loading your game" width="max-w-lg" />;
   }
 
   if (!session || !me) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-bold text-ink">You haven&apos;t joined this game</h1>
-        <Link
-          href={session ? `/join?code=${session.join_code}` : "/join"}
-          className="rounded-xl bg-brand px-5 py-3 font-semibold text-white shadow-card transition hover:bg-brand-strong active:scale-[0.98]"
-        >
-          Go to join screen
-        </Link>
-      </main>
+      <StatusPage
+        eyebrow="Student"
+        title="You haven't joined this game"
+        body={
+          session
+            ? "Join with the code on the projector — it takes a name and a second."
+            : "This game may have ended and been removed, or the link is incomplete."
+        }
+        primary={{
+          label: "Go to the join screen",
+          href: session ? `/join?code=${session.join_code}` : "/join",
+        }}
+        secondary={[{ label: "Home", href: "/" }]}
+      />
     );
   }
 
+  let screen: React.ReactNode;
   if (session.status === "lobby") {
-    return <StudentWaiting supabase={supabase} session={session} me={me} />;
+    screen = <StudentWaiting supabase={supabase} session={session} me={me} />;
+  } else if (session.status === "finished") {
+    screen = <StudentFinished supabase={supabase} session={session} me={me} user={user} />;
+  } else if (!round) {
+    // active — wait for the current round row to load
+    screen = <PageSkeleton label="Getting the round ready" width="max-w-lg" />;
+  } else {
+    screen = <StudentRound supabase={supabase} session={session} me={me} round={round} />;
   }
 
-  if (session.status === "finished") {
-    return <StudentFinished supabase={supabase} session={session} me={me} user={user} />;
-  }
-
-  // active — wait for the current round row to load
-  if (!round) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-subtle">
-        Getting the round ready…
-      </main>
-    );
-  }
-  return <StudentRound supabase={supabase} session={session} me={me} round={round} />;
+  return (
+    <>
+      <ConnectionBanner />
+      {screen}
+    </>
+  );
 }

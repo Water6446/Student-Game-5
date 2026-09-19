@@ -59,6 +59,44 @@ export function Info(props: IconProps) {
   );
 }
 
+export function Pencil(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16v4Z" />
+      <path d="m13.5 6.5 4 4" />
+    </Base>
+  );
+}
+
+export function Search(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Base>
+  );
+}
+
+export function WifiOff(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 3l18 18" />
+      <path d="M8.5 16.5a5 5 0 0 1 7 0" />
+      <path d="M5 12.5a10 10 0 0 1 5-2.4M19 12.5a10 10 0 0 0-2.3-1.6" />
+      <path d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 11 5" />
+      <path d="M12 20h.01" />
+    </Base>
+  );
+}
+
+export function Message(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1Z" />
+    </Base>
+  );
+}
+
 export function Lock(props: IconProps) {
   return (
     <Base {...props}>

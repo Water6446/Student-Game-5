@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DeletionPreview } from "@/lib/auth/account";
 import { Banner, Button, Card, Field, InfoTip, TextInput } from "@/components/ui";
 import { Download, Trash } from "@/components/icons";
+import { useToast } from "@/components/Toast";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -17,6 +18,7 @@ const CONFIRM_WORD = "DELETE";
  * preview says exactly how many before anything is typed.
  */
 export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
+  const toast = useToast();
   const [preview, setPreview] = useState<DeletionPreview | null>(null);
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,6 +56,7 @@ export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    toast("Your data is downloading");
   }
 
   async function deleteAccount() {

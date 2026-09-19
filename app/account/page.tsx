@@ -10,8 +10,9 @@ import { IdentitiesPanel } from "@/components/account/IdentitiesPanel";
 import { HistoryPanel } from "@/components/account/HistoryPanel";
 import { DangerZone } from "@/components/account/DangerZone";
 import { ClaimAccount } from "@/components/account/ClaimAccount";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, SkeletonCards } from "@/components/ui";
 import { ArrowLeft, LogOut } from "@/components/icons";
+import { useToast } from "@/components/Toast";
 
 /**
  * Account settings.
@@ -23,10 +24,13 @@ import { ArrowLeft, LogOut } from "@/components/icons";
 export default function AccountPage() {
   const { supabase, user, loading } = useSupabaseUser();
   const { profile, loading: profileLoading, reload } = useProfile(supabase, user?.id ?? null);
+  const toast = useToast();
 
   if (loading || (user && profileLoading)) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-subtle">Loading…</main>
+      <Shell>
+        <SkeletonCards label="Loading your account" />
+      </Shell>
     );
   }
 
@@ -94,7 +98,13 @@ export default function AccountPage() {
             {user.email ? ` · ${user.email}` : ""}
           </p>
         </div>
-        <Button variant="secondary" onClick={() => supabase.auth.signOut()}>
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            await supabase.auth.signOut();
+            toast("Signed out");
+          }}
+        >
           <LogOut /> Sign out
         </Button>
       </header>

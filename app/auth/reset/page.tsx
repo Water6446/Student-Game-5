@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSupabaseUser } from "@/components/use-supabase-user";
-import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
+import { Banner, Button, Card, Field, PageSkeleton, TextInput } from "@/components/ui";
 import { ArrowLeft } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
@@ -21,7 +21,7 @@ export default function ResetPasswordPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-subtle">Loading…</main>
+      <PageSkeleton label="Loading" width="max-w-md" />
     );
   }
 

@@ -451,4 +451,22 @@ export const FOOTER = {
   personalSiteUrl: SITE.personalSiteUrl,
   copyright: "© 2026 Max Jansen",
   builtWith: "Built with Next.js and Supabase.",
+  legalLinks: [
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+  ],
+} as const;
+
+/**
+ * The Privacy and Terms pages. Plain facts they both need; the documents
+ * themselves live in app/privacy and app/terms. Change `updated` whenever
+ * either document's wording changes.
+ */
+export const LEGAL = {
+  operator: "Max Jansen",
+  location: "Massachusetts, USA",
+  governingLaw: "the Commonwealth of Massachusetts, USA",
+  updated: "September 19, 2026",
+  /** how long an idle guest identity may be kept — purge_stale_guests(45) */
+  guestRetentionDays: 45,
 } as const;

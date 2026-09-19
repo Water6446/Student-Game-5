@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Card } from "@/components/ui";
 import { AUTH_FAILURE_COPY, parseAuthFailure } from "@/lib/auth/errors";
+
+export const metadata: Metadata = { title: "Sign-in problem" };
 
 /**
  * Where /auth/callback sends a redirect that did not end in a session.

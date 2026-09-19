@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { gameLabel, liveSession, sessionTitle, whenText } from "./session-format";
+import {
+  filterSessions,
+  gameLabel,
+  liveSession,
+  sessionTabTitle,
+  sessionTitle,
+  whenText,
+} from "./session-format";
 import type { SessionOverviewRow } from "./db";
 import type { SessionConfig } from "./types";
 
@@ -86,5 +93,44 @@ describe("liveSession", () => {
 
   it("returns null for an empty list", () => {
     expect(liveSession([])).toBeNull();
+  });
+});
+
+describe("sessionTabTitle", () => {
+  it("names the phase, with the code on host tabs", () => {
+    expect(sessionTabTitle(row({ status: "lobby", current_round: 0 }), "host")).toBe("Lobby · ABC123");
+    expect(sessionTabTitle(row({ status: "active", current_round: 3 }), "host")).toBe(
+      "Round 3/25 · ABC123",
+    );
+    expect(sessionTabTitle(row({ status: "finished" }), "host")).toBe("Results · ABC123");
+    expect(sessionTabTitle(row({ status: "finished" }), "student")).toBe("Game over");
+  });
+
+  it("counts years in the manager game", () => {
+    expect(
+      sessionTabTitle(row({ status: "active", current_round: 7, config: cfg({ game_type: "manager" }) }), "student"),
+    ).toBe("Year 7/25");
+  });
+});
+
+describe("filterSessions", () => {
+  const rows = [
+    row({ id: "a", join_code: "AAA111", status: "active", config: cfg({ label: "ECON 101" }) }),
+    row({ id: "b", join_code: "BBB222", status: "finished", config: cfg({ game_type: "manager" }) }),
+    row({ id: "c", join_code: "CCC333", status: "lobby" }),
+  ];
+  const ids = (r: SessionOverviewRow[]) => r.map((x) => x.id);
+
+  it("filters by status", () => {
+    expect(ids(filterSessions(rows, "", "all"))).toEqual(["a", "b", "c"]);
+    expect(ids(filterSessions(rows, "", "live"))).toEqual(["a", "c"]);
+    expect(ids(filterSessions(rows, "", "finished"))).toEqual(["b"]);
+  });
+
+  it("searches name, code and game type, ignoring case", () => {
+    expect(ids(filterSessions(rows, "econ", "all"))).toEqual(["a"]);
+    expect(ids(filterSessions(rows, "bbb2", "all"))).toEqual(["b"]);
+    expect(ids(filterSessions(rows, "MANAGER", "all"))).toEqual(["b"]);
+    expect(ids(filterSessions(rows, "econ", "finished"))).toEqual([]);
   });
 });

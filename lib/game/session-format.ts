@@ -58,3 +58,48 @@ export function liveSession(rows: SessionOverviewRow[]): SessionOverviewRow | nu
     rows.find((r) => r.status === "active") ?? rows.find((r) => r.status === "lobby") ?? null
   );
 }
+
+/**
+ * A browser-tab title for a session's live screens, so a host's control and
+ * projector tabs — and a student's game — say where things stand at a glance.
+ * The join code goes on host tabs (they may run two sections at once); a
+ * student only ever has the one game.
+ */
+export function sessionTabTitle(
+  s: { status: string; current_round: number; join_code: string; config: SessionConfig },
+  audience: "host" | "student",
+): string {
+  const unit = s.config.game_type === "manager" ? "Year" : "Round";
+  const total = s.config.num_rounds ?? 0;
+  const phase =
+    s.status === "lobby"
+      ? "Lobby"
+      : s.status === "finished"
+        ? audience === "host"
+          ? "Results"
+          : "Game over"
+        : `${unit} ${Math.min(s.current_round, total || s.current_round)}/${total}`;
+  return audience === "host" ? `${phase} · ${s.join_code}` : phase;
+}
+
+export type SessionStatusFilter = "all" | "live" | "finished";
+
+/**
+ * The dashboard list's search and status filter. Search matches what the row
+ * shows — the name, the join code, the game type — case-insensitively.
+ */
+export function filterSessions(
+  rows: SessionOverviewRow[],
+  query: string,
+  status: SessionStatusFilter,
+): SessionOverviewRow[] {
+  const q = query.trim().toLowerCase();
+  return rows.filter((r) => {
+    if (status === "live" && r.status === "finished") return false;
+    if (status === "finished" && r.status !== "finished") return false;
+    if (!q) return true;
+    return [sessionTitle(r), r.join_code, gameLabel(r.config)].some((f) =>
+      f.toLowerCase().includes(q),
+    );
+  });
+}

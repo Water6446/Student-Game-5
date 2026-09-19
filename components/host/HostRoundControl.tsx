@@ -42,6 +42,7 @@ import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { cost, money, signedPct } from "@/lib/game/format";
 import { Banner, Button, Card, InfoTip } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
@@ -71,6 +72,7 @@ export function HostRoundControl({
   session: SessionRow;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const players = usePlayers(supabase, session.id);
   const loadedRound = useRound(supabase, session.id, session.current_round);
   // What to DISPLAY: gates a stale round row after "Next round" and swallows the
@@ -96,9 +98,12 @@ export function HostRoundControl({
   const [showBots, setShowBots] = useShowBots(session.id);
 
   async function deleteSession() {
-    const ok = window.confirm(
-      `Delete session ${session.join_code}? This permanently removes all players, rounds and allocations. This cannot be undone.`,
-    );
+    const ok = await confirm({
+      title: `Delete session ${session.join_code}?`,
+      body: "This permanently removes every player, round and allocation in it. It cannot be undone.",
+      confirmLabel: "Delete session",
+      tone: "danger",
+    });
     if (!ok) return;
     setBusy(true);
     setError(null);
@@ -199,12 +204,22 @@ export function HostRoundControl({
 
   // Ending the game before the last round is rare and irreversible, so it hides
   // behind a quiet header button + an explicit confirm.
-  function finishEarly() {
-    const ok = window.confirm(
-      `Finish the game early, at round ${session.current_round} of ${session.config.num_rounds}?\n\n` +
-        "The game ends immediately: no more rounds, students see their final results, " +
-        "and you get the summary screen. This cannot be undone.",
-    );
+  async function finishEarly() {
+    const ok = await confirm({
+      title: "Finish the game early?",
+      body: (
+        <>
+          <p>
+            You&apos;re at {managerGame ? "year" : "round"} {session.current_round} of{" "}
+            {session.config.num_rounds}. The game ends immediately: no more rounds, students see
+            their final results, and you get the summary screen.
+          </p>
+          <p>This cannot be undone.</p>
+        </>
+      ),
+      confirmLabel: "Finish game",
+      tone: "danger",
+    });
     if (!ok) return;
     void finish();
   }

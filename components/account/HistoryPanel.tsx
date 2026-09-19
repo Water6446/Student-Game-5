@@ -1,10 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HistoryRow } from "@/lib/auth/account";
-import { Card, InfoTip } from "@/components/ui";
+import { Card, InfoTip, Skeleton } from "@/components/ui";
 import { money, ordinal } from "@/lib/game/format";
+import { whenText } from "@/lib/game/session-format";
+import { ArrowRight } from "@/components/icons";
+
+const STATUS_TEXT: Record<string, string> = {
+  lobby: "waiting to start",
+  active: "in progress",
+  finished: "finished",
+};
 
 /**
  * Every session this account has played — the actual payoff for claiming an
@@ -38,7 +47,11 @@ export function HistoryPanel({ supabase }: { supabase: SupabaseClient }) {
       </div>
 
       {rows === null ? (
-        <p className="mt-5 text-sm text-ink-subtle">Loading…</p>
+        <div role="status" className="mt-5 space-y-2">
+          <span className="sr-only">Loading…</span>
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
       ) : rows.length === 0 ? (
         <p className="mt-5 text-sm text-ink-subtle">
           Nothing yet. Join a game with a code and it will show up here.
@@ -46,23 +59,32 @@ export function HistoryPanel({ supabase }: { supabase: SupabaseClient }) {
       ) : (
         <ul className="mt-5 space-y-2">
           {rows.map((r) => (
-            <li
-              key={r.session_id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-ink bg-paper-2 px-4 py-3"
-            >
-              <span className="flex flex-col">
-                <span className="font-semibold text-ink">{r.display_name}</span>
-                <span className="font-mono text-xs text-ink-subtle">
-                  {new Date(r.played_at).toLocaleDateString()} ·{" "}
-                  {r.status === "finished" ? "finished" : r.status}
+            <li key={r.session_id}>
+              {/* The whole row opens the game: its results once finished, the
+                  live game (a rejoin) while it is still running. */}
+              <Link
+                href={`/play/${r.session_id}`}
+                className="group flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-ink bg-paper-2 px-4 py-3 transition hover:bg-brand-soft"
+              >
+                <span className="flex flex-col">
+                  <span className="font-semibold text-ink">{r.display_name}</span>
+                  <span className="font-mono text-xs text-ink-subtle">
+                    {whenText(r.played_at)} · {STATUS_TEXT[r.status] ?? r.status}
+                  </span>
                 </span>
-              </span>
-              <span className="flex items-baseline gap-3">
-                <span className="font-mono font-bold text-ink">{money(r.final_wealth)}</span>
-                <span className="font-mono text-xs text-ink-muted">
-                  {ordinal(r.rank)} of {r.total}
+                <span className="flex items-center gap-3">
+                  <span className="flex items-baseline gap-3">
+                    <span className="font-mono font-bold text-ink">{money(r.final_wealth)}</span>
+                    <span className="font-mono text-xs text-ink-muted">
+                      {ordinal(r.rank)} of {r.total}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1 font-display text-xs font-extrabold text-ink-muted transition group-hover:text-ink">
+                    {r.status === "finished" ? "Results" : "Rejoin"}
+                    <ArrowRight aria-hidden="true" />
+                  </span>
                 </span>
-              </span>
+              </Link>
             </li>
           ))}
         </ul>

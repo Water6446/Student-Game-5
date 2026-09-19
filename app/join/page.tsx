@@ -1,11 +1,15 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Eyebrow } from "@/components/marketing/primitives";
-import { JoinForm } from "@/components/JoinForm";
+import { JoinForm, JoinResume } from "@/components/JoinForm";
 import { Instructions } from "@/components/Instructions";
+import { Skeleton } from "@/components/ui";
 import { JOIN } from "@/lib/marketing/content";
+
+export const metadata: Metadata = { title: "Join a game" };
 
 /**
  * The student entry point, in the same frame as the rest of the site.
@@ -34,11 +38,18 @@ export default function JoinPage() {
             </p>
           </header>
 
+          {/* Back in the same browser mid-class? Straight back to the game. */}
+          <JoinResume className="mt-8" />
+
           <div className="mt-8">
             <Suspense
               fallback={
-                <div className="flex min-h-[18rem] items-center justify-center rounded-2xl border-2 border-dashed border-ink/30 text-ink-subtle">
-                  Loading…
+                <div role="status" className="rounded-2xl border-2 border-ink/15 p-6">
+                  <span className="sr-only">Loading…</span>
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="mt-6 h-16 w-full" />
+                  <Skeleton className="mt-4 h-12 w-full" />
+                  <Skeleton className="mt-6 h-14 w-full" />
                 </div>
               }
             >

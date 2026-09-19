@@ -7,6 +7,7 @@ import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useProfile } from "@/components/use-profile";
 import { clsx } from "@/components/clsx";
 import { ChevronDown, LogOut, Sliders, User as UserIcon } from "@/components/icons";
+import { useToast } from "@/components/Toast";
 import { canHost } from "@/lib/auth/can-host";
 import { HEADER } from "@/lib/marketing/content";
 
@@ -31,6 +32,7 @@ import { HEADER } from "@/lib/marketing/content";
 export function AccountMenu() {
   const { supabase, user, loading } = useSupabaseUser();
   const { profile, loading: profileLoading } = useProfile(supabase, user?.id ?? null);
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   // A guest cannot sign back in: an anonymous session, once dropped, is gone,
   // and with it their seat in any game still running (and, while the testing
@@ -183,7 +185,7 @@ export function AccountMenu() {
                       return;
                     }
                     setOpen(false);
-                    void supabase.auth.signOut();
+                    void supabase.auth.signOut().then(() => toast("Signed out"));
                   }}
                   className="flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm font-semibold text-loss transition hover:bg-loss-soft"
                 >

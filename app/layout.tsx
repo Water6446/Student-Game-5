@@ -3,6 +3,9 @@ import { Archivo, Hanken_Grotesk, Fraunces, JetBrains_Mono } from "next/font/goo
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { COLOR } from "@/lib/design/colors";
+import { siteUrl } from "@/lib/game/db";
+import { Providers } from "@/components/Providers";
+import { SkipLink } from "@/components/SkipLink";
 
 // Display: big bold grotesk for headlines, big numbers, button labels and names.
 // "Academy Arcade" — punchy game-show confidence over a finance classroom.
@@ -44,9 +47,13 @@ const DESCRIPTION =
   "Students divide their wealth between a safe and a risky asset from their phones, " +
   "the market resolves on the projector, and the class compares what each strategy produced.";
 
-// TODO(max) OG image: add `openGraph.images` once there is a real social card.
+// The share card is app/opengraph-image.tsx; Next wires it into og:image and
+// needs metadataBase to make that URL absolute.
 export const metadata: Metadata = {
-  title: "The Risk Game",
+  metadataBase: new URL(siteUrl()),
+  // Pages set a short title ("Account", "Round 3/25 · ABCD") and get the site
+  // name appended, so a host's control and projector tabs can be told apart.
+  title: { default: "The Risk Game", template: "%s · The Risk Game" },
   description: DESCRIPTION,
   openGraph: {
     title: "The Risk Game",
@@ -71,7 +78,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${display.variable} ${sans.variable} ${editorial.variable} ${mono.variable}`}
     >
       <body className="min-h-dvh font-sans">
-        {children}
+        <SkipLink />
+        <Providers>{children}</Providers>
         <Analytics />
       </body>
     </html>

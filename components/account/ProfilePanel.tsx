@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProfileRow } from "@/lib/auth/account";
 import { Banner, Button, Card, Field, InfoTip, TextInput } from "@/components/ui";
 import { usernameError } from "@/lib/auth/validation";
+import { useToast } from "@/components/Toast";
 
 /**
  * Profile editing.
@@ -23,19 +24,18 @@ export function ProfilePanel({
   profile: ProfileRow;
   onSaved: () => void;
 }) {
+  const toast = useToast();
   const [username, setUsername] = useState(profile.username);
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [institution, setInstitution] = useState(profile.institution ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const usernameChanged = username.trim() !== profile.username;
 
   async function save() {
     setBusy(true);
     setError(null);
-    setSaved(false);
 
     if (usernameChanged) {
       const uErr = usernameError(username);
@@ -63,7 +63,7 @@ export function ProfilePanel({
     setBusy(false);
     if (error) setError(error.message);
     else {
-      setSaved(true);
+      toast("Profile saved");
       onSaved();
     }
   }
@@ -92,7 +92,6 @@ export function ProfilePanel({
         </Field>
 
         {error ? <Banner kind="error">{error}</Banner> : null}
-        {saved ? <Banner kind="success">Saved.</Banner> : null}
 
         <Button onClick={save} disabled={busy}>
           {busy ? "Saving…" : "Save changes"}

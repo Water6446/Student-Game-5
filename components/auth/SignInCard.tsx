@@ -444,6 +444,17 @@ function RegisterPanel({
       <Button type="submit" disabled={busy} className="w-full">
         {busy ? "Creating…" : "Create account"}
       </Button>
+      <p className="text-center text-xs text-ink-subtle">
+        By creating an account you agree to the{" "}
+        <Link href="/terms" className="font-semibold text-ink-muted underline underline-offset-2 hover:text-ink">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="font-semibold text-ink-muted underline underline-offset-2 hover:text-ink">
+          Privacy policy
+        </Link>
+        .
+      </p>
     </form>
   );
 }

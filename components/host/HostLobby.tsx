@@ -11,6 +11,8 @@ import { usePlayers } from "@/components/use-players";
 import { Banner, Button, Card, InfoTip } from "@/components/ui";
 import { Users, Monitor } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { isManager } from "@/lib/game/types";
 import { COLOR } from "@/lib/design/colors";
@@ -21,6 +23,8 @@ const LOBBY_CONDENSE = { threshold: 24 };
 
 export function HostLobby({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const allPlayers = usePlayers(supabase, session.id);
   // Benchmark bots are added at creation; they're not "joining", so keep the
   // lobby roster + count to real students only.
@@ -32,9 +36,12 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
   const link = joinUrl(session.join_code);
 
   async function deleteSession() {
-    const ok = window.confirm(
-      `Delete session ${session.join_code}? This permanently removes the lobby and any players who joined. This cannot be undone.`,
-    );
+    const ok = await confirm({
+      title: `Delete session ${session.join_code}?`,
+      body: "This permanently removes the lobby and everyone who has joined it. It cannot be undone.",
+      confirmLabel: "Delete session",
+      tone: "danger",
+    });
     if (!ok) return;
     setBusy(true);
     setError(null);
@@ -63,9 +70,12 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
+      toast("Join link copied");
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — the link is visible to copy manually */
+      // Clipboard blocked (an insecure origin, or a denied permission): the
+      // link is printed right above the button, so say where to find it.
+      toast("Couldn't copy — the link is shown above the button", { tone: "error" });
     }
   }
 

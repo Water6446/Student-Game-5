@@ -13,8 +13,10 @@ import { LiveSessionStrip } from "@/components/host/LiveSessionStrip";
 import { liveSession } from "@/lib/game/session-format";
 import { Instructions } from "@/components/Instructions";
 import { canHost } from "@/lib/auth/can-host";
-import { Banner } from "@/components/ui";
+import { Banner, SkeletonCards } from "@/components/ui";
 import { clsx } from "@/components/clsx";
+import { Message } from "@/components/icons";
+import { feedbackHref } from "@/lib/feedback";
 import type { SessionOverviewRow } from "@/lib/game/db";
 
 /**
@@ -69,9 +71,14 @@ export default function HostPage() {
 
   if (loading || !allowed) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-subtle">
-        {loading ? "Loading…" : "Taking you to sign-in…"}
-      </main>
+      <>
+        <SiteHeader />
+        <main className="min-h-dvh">
+          <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
+            <SkeletonCards label={loading ? "Loading your dashboard" : "Taking you to sign-in"} />
+          </div>
+        </main>
+      </>
     );
   }
 
@@ -83,7 +90,18 @@ export default function HostPage() {
       <main className="min-h-dvh">
         <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
           <header>
-            <Eyebrow className="text-ink-muted">Host dashboard</Eyebrow>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Eyebrow className="text-ink-muted">Host dashboard</Eyebrow>
+              {/* Pre-filled with the session most on their mind: the live one,
+                  else the most recent. */}
+              <a
+                href={feedbackHref({ joinCode: (live ?? rows[0])?.join_code })}
+                className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-ink-muted transition hover:text-ink"
+              >
+                <Message aria-hidden="true" />
+                Send feedback
+              </a>
+            </div>
             {/* Held invisible (same height, no reflow) until the profile is
                 known, so it never reads one name and then another. */}
             <h1

@@ -8,18 +8,22 @@ import { WhoItsFor } from "@/components/marketing/WhoItsFor";
 import { Faq } from "@/components/marketing/Faq";
 import { FinalCta } from "@/components/marketing/FinalCta";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { HomeResumeSlot } from "@/components/marketing/HomeResumeSlot";
 
 /**
  * The public landing page. Still a static Server Component; the only client JS
  * is the scroll-reveal wrapper, the native FAQ disclosures, and the account menu
- * in the header, which is the one piece that has to know who is signed in. Every
- * string lives in `lib/marketing/content.ts`.
+ * in the header and the resume strip above the hero — the two pieces that have
+ * to know who is signed in, both loaded as async chunks. Every string lives in
+ * `lib/marketing/content.ts`.
  */
 export default function Home() {
   return (
     <>
       <SiteHeader />
       <main className="min-h-dvh">
+        {/* "Resume your class" / "Rejoin your game" — nothing for most visitors. */}
+        <HomeResumeSlot />
         <Hero />
         <HowItWorks />
         <GameModes />

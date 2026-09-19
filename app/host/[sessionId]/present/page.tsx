@@ -1,30 +1,38 @@
 "use client";
 
-import Link from "next/link";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useSession } from "@/components/use-session";
+import { useDocumentTitle } from "@/components/use-document-title";
 import { HostPresent } from "@/components/host/HostPresent";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { StatusPage } from "@/components/StatusPage";
+import { PageSkeleton } from "@/components/ui";
 
 export default function HostPresentPage({ params }: { params: { sessionId: string } }) {
   const { supabase, loading: authLoading } = useSupabaseUser();
   const { session, loading } = useSession(supabase, params.sessionId);
+  // "Projector" first: it is the word that tells this tab from the control tab.
+  useDocumentTitle(session ? `Projector · ${session.join_code}` : null);
 
   if (authLoading || loading) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-subtle">Loading…</main>
-    );
+    return <PageSkeleton label="Loading projector view" width="max-w-6xl" />;
   }
 
   if (!session) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-black uppercase tracking-tight text-ink">Session not found</h1>
-        <Link href="/host" className="font-bold text-ink underline-offset-4 hover:underline">
-          ← Back to host dashboard
-        </Link>
-      </main>
+      <StatusPage
+        eyebrow="Projector"
+        title="Session not found"
+        body="It may have been deleted, or you're not signed in as its host."
+        primary={{ label: "Back to host dashboard", href: "/host" }}
+      />
     );
   }
 
-  return <HostPresent supabase={supabase} session={session} />;
+  return (
+    <>
+      <ConnectionBanner />
+      <HostPresent supabase={supabase} session={session} />
+    </>
+  );
 }

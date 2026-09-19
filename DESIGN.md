@@ -266,7 +266,34 @@ gets `border-2 border-ink` + `shadow-card` + the press shift.
   (blue), knob white with a thin ink border.
 - **`Banner`** — `kind`: `error` (loss), `info` (play/blue), `success` (gain);
   `rounded-xl border-2 border-ink shadow-card`, soft-tint fill + matching text,
-  `role="alert"`.
+  `role="alert"`. For something the person must read or act on in place.
+- **`Skeleton` / `SkeletonCards` / `PageSkeleton`** — `animate-pulse-soft` blocks
+  in `bg-ink/10`. `PageSkeleton` is a whole loading page (its own `<main>`, at
+  the page's width); `SkeletonCards` is the same body for pages that already
+  render the site header. Never a bare "Loading…" line.
+
+Beyond `ui.tsx`, the app-wide pieces (all mounted or used from `app/layout.tsx`):
+
+- **Toasts** (`components/Toast.tsx`, `useToast()`) — bottom-right (bottom-centre
+  on phones) card, ink border, round tone icon, auto-dismiss (errors linger),
+  pause on hover. Confirms an action just taken: "Profile saved", "Join link
+  copied", "Deleted …". Not for anything that needs a decision or a fix.
+- **Confirm dialog** (`components/ConfirmDialog.tsx`, `await useConfirm()({…})`)
+  — replaces `window.confirm`. Title, short body, a confirm label that names the
+  action ("Delete session", never "OK"), `tone: "danger"` for anything
+  irreversible. Focus starts on Cancel; Escape and the backdrop cancel.
+- **`StatusPage`** — dead ends in site chrome: 404, error, "Session not found",
+  "You haven't joined this game". One amber primary action, quiet secondary links.
+- **`ConnectionBanner`** — mounted by the live screens (host control, projector,
+  play). A pill at the top when offline or when the realtime socket is down past
+  a 4s grace; offers Refresh, and says "Back online — refresh to catch up" after,
+  because the realtime hooks do not replay missed events.
+- **`SkipLink`** — "Skip to content", first in the tab order on every page,
+  focuses the page's `<main>`.
+- **Tab titles** — the root metadata template is `%s · The Risk Game`. Static
+  pages export `metadata.title` (client pages get a route `layout.tsx` that
+  does); live screens call `useDocumentTitle()` with state from
+  `sessionTabTitle()` — "Round 3/25 · ABCD", "Projector · ABCD".
 
 **Focus:** every interactive element gets a visible ring —
 `focus-visible:ring-2 ring-brand ring-offset-2 ring-offset-paper` (set globally
@@ -365,7 +392,11 @@ route `app/host/[sessionId]/present/page.tsx`): the stage is an ink-bordered
 app/globals.css          tokens, base type, focus rings, body dot texture, motion reset, slider/confetti CSS
 tailwind.config.ts       color tokens, font families, hard-offset shadows, keyframes/animations
 app/layout.tsx           next/font wiring (Archivo / Hanken Grotesk / Fraunces italic / JetBrains Mono)
-components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner, InfoTip
+components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner, InfoTip, Skeleton/SkeletonCards/PageSkeleton
+components/Toast.tsx      useToast() — action confirmations
+components/ConfirmDialog.tsx  useConfirm() — the styled replacement for window.confirm
+components/StatusPage.tsx 404 / error / not-found dead ends, in site chrome
+components/ConnectionBanner.tsx  offline / realtime-down pill for live screens
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti
 lib/design/colors.ts      the tokens as literal colour strings, for Recharts and inline styles

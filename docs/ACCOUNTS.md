@@ -31,6 +31,9 @@ to stay until then.
 | Brute-force throttle for the proxied path | `0022_login_throttle.sql` |
 | Host dashboard overview RPC | `0023_session_overview.sql` |
 | **Signed-out callers locked out of every RPC but sign-in**; purge spares anonymous hosts; throttle fixes | `0024_account_edge_cases.sql` |
+| Host renames a session after creating it (`set_session_label`) | `0025_rename_session.sql` |
+| Change email address, clickable game history | `components/account/IdentitiesPanel.tsx`, `HistoryPanel.tsx` |
+| Privacy policy and terms (Massachusetts law) | `app/privacy/`, `app/terms/`, `LEGAL` in `lib/marketing/content.ts` |
 | Sign-in / register card, Google, reset page | `components/auth/SignInCard.tsx`, `app/auth/reset/` |
 | The one login URL, wearing the site's header and footer | `app/login/` |
 | Account dropdown in the site header | `components/marketing/AccountMenu.tsx` |

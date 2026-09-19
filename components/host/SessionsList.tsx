@@ -1,15 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionOverviewRow } from "@/lib/game/db";
 import { configForRerun, createSession } from "@/lib/game/create-session";
 import { clsx } from "@/components/clsx";
-import { Banner, Button } from "@/components/ui";
-import { Shuffle, Trash, Users } from "@/components/icons";
-import { gameLabel, sessionTitle, whenText } from "@/lib/game/session-format";
+import { Banner, Button, Skeleton, TextInput } from "@/components/ui";
+import { useToast } from "@/components/Toast";
+import { Pencil, Search, Shuffle, Trash, Users } from "@/components/icons";
+import {
+  filterSessions,
+  gameLabel,
+  sessionTitle,
+  whenText,
+  type SessionStatusFilter,
+} from "@/lib/game/session-format";
 
 const STATUS_STYLES: Record<string, string> = {
   lobby: "bg-brand text-ink",
@@ -17,10 +24,22 @@ const STATUS_STYLES: Record<string, string> = {
   finished: "bg-paper-2 text-ink-subtle",
 };
 
+/** Search and filters only earn their space once the list is long enough to need them. */
+const TOOLBAR_FROM = 5;
+/** Rows shown before "Show more" — a term of weekly sections is well past this. */
+const PAGE = 20;
+
+const FILTERS: { id: SessionStatusFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "live", label: "Live" },
+  { id: "finished", label: "Finished" },
+];
+
 /**
  * The list a host comes back to. Each row has to answer "which class was that?"
  * without opening it, so it carries the name, roster size and round progress —
- * not just a join code and a timestamp.
+ * not just a join code and a timestamp. The name can be changed afterwards
+ * (set_session_label, 0025), because it is usually typed in a hurry, if at all.
  */
 export function SessionsList({
   rows,
@@ -34,9 +53,17 @@ export function SessionsList({
   supabase: SupabaseClient;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<SessionStatusFilter>("all");
+  const [limit, setLimit] = useState(PAGE);
+
+  const visible = useMemo(() => filterSessions(rows, query, status), [rows, query, status]);
 
   async function remove(s: SessionOverviewRow) {
     setBusyId(s.id);
@@ -45,7 +72,32 @@ export function SessionsList({
     setBusyId(null);
     setPendingDelete(null);
     if (error) setError(error.message);
-    else onChanged();
+    else {
+      toast(`Deleted ${sessionTitle(s)}`);
+      onChanged();
+    }
+  }
+
+  async function rename(s: SessionOverviewRow) {
+    setBusyId(s.id);
+    setError(null);
+    const { error } = await supabase.rpc("set_session_label", {
+      p_session_id: s.id,
+      p_label: draft.trim(),
+    });
+    setBusyId(null);
+    if (error) {
+      setError(
+        // The migration may not be on the database yet.
+        error.message.includes("set_session_label")
+          ? "Renaming isn't available yet — the database needs migration 0025."
+          : error.message,
+      );
+      return;
+    }
+    setRenaming(null);
+    toast(draft.trim() ? `Renamed to ${draft.trim()}` : "Name cleared");
+    onChanged();
   }
 
   async function runAgain(s: SessionOverviewRow) {
@@ -63,7 +115,16 @@ export function SessionsList({
     router.push(`/host/${result.id}`);
   }
 
-  if (loading) return <p className="text-sm text-ink-subtle">Loading your sessions…</p>;
+  if (loading) {
+    return (
+      <div role="status" className="space-y-2">
+        <span className="sr-only">Loading your sessions…</span>
+        <Skeleton className="h-[76px] w-full" />
+        <Skeleton className="h-[76px] w-full" />
+        <Skeleton className="h-[76px] w-full" />
+      </div>
+    );
+  }
 
   if (rows.length === 0) {
     return (
@@ -81,99 +142,201 @@ export function SessionsList({
 
   return (
     <>
+      {rows.length >= TOOLBAR_FROM ? (
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="relative flex min-w-0 flex-1 items-center">
+            <span className="sr-only">Search sessions</span>
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 text-ink-muted" />
+            <TextInput
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setLimit(PAGE);
+              }}
+              placeholder="Search by name, code or game"
+              className="py-2.5 pl-10"
+            />
+          </label>
+          {/* Active = solid ink fill + cream text (DESIGN.md §8). */}
+          <div role="group" aria-label="Filter by status" className="flex shrink-0 gap-2">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={status === f.id}
+                onClick={() => {
+                  setStatus(f.id);
+                  setLimit(PAGE);
+                }}
+                className={clsx(
+                  "min-h-[44px] rounded-full border-2 border-ink px-4 font-display text-sm font-extrabold transition",
+                  status === f.id
+                    ? "translate-x-[1px] translate-y-[1px] bg-ink text-paper-inverse"
+                    : "bg-surface text-ink shadow-card hover:bg-paper-2",
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {error ? (
         <div className="mb-3">
           <Banner kind="error">{error}</Banner>
         </div>
       ) : null}
 
-      <ul className="space-y-2">
-        {rows.map((s) => {
-          const confirming = pendingDelete === s.id;
-          const busy = busyId === s.id;
-          const rounds = s.config.num_rounds ?? 0;
+      {visible.length === 0 ? (
+        <p className="rounded-2xl border-2 border-dashed border-ink/30 px-6 py-8 text-center font-editorial text-sm italic text-ink-muted">
+          No sessions match.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {visible.slice(0, limit).map((s) => {
+            const confirming = pendingDelete === s.id;
+            const editing = renaming === s.id;
+            const busy = busyId === s.id;
+            const rounds = s.config.num_rounds ?? 0;
 
-          return (
-            <li
-              key={s.id}
-              className="rounded-xl border-2 border-ink bg-surface shadow-card transition hover:bg-paper-2"
-            >
-              <div className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
-                <Link href={`/host/${s.id}`} className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="truncate font-display text-base font-extrabold text-ink">
-                      {sessionTitle(s)}
-                    </span>
-                    <span
-                      className={clsx(
-                        "rounded-full border-2 border-ink px-2.5 py-0.5 font-display text-[11px] font-extrabold uppercase tracking-wide",
-                        STATUS_STYLES[s.status] ?? "",
-                      )}
+            return (
+              <li
+                key={s.id}
+                className="rounded-xl border-2 border-ink bg-surface shadow-card transition hover:bg-paper-2"
+              >
+                <div className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
+                  {editing ? (
+                    <form
+                      noValidate
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!busy) void rename(s);
+                      }}
+                      className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
                     >
-                      {s.status}
-                    </span>
-                  </span>
-                  <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-subtle">
-                    <span className="font-bold tracking-widest text-ink-muted">{s.join_code}</span>
-                    <span>{gameLabel(s.config)}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Users /> {s.player_count}
-                    </span>
-                    {rounds > 0 ? (
-                      <span>
-                        {Math.min(s.current_round, rounds)}/{rounds} rounds
+                      <TextInput
+                        autoFocus
+                        value={draft}
+                        maxLength={80}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setRenaming(null);
+                        }}
+                        aria-label="Session name"
+                        placeholder={`${gameLabel(s.config)} game`}
+                        className="min-w-0 flex-1 py-2"
+                      />
+                      <Button type="submit" disabled={busy}>
+                        {busy ? "Saving…" : "Save"}
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => setRenaming(null)}>
+                        Cancel
+                      </Button>
+                    </form>
+                  ) : (
+                    <Link href={`/host/${s.id}`} className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span className="truncate font-display text-base font-extrabold text-ink">
+                          {sessionTitle(s)}
+                        </span>
+                        <span
+                          className={clsx(
+                            "rounded-full border-2 border-ink px-2.5 py-0.5 font-display text-[11px] font-extrabold uppercase tracking-wide",
+                            STATUS_STYLES[s.status] ?? "",
+                          )}
+                        >
+                          {s.status}
+                        </span>
                       </span>
-                    ) : null}
-                    <span>{whenText(s.created_at)}</span>
-                  </span>
-                </Link>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-subtle">
+                        <span className="font-bold tracking-widest text-ink-muted">{s.join_code}</span>
+                        <span>{gameLabel(s.config)}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Users /> {s.player_count}
+                        </span>
+                        {rounds > 0 ? (
+                          <span>
+                            {Math.min(s.current_round, rounds)}/{rounds} rounds
+                          </span>
+                        ) : null}
+                        <span>{whenText(s.created_at)}</span>
+                      </span>
+                    </Link>
+                  )}
+
+                  {editing ? null : confirming ? (
+                    <span className="flex shrink-0 items-center gap-2">
+                      <Button variant="danger" onClick={() => remove(s)} disabled={busy}>
+                        {busy ? "Deleting…" : "Delete for good"}
+                      </Button>
+                      <Button variant="secondary" onClick={() => setPendingDelete(null)}>
+                        Keep
+                      </Button>
+                    </span>
+                  ) : (
+                    <span className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError(null);
+                          setPendingDelete(null);
+                          setDraft(s.config.label?.trim() ?? "");
+                          setRenaming(s.id);
+                        }}
+                        disabled={busy}
+                        aria-label={`Rename ${sessionTitle(s)}`}
+                        title="Rename"
+                        className="inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
+                      >
+                        <Pencil />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runAgain(s)}
+                        disabled={busy}
+                        title="Create a new session with these settings"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
+                      >
+                        <Shuffle />
+                        {busy ? "Starting…" : "Run again"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError(null);
+                          setRenaming(null);
+                          setPendingDelete(s.id);
+                        }}
+                        aria-label={`Delete session ${sessionTitle(s)}`}
+                        title="Delete session"
+                        className="inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-loss transition hover:bg-loss-soft"
+                      >
+                        <Trash />
+                      </button>
+                    </span>
+                  )}
+                </div>
 
                 {confirming ? (
-                  <span className="flex shrink-0 items-center gap-2">
-                    <Button variant="danger" onClick={() => remove(s)} disabled={busy}>
-                      {busy ? "Deleting…" : "Delete for good"}
-                    </Button>
-                    <Button variant="secondary" onClick={() => setPendingDelete(null)}>
-                      Keep
-                    </Button>
-                  </span>
-                ) : (
-                  <span className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => runAgain(s)}
-                      disabled={busy}
-                      title="Create a new session with these settings"
-                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
-                    >
-                      <Shuffle />
-                      {busy ? "Starting…" : "Run again"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setError(null);
-                        setPendingDelete(s.id);
-                      }}
-                      aria-label={`Delete session ${sessionTitle(s)}`}
-                      title="Delete session"
-                      className="inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-loss transition hover:bg-loss-soft"
-                    >
-                      <Trash />
-                    </button>
-                  </span>
-                )}
-              </div>
+                  <p className="border-t-2 border-ink px-4 py-2 text-xs font-semibold text-loss">
+                    This permanently removes its students, rounds and allocations. It cannot be undone.
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-              {confirming ? (
-                <p className="border-t-2 border-ink px-4 py-2 text-xs font-semibold text-loss">
-                  This permanently removes its students, rounds and allocations. It cannot be undone.
-                </p>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+      {visible.length > limit ? (
+        <div className="mt-4 flex justify-center">
+          <Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)}>
+            Show {Math.min(PAGE, visible.length - limit)} more
+          </Button>
+        </div>
+      ) : null}
     </>
   );
 }
