@@ -116,7 +116,7 @@ export default function HostPage() {
 
           {live ? (
             <div className="mt-8">
-              <LiveSessionStrip session={live} />
+              <LiveSessionStrip session={live} supabase={supabase} onDeleted={reload} />
             </div>
           ) : null}
 

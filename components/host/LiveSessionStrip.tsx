@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionOverviewRow } from "@/lib/game/db";
 import { DotField } from "@/components/marketing/primitives";
-import { ArrowRight, Monitor, Users } from "@/components/icons";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
+import { ArrowRight, Monitor, Trash, Users } from "@/components/icons";
 import { gameLabel, sessionTitle } from "@/lib/game/session-format";
 
 /**
@@ -16,11 +20,53 @@ import { gameLabel, sessionTitle } from "@/lib/game/session-format";
  * Deliberately the one ink-filled surface on the dashboard: the design system
  * reserves that weight for the thing that matters most on a screen, and here
  * there is at most one of these at a time.
+ *
+ * It can also delete the session: a test game or an abandoned class otherwise
+ * sits here, pinned above everything, until the host digs it out of the list.
+ * The delete is deliberately the quietest control — an icon, never beside
+ * Resume — and always goes through the confirm dialog.
  */
-export function LiveSessionStrip({ session }: { session: SessionOverviewRow }) {
+export function LiveSessionStrip({
+  session,
+  supabase,
+  onDeleted,
+}: {
+  session: SessionOverviewRow;
+  supabase: SupabaseClient;
+  /** called after a successful delete, so the page can drop the strip */
+  onDeleted: () => void;
+}) {
+  const confirm = useConfirm();
+  const toast = useToast();
+  const [deleting, setDeleting] = useState(false);
   const rounds = session.config.num_rounds ?? 0;
   const inProgress = session.status === "active";
   const round = Math.min(session.current_round, rounds || session.current_round);
+  const title = sessionTitle(session);
+
+  async function remove() {
+    const students = session.player_count;
+    const ok = await confirm({
+      title: `Delete ${title}?`,
+      body: inProgress
+        ? `This game is still running. ${
+            students === 1 ? "The 1 student in it loses" : `All ${students} students in it lose`
+          } their game, and every round and allocation is removed. It cannot be undone.`
+        : "This closes the lobby and removes everyone who has joined it. It cannot be undone.",
+      confirmLabel: "Delete session",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setDeleting(true);
+    const { error } = await supabase.rpc("delete_session", { p_session_id: session.id });
+    setDeleting(false);
+    if (error) {
+      toast(`Couldn't delete: ${error.message}`, { tone: "error" });
+      return;
+    }
+    toast(`Deleted ${title}`);
+    onDeleted();
+  }
 
   return (
     <section
@@ -44,7 +90,7 @@ export function LiveSessionStrip({ session }: { session: SessionOverviewRow }) {
           </span>
 
           <h3 className="mt-2 truncate font-display text-2xl font-black uppercase tracking-tight text-paper-inverse sm:text-3xl">
-            {sessionTitle(session)}
+            {title}
           </h3>
 
           <dl className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 font-mono text-sm text-paper-inverse/75">
@@ -75,11 +121,24 @@ export function LiveSessionStrip({ session }: { session: SessionOverviewRow }) {
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={remove}
+            disabled={deleting}
+            aria-label={`Delete ${title}`}
+            title="Delete this session"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-paper-inverse/40 text-paper-inverse/80 transition hover:border-loss hover:bg-loss hover:text-white disabled:opacity-50"
+          >
+            <Trash aria-hidden="true" />
+          </button>
           <Link
             href={`/host/${session.id}/present`}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border-2 border-paper-inverse/40 px-4 font-display text-sm font-extrabold text-paper-inverse transition hover:border-paper-inverse"
+            aria-label="Projector"
+            // Icon-only below sm: with the delete button beside it, three
+            // labelled controls overflow a 375px strip and clip Resume.
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-full border-2 border-paper-inverse/40 font-display text-sm font-extrabold text-paper-inverse transition hover:border-paper-inverse sm:px-4"
           >
-            <Monitor aria-hidden="true" /> Projector
+            <Monitor aria-hidden="true" /> <span className="hidden sm:inline">Projector</span>
           </Link>
           <Link
             href={`/host/${session.id}`}

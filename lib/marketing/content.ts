@@ -95,7 +95,6 @@ export const HERO = {
   /** The headline is set in two faces: Archivo black, then Fraunces italic. */
   headlineLead: "A classroom simulation",
   headlineEmphasis: "of investment risk.",
-  scrollLabel: "scroll",
   sub: "A hands-on way to learn how investment risk really works. Each round you divide your wealth between a safe and a risky asset, the market turns, and you see how your choices stack up against every other strategy in the room. For classrooms, client workshops, and anyone curious about the tradeoff between playing it safe and reaching for more.",
   primary: { label: "Host a session", href: "/host" },
   secondary: { label: "Join with a code", href: "/join" },
@@ -116,7 +115,8 @@ export const HERO = {
   stats: [
     { value: "3", label: "game types" },
     { value: "25", label: "rounds by default" },
-    { value: "0", label: "student accounts" },
+    // The player cap enforced in 0018_quotas.sql — keep the two in step.
+    { value: "400", label: "players per session" },
     { value: "15", label: "minutes a session" },
   ],
   /** Chip floating over the stage next to the allocation card. */
@@ -450,7 +450,6 @@ export const FOOTER = {
   email: SITE.email,
   personalSiteUrl: SITE.personalSiteUrl,
   copyright: "© 2026 Max Jansen",
-  builtWith: "Built with Next.js and Supabase.",
   legalLinks: [
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },

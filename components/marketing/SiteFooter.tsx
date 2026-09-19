@@ -78,7 +78,6 @@ export function SiteFooter() {
               </Link>
             ))}
           </nav>
-          <p className="font-mono text-xs text-paper-inverse/60">{FOOTER.builtWith}</p>
         </div>
       </Shell>
     </footer>

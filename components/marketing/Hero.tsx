@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ArrowDown, ArrowRight, ArrowUp, Coins, Lock } from "@/components/icons";
+import { ArrowRight, ArrowUp, Coins, Lock } from "@/components/icons";
 import { Shell, TextLink } from "@/components/marketing/primitives";
 import { HostOrLoginCta } from "@/components/marketing/HostOrLoginCta";
 import { HERO, isTodo } from "@/lib/marketing/content";
@@ -92,15 +92,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="mt-12 flex flex-wrap items-end justify-between gap-6 border-t border-paper-inverse/20 pt-6 lg:mt-16">
-            <p
-              aria-hidden="true"
-              className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.28em] text-paper-inverse/60"
-            >
-              {HERO.scrollLabel}
-              <span className="h-px w-12 bg-paper-inverse/40" />
-              <ArrowDown />
-            </p>
+          <div className="mt-12 flex flex-wrap items-end justify-end gap-6 border-t border-paper-inverse/20 pt-6 lg:mt-16">
             <p className="max-w-sm font-editorial text-sm italic leading-relaxed text-paper-inverse/75 sm:text-base">
               {HERO.aside}
             </p>

@@ -36,7 +36,13 @@ export function HomeResume() {
 
   return (
     <div className="space-y-3 px-3 pt-3 sm:px-4 sm:pt-4">
-      {hostLive ? <LiveSessionStrip session={hostLive} /> : null}
+      {hostLive ? (
+        <LiveSessionStrip
+          session={hostLive}
+          supabase={supabase}
+          onDeleted={() => setHostLive(null)}
+        />
+      ) : null}
       <StudentResumeStrip supabase={supabase} />
     </div>
   );
