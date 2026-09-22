@@ -45,8 +45,10 @@ export function ManagerProspectus({
         keyOf={(m, i) => `${m.name}-${i}`}
         as="ul"
         moreNoun="managers"
-        // Five fit comfortably; a bigger line-up collapses like every other list.
-        options={{ top: 5, bottom: 0, threshold: 5 }}
+        // A line-up is at most 8 managers plus the index fund, and every card is
+        // a choice the student is making — hiding one behind "+1 more" (which
+        // six funds used to trigger) would hide a fund they can buy.
+        options={{ top: 9, bottom: 0, threshold: 9 }}
         className="grid gap-3 sm:grid-cols-2"
         gapClassName="font-editorial text-sm italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
@@ -71,23 +73,17 @@ export function ProspectusCard({
   const t = manager.track_record;
   return (
     <div className="flex h-full flex-col rounded-2xl border-2 border-ink bg-surface p-4 shadow-card">
-      <div className="flex items-start justify-between gap-2">
-        <span className="font-display text-base font-extrabold uppercase tracking-tight text-ink">
-          {manager.name}
-        </span>
-        {/* The badge alone was a bare "1% / yr" and read as an unexplained
-            statistic — a host asked outright what it meant. Fees stay prominent
-            (paying for skill you cannot verify is the module): the badge names
-            them, and the InfoTip spells the terms out in words. */}
-        <span className="flex shrink-0 items-center gap-1.5">
-          <span className="rounded-full border-2 border-ink bg-brand px-2 py-0.5 font-mono text-[11px] font-bold text-ink">
-            {feeLine(manager)}
-          </span>
-          <InfoTip label={`About ${manager.name}'s fees`}>{feeSentence(manager)}</InfoTip>
-        </span>
-      </div>
+      <span className="font-display text-base font-extrabold uppercase tracking-tight text-ink">
+        {manager.name}
+      </span>
 
-      <p className="mt-1 font-editorial text-sm italic text-ink-muted">{manager.strategy_line}</p>
+      {/* The fee is part of the description, in the description's voice — the
+          way a real prospectus discloses it. It was a gold badge beside the
+          name, which made it the loudest thing on the card; what fees cost is
+          the end-of-game reveal, not the first thing a student reads. */}
+      <p className="mt-1 font-editorial text-sm italic text-ink-muted">
+        {manager.strategy_line} {feeSentence(manager)}
+      </p>
 
       <Sparkline yearly={t.yearly} playedYears={playedYears} />
 
@@ -224,22 +220,14 @@ function Sparkline({ yearly, playedYears = 0 }: { yearly: number[]; playedYears?
   );
 }
 
-/** The badge: always says the word FEE, so the number is never orphaned. */
-function feeLine(m: ManagerPublic): string {
-  const mgmt = `${round1(m.mgmt_fee * 100)}%`;
-  return m.perf_fee > 0
-    ? `FEE ${mgmt} + ${round1(m.perf_fee * 100)}%`
-    : `FEE ${mgmt}/yr`;
-}
-
-/** The same terms in plain words — what the badge actually costs you. */
+/** The fee terms in plain words, closing the card's description. */
 function feeSentence(m: ManagerPublic): string {
-  const mgmt = `${round1(m.mgmt_fee * 100)}% of your money every year, win or lose`;
-  return m.perf_fee > 0
-    ? `${mgmt}, plus ${round1(m.perf_fee * 100)}% of any gain.`
-    : `${mgmt}.`;
+  const mgmt = `Fee: ${pctText(m.mgmt_fee * 100)}% of your money a year`;
+  return m.perf_fee > 0 ? `${mgmt}, plus ${pctText(m.perf_fee * 100)}% of any gain.` : `${mgmt}.`;
 }
 
-function round1(n: number): string {
-  return String(Math.round(n * 10) / 10);
+/** Up to two decimals, no trailing zeros: 1 → "1", 0.05 → "0.05" (a one-decimal
+ *  round would quote the index fund's 0.05% as 0.1%). */
+function pctText(n: number): string {
+  return String(Math.round(n * 100) / 100);
 }

@@ -14,7 +14,7 @@ import { money } from "@/lib/game/format";
 import { Button, Banner, Card, Field, InfoTip, Select, TextInput, Toggle } from "@/components/ui";
 import { ArrowLeft, Coins, TrendUp, Trophy } from "@/components/icons";
 import { ManagerSetup } from "@/components/host/ManagerSetup";
-import { MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
+import { INDEX_FUND, MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
 import { createSession } from "@/lib/game/create-session";
 
 // "Base setup": the recommended one-click default per game. The professor's
@@ -32,9 +32,9 @@ const BASE_SETUP: SessionConfig = {
   add_benchmark_bots: true,
 };
 
-// The manager game: 25 YEARS, a risk-free asset and 5 managers, 2x leverage
-// available, scored against an index you cannot buy. Skill is real but tiny; the
-// defaults are calibrated so the lesson lands without the host touching a dial.
+// The manager game: 25 YEARS, a risk-free asset, 5 managers and a 0.05% index
+// fund, 2x leverage available, scored against the index. Skill is real but tiny;
+// the defaults are calibrated so the lesson lands without the host touching a dial.
 const MANAGER_BASE_SETUP: SessionConfig = {
   ...DEFAULT_CONFIG,
   game_type: "manager",
@@ -49,6 +49,8 @@ const MANAGER_BASE_SETUP: SessionConfig = {
   leverage_cap: 2,
   shuffle_skill: true,
   manager_preset: "default",
+  // the passive option students can buy, appended server-side after the shuffle
+  index_fund: true,
   // one synthetic competitor: 'The Index'
   add_benchmark_bots: true,
 };
@@ -267,7 +269,7 @@ export function CreateSessionForm({
         ? advanced
           ? { managers: drafts, num_managers: drafts.length }
           : { managers: undefined, num_managers: drafts.length }
-        : { managers: undefined, num_managers: undefined }),
+        : { managers: undefined, num_managers: undefined, index_fund: undefined }),
       ...(portfolio || manager ? {} : { risk_free_rate: undefined }),
     };
     // One creation path, shared with "run it again" on the dashboard, so the
@@ -303,7 +305,9 @@ export function CreateSessionForm({
   const summary = manager
     ? [
         `Each round is a YEAR — ${cfg.num_rounds} years, ${money(cfg.starting_wealth)} starting wealth`,
-        `Split your wealth across ${cfg.num_managers ?? 5} fund managers and a ${Math.round((cfg.risk_free_rate ?? 0.03) * 100)}% risk-free asset`,
+        `Split your wealth across ${cfg.num_managers ?? 5} fund managers${
+          cfg.index_fund === false ? "" : `, an index fund (${INDEX_FUND.mgmt_fee * 100}%/yr fee)`
+        } and a ${Math.round((cfg.risk_free_rate ?? 0.03) * 100)}% risk-free asset`,
         `The index returns ${marketPct}%/yr on average, with ${sdPct}% volatility`,
         (cfg.leverage_cap ?? 2) > 1
           ? `Students may borrow up to ${cfg.leverage_cap ?? 2}× their wealth at ${borrowPct}%/yr`
@@ -347,7 +351,7 @@ export function CreateSessionForm({
   if (cfg.add_benchmark_bots) {
     summary.push(
       manager
-        ? "Plus 'The Index' — a passive competitor with no fees that students cannot buy"
+        ? "Plus 'The Index' — a passive competitor that pays no fees at all"
         : portfolio
           ? "Game includes four benchmark students: all-safe, one-basket, diversified, and half diversified risky & half safe"
           : "Plus 4 benchmark students: all-safe, edge, 50/50, all-risky",
@@ -645,6 +649,13 @@ export function CreateSessionForm({
               checked={cfg.add_benchmark_bots}
               onChange={(v) => set("add_benchmark_bots", v)}
             />
+            {manager ? (
+              <Toggle
+                label={`Offer an index fund (${INDEX_FUND.mgmt_fee * 100}%/yr fee)`}
+                checked={cfg.index_fund !== false}
+                onChange={(v) => set("index_fund", v)}
+              />
+            ) : null}
             <Toggle
               label="Allow late join (after start)"
               checked={cfg.allow_late_join}

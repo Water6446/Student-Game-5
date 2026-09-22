@@ -45,6 +45,10 @@ export interface ManagerPublic {
   };
   /** derived from the realised displayed path, never from the true parameters */
   vol_label: "Low" | "Moderate" | "High" | "Very high";
+  /** the passive index fund create_session appends to the line-up: tracks the
+   *  index exactly (beta 1, no alpha, no tracking error) and is never part of
+   *  the skill shuffle. Public on purpose — the name says it anyway. */
+  index_fund?: boolean;
 }
 
 /** The truth behind a manager. Only ever obtained from get_manager_truth(). */
@@ -88,8 +92,11 @@ export interface SessionConfig {
   // ── manager game only ────────────────────────────────────────────────────
   /** public manager data, length = num_managers; written by create_session */
   managers?: ManagerPublic[];
-  /** 1..8, default 5 */
+  /** the whole line-up, index fund included once create_session has run.
+   *  The host picks 1..8 active managers; the index fund makes it up to 9. */
   num_managers?: number;
+  /** append a passive index fund (0.05%/yr) to the line-up, default true */
+  index_fund?: boolean;
   /** expected index return per year, default 0.08 */
   market_mean?: number;
   /** index volatility per year, default 0.16 */

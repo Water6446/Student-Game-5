@@ -222,6 +222,50 @@ export function returnSummary(
   };
 }
 
+/** The index's record to date: this year's return and the annualized rate. */
+export interface MarketSummary {
+  latest: number;
+  annualized: number;
+  years: number;
+}
+
+/** `MarketSummary` from the market returns so far, oldest first. */
+export function marketSummary(returns: number[]): MarketSummary | null {
+  if (returns.length === 0) return null;
+  const cum = returns.reduce((acc, r) => acc * (1 + r), 1);
+  return {
+    latest: returns[returns.length - 1],
+    annualized: Math.pow(Math.max(cum, 0), 1 / returns.length) - 1,
+    years: returns.length,
+  };
+}
+
+/**
+ * The manager game's running figures — a Sharpe, the index's record and the
+ * player's own in the same units — from the raw yearly series. One function for
+ * the round screen and the reveal: the reveal appends the year it is showing,
+ * because the rows fetched when that year opened cannot contain its result.
+ * (Quoting them as-is left "over N yrs" one year behind the headline number.)
+ */
+export function managerRunningStats(
+  startWealth: number,
+  riskFreeRate: number,
+  /** wealth after each resolved year, oldest first */
+  wealthByYear: number[],
+  /** the market's return each resolved year, oldest first */
+  marketReturns: number[],
+  /** the player's return in the most recent year, if they had a row for it */
+  latest: number | null,
+): { sharpe: number | null; market: MarketSummary | null; player: ReturnSummary | null } {
+  const years = wealthByYear.length;
+  return {
+    sharpe: sharpeRatio(perRoundReturns(startWealth, wealthByYear), riskFreeRate),
+    market: marketSummary(marketReturns),
+    player:
+      years > 0 ? returnSummary(startWealth, wealthByYear[years - 1], years, latest) : null,
+  };
+}
+
 /**
  * `returnSummary` for every player, reading each one's latest revealed round
  * from their own allocation row (a player who sat out that round shows no

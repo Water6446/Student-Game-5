@@ -77,6 +77,7 @@ export function ManagerReveal({
     alpha: truth.managers[i]?.alpha ?? 0,
     te: truth.managers[i]?.tracking_error ?? 0,
     realised: realised?.[i] ?? null,
+    indexFund: session.config.managers?.[i]?.index_fund === true,
   })).sort((a, b) => b.alpha - a.alpha);
 
   // The closing statistical claim, read off the most-skilled manager actually in
@@ -151,7 +152,7 @@ export function ManagerReveal({
             <span className="col-span-2 flex min-w-0 flex-wrap items-baseline gap-x-2 sm:col-span-1">
               <span className="min-w-0 max-w-full truncate font-semibold text-ink">{r.name}</span>
               <span className="font-editorial text-xs italic text-ink-muted">
-                {verdict(r.alpha)}
+                {r.indexFund ? "index fund" : verdict(r.alpha)}
               </span>
             </span>
             {/* The header row is `hidden sm:grid`, so below sm these four

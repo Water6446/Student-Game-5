@@ -25,6 +25,7 @@ import {
   goodCount,
   goodCountMatrix,
   luckStats,
+  marketSummary,
   playerDeltaChipsMap,
   playerOutcomesMap,
   portfolioOutcomeMatrix,
@@ -39,7 +40,7 @@ import { indexSeries } from "@/lib/game/manager";
 import { FeeCounter, feesByPlayer, sumFees } from "@/components/FeeCounter";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
-import { cost, money, signedPct } from "@/lib/game/format";
+import { cost, money, sharpeText, signedPct } from "@/lib/game/format";
 import { Banner, Button, Card, InfoTip } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -375,17 +376,27 @@ export function HostRoundControl({
   // return and the annualized rate so far.
   const marketLine = useMemo(() => {
     if (!managerGame) return null;
-    const revealed = history.rounds
-      .filter((r) => r.status === "revealed" && r.market_return != null)
-      .sort((a, b) => a.round_number - b.round_number);
-    if (revealed.length === 0) return null;
-    const cum = revealed.reduce((acc, r) => acc * (1 + Number(r.market_return)), 1);
-    return {
-      latest: Number(revealed[revealed.length - 1].market_return),
-      annualized: Math.pow(Math.max(cum, 0), 1 / revealed.length) - 1,
-      years: revealed.length,
-    };
+    return marketSummary(
+      history.rounds
+        .filter((r) => r.status === "revealed" && r.market_return != null)
+        .sort((a, b) => a.round_number - b.round_number)
+        .map((r) => Number(r.market_return)),
+    );
   }, [managerGame, history.rounds]);
+
+  // Sharpe per player WHILE the game runs — the same series and formula as the
+  // end screen, so the live figure and the final one are the same number.
+  const sharpeFor = useMemo(
+    () =>
+      managerGame
+        ? new Map(
+            buildPlayerResults(session, players, history.rounds, history.allocations).map(
+              (r) => [r.player.id, r.sharpe],
+            ),
+          )
+        : null,
+    [managerGame, session, players, history.rounds, history.allocations],
+  );
 
   // Full per-player stats for the end-of-game panel (returns, Sharpe, luck),
   // with $0 ties re-ordered by bust round.
@@ -676,6 +687,7 @@ export function HostRoundControl({
                     ? "Arrows show each player's last 5 rounds (up = gained, down = lost)"
                     : "Arrows show each player's last 5 markets"}
                 {independent ? ". ± is their luck vs the expected odds" : ""}
+                {sharpeFor ? ". S = Sharpe Ratio (return per unit of risk)" : ""}
                 {feesFor ? ". Red figures are fees paid to managers so far" : ""}.
               </InfoTip>
             </div>
@@ -695,7 +707,7 @@ export function HostRoundControl({
           ) : null}
           {managerGame ? (
             <p className="mb-3">
-              <FeeCounter total={classFees} label="Class fees paid" />
+              <FeeCounter total={classFees} label="Class fees so far" />
             </p>
           ) : null}
           {classLuck ? (
@@ -757,6 +769,14 @@ export function HostRoundControl({
                   </span>
                   <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
                     <LuckChip luck={rowLuck} expected={expected} />
+                    {sharpeFor ? (
+                      <span
+                        className="shrink-0 font-mono text-xs text-ink-muted"
+                        title="Sharpe ratio: return per unit of risk taken, across the years so far"
+                      >
+                        S {sharpeText(sharpeFor.get(p.id) ?? null)}
+                      </span>
+                    ) : null}
                     {feesFor ? (
                       <span
                         className="shrink-0 font-mono text-xs text-loss"

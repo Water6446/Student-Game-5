@@ -1,22 +1,23 @@
 "use client";
 
-import { cost, money } from "@/lib/game/format";
+import { money } from "@/lib/game/format";
 import type { AllocationRow } from "@/lib/game/db";
 
 /**
- * Fees paid, in the colour of a loss — because that is what they are. Visible
- * every single year on the student's round screen and on the host's panel, so
- * the number climbs in front of the class rather than surfacing once at the end.
+ * Fees paid, in the colour of a loss — because that is what they are.
+ *
+ * HOST ONLY. Students see each year's fee as one quiet line of their year
+ * result, and the game-long total once, on the end screen: how much fees ate
+ * is part of the reveal, and a total ticking up beside their wealth every year
+ * gave the punchline away (and read as ambiguous — a total and a yearly figure
+ * side by side, one taken for the other).
  */
 export function FeeCounter({
   total,
-  thisYear,
   label = "Fees paid",
   className,
 }: {
   total: number;
-  /** the current year's fee, shown as a delta on the reveal */
-  thisYear?: number | null;
   label?: string;
   className?: string;
 }) {
@@ -27,16 +28,7 @@ export function FeeCounter({
       <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-loss">
         {label}
       </span>
-      {/* The total ALREADY INCLUDES this year. "−$2.40 this year" next to it
-          read as a subtraction from the total — and as negative fees — so the
-          two are now separated and both written as plain costs. */}
       <span className="font-mono text-sm font-bold text-loss">{money(total)}</span>
-      {thisYear != null && thisYear > 0 ? (
-        <span className="font-mono text-xs text-loss/80">
-          <span aria-hidden="true">· </span>
-          {cost(thisYear)} this year
-        </span>
-      ) : null}
     </span>
   );
 }

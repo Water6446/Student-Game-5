@@ -191,8 +191,9 @@ Code: [lib/game/counterfactual.ts](lib/game/counterfactual.ts),
 ## Manager game
 
 The third game type. Each round is **one year** (25 by default). Students split
-wealth across a risk-free asset and N **portfolio managers**, may lever up to
-`leverage_cap`, and are scored against a passive **index they cannot buy**.
+wealth across a risk-free asset, N **portfolio managers** and (by default) an
+**index fund**, may lever up to `leverage_cap`, and are scored against the
+passive **index** itself.
 
 Returns here are **continuous normals**, not good/bad draws — none of the
 payoff, luck or odds machinery above applies.
@@ -268,6 +269,36 @@ The **alpha vector only** is permuted across manager slots each session. Names,
 one-liners, betas, tracking errors and fees stay pinned to their slot, so the
 personalities survive and only *who is actually skilled* moves. The permutation
 lives in `session_secrets` and is never sent to a client before the game ends.
+It covers the host's managers only — never the index fund.
+
+### The index fund
+
+The passive option a student can actually buy. `config.index_fund` (default
+**on**; the host can switch it off for the classic "index you cannot buy" game)
+makes `create_session` append one more slot, **last**, **after** the shuffle:
+
+```
+beta = 1, alpha = 0, tracking_error = 0      so r = r_market exactly
+mgmt_fee = 0.0005 (0.05%/yr), perf_fee = 0   charged through the normal fee path
+```
+
+- Appended rather than written into a preset so the shuffle can never hand it
+  an active manager's alpha, and the hedge-fund preset (2-and-20 on every slot)
+  cannot put it on 2-and-20.
+- Its gross return each year **is** the market return; net of fees it trails
+  the index by 0.05% a year. The Index bot still pays no fee at all, so a
+  student 100% in the index fund finishes just behind the bot — by exactly the
+  fee drag.
+- Its prospectus history is drawn like every other track record (its own
+  pre-game market path, net of the fee) and rolls forward the same way.
+- `num_managers` counts it: the host picks 1–8 active managers, and the
+  line-up can reach 9.
+- Its public entry carries `index_fund: true` (and, like every public entry, no
+  beta, alpha or tracking error). The reveal labels it "index fund".
+- The permutation in `session_secrets` stays the length of the active line-up.
+
+Code: `INDEX_FUND` in [lib/game/manager.ts](lib/game/manager.ts), mirrored by
+`create_session` in `supabase/migrations/0026_index_fund.sql`.
 
 ### Track records
 
@@ -337,6 +368,18 @@ Sharpe **applies** and is kept: a per-year return series is exactly what
 `expectedGoodRate` do **not** — there are no good/bad draws to be lucky in, so
 the class line becomes the market's return instead.
 
+The Sharpe is shown **while the game runs**, from year 2 (one return has no
+spread): on the student's round screen, on their year result, and as `S` on
+each row of the host's live standings. All of them use the same wealth series
+and formula as the end screen (`managerRunningStats` / `buildPlayerResults`),
+so the live figure and the final one are the same number.
+
+**The year result appends its own year.** A student's running figures are
+fetched when a year opens, so they cannot contain that year's result; the
+reveal adds it (`managerRunningStats` over the fetched years plus this one)
+before quoting "total" and "/yr over N yrs". The fetch always excludes the live
+year, so a reload mid-reveal cannot count it twice.
+
 The good/bad **counterfactual** does not apply either, and
 `buildPlayerResults` leaves `counterfactual` **undefined** for a manager game
 rather than degenerate. It replays market draws, and there are none: run it here
@@ -375,12 +418,19 @@ back:
 - **A cost is written as a cost.** Fees and borrowing charges render through
   `cost` as `$2.56`, never `−$2.56`; the loss colour carries the direction. A
   minus sign in front of a fee reads as a rebate, and did.
-- **A running total names its parts.** The fee counter reads
-  `$33.60 · $2.40 this year`, where the total *already includes* this year.
-  Written as `$33.60 −$2.40` it read as a subtraction.
-- **Never orphan a number.** Every figure says what it is: the prospectus badge
-  reads `FEE 1%/yr`, and the host's allocation rows read `$67.52 risky /
-  $22.52 safe` rather than a bare pair joined by a middot.
+- **Fees stay quiet until the end.** That fees eat investor return is part of
+  the reveal, so students get each year's fee as one line of their year result
+  ("Fees this year") and the game-long total once, on the end screen. There is
+  no running fee counter on a student screen — a total climbing beside their
+  wealth gave the punchline away, and a total next to a yearly figure was read
+  as one being subtracted from the other. The host keeps a class total
+  ("Class fees so far") and a per-player figure on the standings.
+- **Fees live in the description.** A prospectus card ends its strategy line
+  with the terms in words — "Fee: 1% of your money a year." — the way a real
+  prospectus discloses them, not as a badge beside the fund's name.
+- **Never orphan a number.** Every figure says what it is: the host's
+  allocation rows read `$67.52 risky / $22.52 safe` rather than a bare pair
+  joined by a middot.
 - **A levered position says "borrowed".** `safe_amount` goes negative under
   leverage; no surface shows that raw — they show `$102.09 borrowed`.
 - **Match the units you are asking to be compared.** Wherever the index or

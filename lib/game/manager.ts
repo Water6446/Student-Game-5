@@ -105,6 +105,24 @@ export const MANAGER_PRESETS: Record<ManagerPreset, ManagerDraft[]> = {
   market_neutral: [PARITY, ...LONG_ONLY],
 };
 
+/**
+ * The passive option: holds the index and matches it, less 0.05% a year. It is
+ * NOT a preset slot. create_session appends it (when `index_fund` is on) AFTER
+ * the skill shuffle, so it can never be handed a manager's alpha, and a
+ * hedge-fund line-up cannot put it on 2-and-20. MIRRORS the index-fund block in
+ * supabase/migrations/0026 — change one, change the other.
+ */
+export const INDEX_FUND = {
+  name: "Index Tracker",
+  strategy_line: "Passive. Holds the whole index and matches its return.",
+  beta: 1,
+  alpha: 0,
+  tracking_error: 0,
+  fee_type: "flat" as const,
+  mgmt_fee: 0.0005,
+  perf_fee: 0,
+};
+
 /** Everything the year-resolution maths needs from a session config. */
 export interface ManagerMathConfig {
   riskFreeRate: number;
@@ -124,6 +142,14 @@ export function managerMathConfig(config: SessionConfig): ManagerMathConfig {
 
 export function numManagers(config: SessionConfig): number {
   return config.num_managers ?? config.managers?.length ?? 5;
+}
+
+/** "5 managers + an index fund" — `num_managers` counts the index fund, and a
+ *  lobby line reading "6 managers" misdescribes the menu. */
+export function managerCountLabel(config: SessionConfig): string {
+  const hasIndexFund = config.managers?.some((m) => m.index_fund) ?? false;
+  const active = numManagers(config) - (hasIndexFund ? 1 : 0);
+  return `${active} manager${active === 1 ? "" : "s"}${hasIndexFund ? " + an index fund" : ""}`;
 }
 
 export function managerName(config: SessionConfig, i: number): string {

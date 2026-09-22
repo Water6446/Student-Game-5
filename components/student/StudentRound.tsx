@@ -15,7 +15,7 @@ import { AllocationInput } from "@/components/student/AllocationInput";
 import { PortfolioAllocationInput } from "@/components/student/PortfolioAllocationInput";
 import { ManagerAllocationInput } from "@/components/student/ManagerAllocationInput";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
-import { FeeCounter } from "@/components/FeeCounter";
+import { managerRunningStats } from "@/lib/game/results";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { money, signedMoney, signedPct, ordinal, sharpeText } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
@@ -63,9 +63,10 @@ export function StudentRound({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id, n]);
 
-  // Fees so far, a running Sharpe, and my return next to the index's — the
-  // figures that used to appear only on the end screen. Fees exclude the live
-  // round so the reveal can add its own year without double-counting.
+  // A running Sharpe and my return next to the index's — figures that used to
+  // appear only on the end screen. They cover every year but the live one, so
+  // the reveal appends its own year. The running FEE total is deliberately not
+  // here: what fees ate is the end screen's reveal, not a number to watch climb.
   const progress = useManagerProgress(
     supabase,
     session.id,
@@ -75,7 +76,6 @@ export function StudentRound({
     liveRound?.id ?? null,
     manager,
   );
-  const feesTotal = progress.feesTotal;
 
   // Manager game: a portfolio you did not touch this year is one you still
   // hold, so each year opens PRE-FILLED with last year's shares — matching the
@@ -188,7 +188,6 @@ export function StudentRound({
         wealth={me.current_wealth}
         roundNumber={session.current_round}
         session={session}
-        fees={manager ? feesTotal : null}
         sharpe={manager ? progress.sharpe : null}
       >
         {manager ? (
@@ -281,7 +280,6 @@ export function StudentRound({
         wealth={me.current_wealth}
         roundNumber={session.current_round}
         session={session}
-        fees={manager ? feesTotal : null}
         sharpe={manager ? progress.sharpe : null}
       >
         <div className="rounded-xl border-2 border-ink bg-brand-soft p-5 text-center shadow-card">
@@ -340,9 +338,26 @@ export function StudentRound({
       me={me}
       round={liveRound}
       mine={mine}
-      feesTotal={manager ? feesTotal : null}
       progress={manager ? progress : null}
     />
+  );
+}
+
+/**
+ * Sharpe so far, as a chip beside the figures it qualifies. Absent until two
+ * years have resolved (one return has no spread to divide by).
+ */
+function SharpeChip({ sharpe }: { sharpe: number }) {
+  return (
+    <span
+      className="inline-flex items-baseline gap-2 rounded-xl border-2 border-ink bg-surface px-3 py-1.5 shadow-card"
+      title="Sharpe ratio: return per unit of risk taken, across the years so far"
+    >
+      <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+        Sharpe
+      </span>
+      <span className="font-mono text-sm font-bold text-ink">{sharpeText(sharpe)}</span>
+    </span>
   );
 }
 
@@ -351,7 +366,6 @@ function Shell({
   wealth,
   roundNumber,
   session,
-  fees,
   sharpe,
 }: {
   children: React.ReactNode;
@@ -359,8 +373,6 @@ function Shell({
   /** always the session's current round — never a stale row's number */
   roundNumber: number;
   session: SessionRow;
-  /** manager game: running fee total, shown next to wealth every year */
-  fees?: number | null;
   /** manager game: Sharpe over the years resolved so far. Risk-adjusted return
    *  used to surface only on the end screen, which is too late to change how
    *  anyone plays — it belongs next to the wealth it is qualifying. */
@@ -396,20 +408,9 @@ function Shell({
           <span className="font-mono text-xl font-bold text-ink">{money(wealth)}</span>
         </span>
       </div>
-      {fees != null ? (
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-          {sharpe != null ? (
-            <span
-              className="inline-flex items-baseline gap-2 rounded-xl border-2 border-ink bg-surface px-3 py-1.5 shadow-card"
-              title="Return per unit of risk taken, across the years so far"
-            >
-              <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
-                Sharpe
-              </span>
-              <span className="font-mono text-sm font-bold text-ink">{sharpeText(sharpe)}</span>
-            </span>
-          ) : null}
-          <FeeCounter total={fees} />
+      {sharpe != null ? (
+        <div className="mb-4 flex justify-end">
+          <SharpeChip sharpe={sharpe} />
         </div>
       ) : null}
       {showOdds ? (
@@ -439,7 +440,6 @@ function Reveal({
   me,
   round,
   mine,
-  feesTotal,
   progress,
 }: {
   supabase: SupabaseClient;
@@ -447,9 +447,8 @@ function Reveal({
   me: PlayerRow;
   round: RoundRow;
   mine: ReturnType<typeof useRoundAllocations>["allocations"][number] | null;
-  /** manager game only: fees paid across the whole game so far */
-  feesTotal?: number | null;
-  /** manager game only: running index and player returns, in the same units */
+  /** manager game only: running index and player returns, in the same units,
+   *  covering every year BEFORE this one */
   progress?: ManagerProgress | null;
 }) {
   const [rank, setRank] = useState<{ rank: number; total: number } | null>(null);
@@ -467,6 +466,21 @@ function Reveal({
   const resulting = mine?.resulting_wealth != null ? Number(mine.resulting_wealth) : me.current_wealth;
   const before = mine ? Number(mine.safe_amount) + Number(mine.risky_amount) : me.current_wealth;
   const delta = resulting - before;
+  const deltaPct = before > 0 ? (delta / before) * 100 : 0;
+
+  // The running figures with THIS year appended: progress stops at last year,
+  // so quoting it as-is put "over 4 yrs" under a year-5 headline.
+  const running = useMemo(() => {
+    if (!manager || !progress) return null;
+    const rMarket = round.market_return;
+    return managerRunningStats(
+      session.config.starting_wealth,
+      session.config.risk_free_rate ?? 0,
+      [...progress.wealthByYear, resulting],
+      rMarket == null ? progress.marketReturns : [...progress.marketReturns, Number(rMarket)],
+      before > 0 ? delta / before : null,
+    );
+  }, [manager, progress, round.market_return, session.config, resulting, before, delta]);
 
   useEffect(() => {
     let active = true;
@@ -516,7 +530,7 @@ function Reveal({
           {personal ? (
             <>
               {delta > 0 ? <ArrowUp /> : delta < 0 ? <ArrowDown /> : null}
-              {delta > 0 ? "Up!" : delta < 0 ? "Down" : "Flat round"}
+              {delta > 0 ? "Up!" : delta < 0 ? "Down" : manager ? "Flat year" : "Flat round"}
             </>
           ) : (
             <>
@@ -533,15 +547,12 @@ function Reveal({
               round={round}
               allocation={mine}
               startWealth={before}
-              marketSoFar={progress?.market ?? null}
-              playerSoFar={progress?.player ?? null}
+              marketSoFar={running?.market ?? null}
+              playerSoFar={running?.player ?? null}
             />
-            {feesTotal != null ? (
+            {running?.sharpe != null ? (
               <div className="flex justify-center">
-                <FeeCounter
-                  total={feesTotal + (mine?.fees_paid == null ? 0 : Number(mine.fees_paid))}
-                  thisYear={mine?.fees_paid == null ? null : Number(mine.fees_paid)}
-                />
+                <SharpeChip sharpe={running.sharpe} />
               </div>
             ) : null}
           </>
@@ -596,7 +607,11 @@ function Reveal({
               delta > 0 ? "bg-gain" : delta < 0 ? "bg-loss" : "bg-ink-subtle"
             }`}
           >
-            {signedMoney(delta)} this round
+            {/* Manager game: a percentage, the unit the market is quoted in on
+                this same card — the dollars are already in "Your year". */}
+            {manager
+              ? `${signedPct(deltaPct, 1)} this year`
+              : `${signedMoney(delta)} this round`}
           </div>
         </div>
 

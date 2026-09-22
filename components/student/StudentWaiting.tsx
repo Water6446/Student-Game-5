@@ -7,6 +7,7 @@ import { Banner, Button, Card, InfoTip, TextInput } from "@/components/ui";
 import { money } from "@/lib/game/format";
 import { Sparkle } from "@/components/icons";
 import { isManager } from "@/lib/game/types";
+import { managerCountLabel } from "@/lib/game/manager";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 
 export function StudentWaiting({
@@ -100,7 +101,7 @@ export function StudentWaiting({
         </p>
         <p className="mt-1 font-mono text-xs text-ink-subtle">
           {manager
-            ? `${session.config.num_rounds} years · ${session.config.num_managers ?? 5} managers`
+            ? `${session.config.num_rounds} years · ${managerCountLabel(session.config)}`
             : `${session.config.num_rounds} rounds · ${session.config.payoff_mode} payoffs`}
           {(session.config.correlation ?? 0) > 0
             ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`

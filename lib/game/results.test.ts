@@ -7,6 +7,8 @@ import {
   compareStandings,
   expectedGoodRate,
   luckStats,
+  managerRunningStats,
+  marketSummary,
   perRoundReturns,
   sharpeRatio,
   submittedHumanCount,
@@ -609,5 +611,45 @@ describe("Sharpe: why the manager game's spread is narrow", () => {
   it("is computed on one return per revealed round, not a smoothed series", () => {
     const wealth = series(100, market, 1, rf);
     expect(perRoundReturns(100, wealth)).toHaveLength(market.length);
+  });
+});
+
+describe("marketSummary", () => {
+  it("quotes the latest year and the geometric rate", () => {
+    const m = marketSummary([0.1, -0.05])!;
+    expect(m.latest).toBe(-0.05);
+    expect(m.annualized).toBeCloseTo(Math.sqrt(1.1 * 0.95) - 1, 12);
+    expect(m.years).toBe(2);
+  });
+
+  it("is null before any year resolves", () => {
+    expect(marketSummary([])).toBeNull();
+  });
+});
+
+describe("managerRunningStats", () => {
+  it("covers exactly the years it is given — the reveal appends its own", () => {
+    // Fetched when year 3 opened: two years. The reveal adds year 3.
+    const before = managerRunningStats(100, 0.03, [110, 99], [0.12, -0.08], -0.1);
+    const reveal = managerRunningStats(100, 0.03, [110, 99, 118.8], [0.12, -0.08, 0.2], 0.2);
+
+    expect(before.player!.periods).toBe(2);
+    expect(before.market!.years).toBe(2);
+    // the headline year and the "over N yrs" line now agree
+    expect(reveal.player!.periods).toBe(3);
+    expect(reveal.market!.years).toBe(3);
+    expect(reveal.market!.latest).toBe(0.2);
+    expect(reveal.player!.latest).toBe(0.2);
+    expect(reveal.player!.total).toBeCloseTo(0.188, 12);
+  });
+
+  it("uses the same Sharpe as the end screen's series", () => {
+    const s = managerRunningStats(100, 0.03, [110, 99, 118.8], [0.12, -0.08, 0.2], 0.2);
+    expect(s.sharpe).toBeCloseTo(sharpeRatio([0.1, -0.1, 0.2], 0.03)!, 12);
+  });
+
+  it("has nothing to say before the first year", () => {
+    const s = managerRunningStats(100, 0.03, [], [], null);
+    expect(s).toEqual({ sharpe: null, market: null, player: null });
   });
 });

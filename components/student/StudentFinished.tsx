@@ -180,7 +180,7 @@ export function StudentFinished({
           </div>
         ) : null}
 
-        {/* The punchline: your wealth, the index you could not buy, and the
+        {/* The punchline: your wealth, the index (no fees at all), and the
             gap — with the fee total sitting inside it. */}
         {manager && managerSummary ? (
           <div className="mt-6 rounded-2xl border-2 border-ink bg-surface p-4 text-left shadow-lift">

@@ -3,6 +3,7 @@ import {
   amountsFromPercents,
   annualizedReturn,
   borrowRate,
+  INDEX_FUND,
   indexSeries,
   informationRatio,
   managerFees,
@@ -358,5 +359,36 @@ describe("rolling prospectus", () => {
     const [a, b] = rollingProspectuses([fund, other], [[0.3, 0.5], [0.2, 0.4]]);
     expect(a.track_record.yearly.slice(-2)).toEqual([0.29, 0.19]);
     expect(b.track_record.yearly.slice(-2)).toEqual([0.5, 0.4]);
+  });
+});
+
+describe("INDEX_FUND", () => {
+  const fund: ManagerPublic = {
+    ...INDEX_FUND,
+    index_fund: true,
+    track_record: { yearly: [], one_yr: 0, five_yr: 0, ten_yr: 0 },
+    vol_label: "Moderate",
+  };
+
+  it("tracks the index exactly, gross: beta 1, no alpha, no noise", () => {
+    expect(managerGrossReturn(INDEX_FUND, 0.163, 0)).toBeCloseTo(0.163, 12);
+    expect(managerGrossReturn(INDEX_FUND, -0.21, 0)).toBeCloseTo(-0.21, 12);
+  });
+
+  it("trails the index by exactly its 0.05% fee, up year or down", () => {
+    expect(netReturn(fund, 0.1)).toBeCloseTo(0.0995, 12);
+    expect(netReturn(fund, -0.1)).toBeCloseTo(-0.1005, 12);
+  });
+
+  it("charges 0.05% of what is held and nothing on the gain", () => {
+    const r = resolveManagerYear(cfg([fund]), 100, [100], [0.1]);
+    expect(r.fees).toBeCloseTo(0.05, 12);
+    expect(r.endWealth).toBeCloseTo(109.95, 10);
+  });
+
+  it("is never on a preset — create_session appends it after the shuffle", () => {
+    for (const lineup of Object.values(MANAGER_PRESETS)) {
+      expect(lineup.some((m) => m.name === INDEX_FUND.name)).toBe(false);
+    }
   });
 });

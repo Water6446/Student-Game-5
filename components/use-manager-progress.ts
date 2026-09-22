@@ -4,48 +4,54 @@ import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RoundRow } from "@/lib/game/db";
 import {
-  perRoundReturns,
-  returnSummary,
-  sharpeRatio,
+  managerRunningStats,
+  type MarketSummary,
   type ReturnSummary,
 } from "@/lib/game/results";
 
 /** One of my allocation rows, reduced to what the running figures need. */
 interface Row {
   round_id: string;
-  fees_paid: number | null;
   resulting_wealth: number | null;
   risky_amount: number;
   safe_amount: number;
 }
 
 export interface ManagerProgress {
-  /** fees across every year EXCEPT the live one, so a reveal can add its own
-   *  year's fee without double-counting on a mid-reveal reload */
-  feesTotal: number;
   /** running Sharpe over the years resolved so far; null under 2 years */
   sharpe: number | null;
   /** the index: this year's return and the annualized rate to date */
-  market: { latest: number; annualized: number; years: number } | null;
+  market: MarketSummary | null;
   /** my own return in the same units as `market` */
   player: ReturnSummary | null;
   /** GROSS manager returns per revealed year, oldest first — what rolls the
    *  prospectus track records forward */
   managerReturns: (number[] | null)[];
+  /** my wealth after each resolved year, oldest first — the reveal appends
+   *  its own year to this and re-derives the figures above */
+  wealthByYear: number[];
+  /** the market's return each resolved year, oldest first */
+  marketReturns: number[];
 }
 
 const EMPTY: ManagerProgress = {
-  feesTotal: 0,
   sharpe: null,
   market: null,
   player: null,
   managerReturns: [],
+  wealthByYear: [],
+  marketReturns: [],
 };
 
 /**
  * Everything the manager game needs to show a student how they are doing
- * WHILE the game runs, rather than only at the end: fees so far, a running
- * Sharpe, and their return next to the index's in the same units.
+ * WHILE the game runs, rather than only at the end: a running Sharpe, and
+ * their return next to the index's in the same units.
+ *
+ * Covers every resolved year EXCEPT the live one. The rows are fetched when a
+ * year opens, so the live year's result is never in them; excluding it
+ * outright also keeps a mid-reveal reload (whose fetch does see it) from
+ * counting it twice once the reveal appends it.
  *
  * Reads rows the student can already see — their own allocations and the
  * session's rounds (`market_return` is public; it is what the index bot
@@ -77,7 +83,7 @@ export function useManagerProgress(
           .order("round_number", { ascending: true }),
         supabase
           .from("allocations")
-          .select("round_id, fees_paid, resulting_wealth, risky_amount, safe_amount")
+          .select("round_id, resulting_wealth, risky_amount, safe_amount")
           .eq("player_id", playerId),
       ]);
       if (!active) return;
@@ -93,30 +99,23 @@ export function useManagerProgress(
   return useMemo(() => {
     if (!enabled || !rounds || !rows) return EMPTY;
 
-    const revealed = rounds.filter((r) => r.status === "revealed");
+    const revealed = rounds.filter((r) => r.status === "revealed" && r.id !== liveRoundId);
     const byRound = new Map(rows.map((a) => [a.round_id, a]));
 
     // Wealth after each resolved year, carrying forward across any year this
     // player has no row for — the same series buildPlayerResults uses, so the
     // running Sharpe and the final one are the same number.
-    const wealthByRound: number[] = [];
+    const wealthByYear: number[] = [];
     let last = startWealth;
     for (const r of revealed) {
       const a = byRound.get(r.id);
       if (a?.resulting_wealth != null) last = Number(a.resulting_wealth);
-      wealthByRound.push(last);
+      wealthByYear.push(last);
     }
 
-    const market = (() => {
-      const withReturn = revealed.filter((r) => r.market_return != null);
-      if (withReturn.length === 0) return null;
-      const cum = withReturn.reduce((acc, r) => acc * (1 + Number(r.market_return)), 1);
-      return {
-        latest: Number(withReturn[withReturn.length - 1].market_return),
-        annualized: Math.pow(Math.max(cum, 0), 1 / withReturn.length) - 1,
-        years: withReturn.length,
-      };
-    })();
+    const marketReturns = revealed
+      .filter((r) => r.market_return != null)
+      .map((r) => Number(r.market_return));
 
     const lastRound = revealed[revealed.length - 1];
     const lastAlloc = lastRound ? byRound.get(lastRound.id) : undefined;
@@ -127,16 +126,10 @@ export function useManagerProgress(
     }
 
     return {
-      feesTotal: rows
-        .filter((a) => a.round_id !== liveRoundId)
-        .reduce((s, a) => s + (a.fees_paid == null ? 0 : Number(a.fees_paid)), 0),
-      sharpe: sharpeRatio(perRoundReturns(startWealth, wealthByRound), riskFreeRate),
-      market,
-      player:
-        revealed.length > 0
-          ? returnSummary(startWealth, last, revealed.length, latest)
-          : null,
+      ...managerRunningStats(startWealth, riskFreeRate, wealthByYear, marketReturns, latest),
       managerReturns: revealed.map((r) => r.manager_returns ?? null),
+      wealthByYear,
+      marketReturns,
     };
   }, [enabled, rounds, rows, startWealth, riskFreeRate, liveRoundId]);
 }

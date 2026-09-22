@@ -404,9 +404,9 @@ components/host/HostPresent.tsx   projector/present-mode reference implementatio
 components/CondensedList.tsx      top-N + "+N more" + bottom-M collapse for every player list
 components/LuckChip.tsx           signed luck vs the expected GOOD rate (clover + ± percentage)
 components/ManagerYearResult.tsx  manager game: one year's market + every manager's return
-components/FeeCounter.tsx         running fee total in loss tone, student + host
-components/ManagerProspectus.tsx  manager cards: fees, 10-yr track record, inline SVG sparkline
-components/host/ManagerReveal.tsx the end-of-game truth: true alpha vs. what was delivered
+components/FeeCounter.tsx         running fee total in loss tone, host only (students see fees at the end)
+components/ManagerProspectus.tsx  manager cards: fee in the description, 10-yr track record, inline SVG sparkline
+components/ManagerReveal.tsx      the end-of-game truth: true alpha vs. what was delivered
 components/host/ManagerSetup.tsx  host-only manager editor (presets, per-manager alpha/beta/fees)
 components/use-manager-truth.ts   get_manager_truth() — the only route to the real parameters
 components/use-synced-preference.ts  cross-tab preference pattern (localStorage + storage event)

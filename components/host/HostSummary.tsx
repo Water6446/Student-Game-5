@@ -373,13 +373,15 @@ export function HostSummary({
           <div className="mb-1 flex items-center gap-2">
             <h2 className="text-xl font-bold text-ink">Final standings</h2>
             <InfoTip label="About the final standings">
-              S = Sharpe ratio: return per unit of risk taken.
+              S = Sharpe Ratio (return per unit of risk).
               {independent ? " The clover is each player's luck vs the expected odds." : ""}
             </InfoTip>
           </div>
-          {/* Kept on screen: it is how the rows work, not background. */}
+          {/* Kept on screen: it is how the rows work, not background. A manager
+              game has no market outcomes to list, so it names what opens. */}
           <p className="mb-3 text-xs text-ink-subtle">
-            Click a player to see {managerGame ? "their full record" : "every market they faced"}.
+            Click a player to see{" "}
+            {managerGame ? "their full record" : "every market outcome they faced"}.
           </p>
           <CondensedList
             items={visibleResults}
