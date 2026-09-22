@@ -47,6 +47,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
+import { ManagePlayerButton } from "@/components/host/ManagePlayer";
 import {
   ArrowDown,
   ArrowLeft,
@@ -741,9 +742,12 @@ export function HostRoundControl({
                 // Below sm this wraps to two lines — name + money, then luck and
                 // the market chips — instead of overflowing a 375px viewport.
                 <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-paper-2 px-4 py-2">
-                  <span className="min-w-0 flex-1 truncate text-ink">
-                    <span className="mr-2 font-mono text-ink-subtle">{index + 1}.</span>
-                    {p.display_name}
+                  <span className="flex min-w-0 flex-1 items-center gap-1 text-ink">
+                    <span className="min-w-0 truncate">
+                      <span className="mr-2 font-mono text-ink-subtle">{index + 1}.</span>
+                      {p.display_name}
+                    </span>
+                    <ManagePlayerButton supabase={supabase} session={session} player={p} />
                   </span>
                   <span className="order-2 text-right sm:order-3">
                     <span className="block font-mono text-lg font-bold text-gain">

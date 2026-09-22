@@ -12,7 +12,8 @@ are the source of truth for every rule below; this document explains them.
 
 ## Status — what is built
 
-The account layer is **implemented** (migrations `0016`–`0025` plus the UI). Two
+The account layer is **implemented** (migrations `0016`–`0025` and `0027`–`0030`, plus
+the UI). Two
 things are deliberately not done yet: closing the anonymous-host testing bypass
 (a launch step — [DEPLOYMENT.md Part C.1](./DEPLOYMENT.md#1-undo-the-temporary-testing-bypass--required))
 and the "later" list in [§7](#part-7--whats-left).
@@ -26,10 +27,13 @@ and the "later" list in [§7](#part-7--whats-left).
 | Guest retention: sever, don't cascade (`purge_stale_guests`) | `0019_guest_retention.sql`, revised in `0024` |
 | Export / deletion preview / delete | `0020_account_lifecycle.sql` |
 | Username → email lookup, secret-gated | `0021_username_login.sql` |
-| Brute-force throttle for the proxied username path | `0022_login_throttle.sql`, revised in `0024` |
+| Brute-force throttle for the proxied username path | `0022_login_throttle.sql`, revised in `0024`; attempts counted up front in `0027_login_reserve.sql` |
 | Host dashboard overview | `0023_session_overview.sql` |
 | **Signed-out callers locked out of every RPC but sign-in**; purge spares anonymous hosts | `0024_account_edge_cases.sql` |
 | Host renames a session (`set_session_label`) | `0025_rename_session.sql` |
+| Player names: cleaned, 40 chars, lobby-only renames; host rename/remove; `auth_uid` not client-readable | `0028_player_names.sql` |
+| Internal helpers withdrawn from clients; size limits on profile text and session config | `0030_hardening.sql` |
+| "Confirm it's you" before changing email/password/Google or deleting the account | `components/account/ConfirmIdentity.tsx`, `lib/auth/reauth.ts` |
 | Sign-in / register card, Google, reset page | `components/auth/SignInCard.tsx`, `app/auth/reset/` |
 | The one login URL | `app/login/` |
 | Account dropdown in the site header | `components/marketing/AccountMenu.tsx` |
@@ -170,7 +174,7 @@ window under 7 days, and only the table owner can run it — schedule it with
   away with every student's rows in them — which is why the UI shows the preview
   and requires a typed confirmation.
 
-### 2.6 `0021`–`0025` — sign-in plumbing and edge cases
+### 2.6 `0021`–`0030` — sign-in plumbing, edge cases, hardening
 
 - `0021` `email_for_username(username, secret)` and the `app_secrets` table
   (§3.4).
@@ -180,6 +184,17 @@ window under 7 days, and only the table owner can run it — schedule it with
 - `0024` signed-out callers locked out of every RPC but sign-in; purge spares
   anonymous hosts; per-bucket throttle limits.
 - `0025` `set_session_label`, so a host can rename a session.
+- `0027` `login_begin` / `login_finish`: the username throttle books each attempt
+  *before* the password check, so a burst of parallel guesses cannot all slip
+  past the count (§3.4).
+- `0028` player names (cleaned, 1–40 chars, renamed only in the lobby via
+  `set_my_display_name`), `host_rename_player` / `host_remove_player` with a
+  rejoin ban, and column-scoped `SELECT` on `players` that leaves `auth_uid`
+  out (students find their own row with `get_my_player_id`).
+- `0029` (a game migration) hidden odds move to `session_secrets`.
+- `0030` internal helpers withdrawn from `authenticated`; length limits on
+  `profiles.display_name` (80) and `institution` (120); a 32 KB cap on
+  `sessions.config`.
 
 ---
 
@@ -251,6 +266,44 @@ and the app still holds no key that can bypass RLS.
   username (locks after 8) and per salted hash of the caller's IP (locks after
   30, so one campus NAT cannot lock out the campus) — for 15 minutes. No IP is
   stored.
+- **Each attempt is counted before it runs** (`0027`). `login_begin` books the
+  attempt as a failure and decides whether it may proceed in one locked step;
+  `login_finish` then forgives it (`ok`), hands it back (`refund`, for an outage
+  or GoTrue's own rate limit), or leaves it (`wrong`). Checking first and
+  booking after — the `0022` shape — let a burst of simultaneous guesses all
+  read "not locked".
+- **The IP is taken from the header the platform controls.** On Vercel that is
+  the first `x-forwarded-for` entry; anywhere else it is the *last* one, the
+  address the proxy appended (`lib/auth/request-guard.ts`).
+- **Login CSRF.** The route accepts only an exact `application/json` body and
+  refuses requests the browser marks `Sec-Fetch-Site: cross-site`.
+
+
+### 3.5 Changing how an account signs in — "confirm it's you"
+
+A signed-in browser left unattended is the realistic takeover here: the
+professor's laptop at the front of the room, a lab PC someone forgot to sign
+out of. Without a check it was two clicks from a stolen account — new email,
+new password — and with email off, the owner had no way back.
+
+So the account page shows **change email, change password, link Google and
+delete account** only when the session was proven by a real sign-in in the last
+10 minutes. The evidence is the access token's `amr` claim, which GoTrue stamps
+on every password, Google, emailed-link or recovery sign-in (refreshing a token
+does not); `anonymous` never counts. Otherwise the page asks for the current
+password, or a Google sign-in for accounts that have Google linked
+(`components/account/ConfirmIdentity.tsx`).
+
+- `/auth/reset` sets a new password only for a session that fresh — i.e. one
+  that just came from a reset link. Anyone else is sent to `/account`.
+- The join form asks "is that you?" before joining a game as a real account
+  signed in on that browser; "no" signs that browser out (locally only) and
+  joins as a guest.
+- **Limits.** This is a UI gate: it stops the person at the keyboard, not
+  someone who has lifted the tokens out of the browser (that is T6 — the CSP).
+  Supabase's "Secure password change" is the server-side half, but it needs
+  email to re-authenticate, so it waits for SMTP (DEPLOYMENT.md Part B). And if
+  that browser is still signed in to Google, Google may not ask for a password.
 
 ---
 
@@ -269,9 +322,10 @@ account*.
 | T4 | **Privilege escalation to host** | `role`/`plan` live in `profiles` with **no client update grant**; never in `user_metadata`. The guest-hosting bypass is **live on purpose** until the launch revert | §1.2, DEPLOYMENT C.1 |
 | T5 | **Account takeover via OAuth email collision** | Only verified-email providers | §3.2 |
 | T6 | **Session hijacking / XSS token theft** | `@supabase/ssr` cookie handling (`lib/supabase/`); a CSP allowlisting Supabase `https:` **and `wss:`** (omitting `wss:` silently kills realtime) is still to do | DEPLOYMENT C § 6 |
-| T7 | **Cross-account data leaks** | `profiles` policies are `id = auth.uid()` only; `get_my_history` and `export_my_data` filter on `auth.uid()` inside `SECURITY DEFINER` bodies | §2 |
+| T7 | **Cross-account data leaks** | `profiles` policies are `id = auth.uid()` only; `get_my_history` and `export_my_data` filter on `auth.uid()` inside `SECURITY DEFINER` bodies; `players.auth_uid` is not client-selectable (`0028`) | §2 |
 | T8 | **Student PII exposure** (claimed accounts carry an email) | Email never required to play; export + delete RPCs; privacy policy | §2.5, §5.3, §6.6 |
 | T9 | **Quota bypass by making many host accounts** | The quota is per account, so this is the residual risk. Bounded by CAPTCHA and (once on) email verification; if it ever matters, gate on verified institutional domains | §2.3 |
+| T10 | **Someone at an unattended, signed-in browser** (the lecture laptop, a lab PC) changes the email and password, links their own Google, or deletes the account | "Confirm it's you": those actions appear only within 10 minutes of a real sign-in (`amr` claim, `lib/auth/reauth.ts`); `/auth/reset` sets a password only for a fresh session; the join form asks before playing as a signed-in account. Server-side half: "Secure password change", once email works | §3.5, DEPLOYMENT B |
 
 ### 4.1 Verification — prove it, don't assume it
 

@@ -26,10 +26,12 @@ export function StudentWaiting({
   async function saveName() {
     setError(null);
     const trimmed = name.trim().slice(0, 40) || "Player";
-    const { error } = await supabase
-      .from("players")
-      .update({ display_name: trimmed })
-      .eq("id", me.id);
+    // The only rename path: it cleans the name and refuses once the game has
+    // started (0028). The new name arrives back through the players feed.
+    const { error } = await supabase.rpc("set_my_display_name", {
+      p_session_id: session.id,
+      p_display_name: trimmed,
+    });
     if (error) setError(error.message);
     else setEditing(false);
   }

@@ -51,6 +51,11 @@ Safe dollars are unchanged (basic) or grow by `risk_free_rate` per round
   *idiosyncratic* risk. This is the only scope where per-player luck varies.
 - The host can retune `good_prob` mid-game (Adjust market odds). Luck benchmarks
   use the *current* odds, so early draws under old odds are approximated.
+- **Hidden odds** (`show_odds_to_students` not on): while the game runs, the
+  server keeps `good_prob` and every `assets[i].good_prob` out of the session
+  row students can read, in `session_secrets` (0029). The host still sees and
+  retunes them; `resolve_round` plays them; everyone sees them once the game
+  finishes. Hiding them only in the UI would leave them in the network tab.
 
 ## Luck
 
@@ -389,8 +394,10 @@ counterfactual is the **index**, compounded from `rounds.market_return`
 (`indexSeries`), shown as the ghost line, the "if you had just held the index"
 row on the student end screen, and the class-vs-index cards on the host summary.
 
-Code: [lib/game/manager.ts](lib/game/manager.ts), mirrored by
-`supabase/migrations/0015_manager_resolve.sql`.
+Code: [lib/game/manager.ts](lib/game/manager.ts), mirrored by `resolve_round`
+(written in `supabase/migrations/0015_manager_resolve.sql`; its current
+definition is in `0029_hidden_odds.sql`, which changed only the odds merge and a
+row lock).
 
 ## Standings
 

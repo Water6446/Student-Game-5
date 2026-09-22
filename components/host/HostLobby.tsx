@@ -14,6 +14,7 @@ import { CondensedList } from "@/components/CondensedList";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
+import { ManagePlayerButton } from "@/components/host/ManagePlayer";
 import { isManager } from "@/lib/game/types";
 import { COLOR } from "@/lib/design/colors";
 
@@ -143,11 +144,12 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
               renderItem={(p, i) => (
                 <li
-                  className={`animate-pop-in rounded-lg border-2 border-ink px-4 py-2 text-lg font-semibold text-ink shadow-card ${
+                  className={`flex animate-pop-in items-center justify-between gap-2 rounded-lg border-2 border-ink px-4 py-2 text-lg font-semibold text-ink shadow-card ${
                     ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-loss-soft"][i % 4]
                   }`}
                 >
-                  {p.display_name}
+                  <span className="min-w-0 truncate">{p.display_name}</span>
+                  <ManagePlayerButton supabase={supabase} session={session} player={p} />
                 </li>
               )}
             />

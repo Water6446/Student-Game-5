@@ -212,6 +212,33 @@ async function main() {
     await expectDenied("student reads hidden leaderboard", () =>
       attacker.rpc("get_leaderboard", { p_session_id: session.id }),
     );
+    // 7b. hidden odds are not in the row a student can read (0029). This
+    //     session never sets show_odds_to_students, which every screen — and
+    //     now the server — reads as hidden.
+    {
+      const { data, error } = await attacker
+        .from("sessions")
+        .select("config")
+        .eq("id", session.id)
+        .single();
+      const cfg = (data as { config?: Record<string, unknown> } | null)?.config;
+      if (!error && cfg && !("good_prob" in cfg))
+        pass("hidden odds are absent from the student's copy of the session");
+      else fail(`student read hidden odds: ${JSON.stringify(cfg?.good_prob)} (${error?.message ?? "no error"})`);
+    }
+    // 7c. names, identities and moderation (0028); internal helpers (0030)
+    await expectDenied("student renames themself with a direct update", () =>
+      attacker.from("players").update({ display_name: "x".repeat(5000) }).eq("id", myPlayerId),
+    );
+    await expectDenied("student reads players.auth_uid", () =>
+      attacker.from("players").select("auth_uid").eq("session_id", session.id),
+    );
+    await expectDenied("student removes a classmate", () =>
+      attacker.rpc("host_remove_player", { p_player_id: victim!.id }),
+    );
+    await expectDenied("student calls an internal helper", () =>
+      attacker.rpc("_manager_preset", { p_key: "default" }),
+    );
 
     // ---- account layer (migrations 0016-0022) ------------------------------
     // 8. another account's profile is invisible (RLS filters, so: zero rows)

@@ -76,7 +76,7 @@ Each isolated storage = its own anonymous user.
 
 ## Part B — Accounts setup
 
-The account layer (migrations `0016`–`0025`, see
+The account layer (migrations `0016`–`0025` and `0027`–`0030`, see
 **[ACCOUNTS.md](./ACCOUNTS.md)**) is in the code, but **none of the sign-in
 methods work until these dashboard steps are done.** Everything here is a
 console/DNS task only the project owner can do.
@@ -87,6 +87,13 @@ Nothing below exists in the database until this runs.
 
 - [ ] `npm run db:push` (after the one-time `npx supabase login` + `npm run
       db:link` in Part A). `npm run db:status` lists what is applied vs pending.
+- [ ] **0027–0030 and the app code that uses them ship together, between
+      classes.** Neither order is seamless: after 0028 the old app's
+      `select("*")` on `players` is refused (it asks for `auth_uid`), so player
+      lists stop loading until the new code is live; and the new code calls
+      functions that only exist after 0027/0028 (`login_begin`,
+      `get_my_player_id`, `set_my_display_name`). Push the migrations, then
+      deploy straight away, when no game is running.
 
 ### 0b. Allow the app's URL back in — do this before Google
 
@@ -152,6 +159,12 @@ That is unusable for real registration, so custom SMTP is not optional.
 - [ ] Authentication → Providers → Email → **Confirm email: ON**. Registration
       depends on it; with it off, sign-up returns a session immediately and the
       "check your email" step is skipped.
+- [ ] Authentication → Providers → Email → **Secure password change: ON** —
+      only now, not before. It is the server-side half of "confirm it's you"
+      (ACCOUNTS.md §3.5): GoTrue refuses a password change on a session older
+      than 24 hours unless the user re-authenticates with an emailed code.
+      Without working email that code never arrives, and a guest who played
+      weeks ago could not set a password when saving their results.
 
 ### 3. Password policy
 

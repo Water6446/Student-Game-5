@@ -8,6 +8,11 @@ import { Check, GoogleMark, Key, Mail, Pencil } from "@/components/icons";
 import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
 import { linkErrorMessage } from "@/lib/auth/errors";
+import { ConfirmIdentity } from "@/components/account/ConfirmIdentity";
+import { useRecentSignIn } from "@/components/account/use-recent-sign-in";
+
+/** Re-checked right before each change: false means the confirm form is back. */
+type EnsureRecent = () => Promise<boolean>;
 
 /**
  * The ways this account can sign in.
@@ -17,6 +22,11 @@ import { linkErrorMessage } from "@/lib/auth/errors";
  * — but it is exactly why a provider that returns unverified emails must never
  * be added: signing up at the sloppy provider with someone else's address would
  * inherit their account. See docs/ACCOUNTS.md T5.
+ *
+ * Every change here can lock the owner out, so the actions only appear once
+ * the session has been proven in the last few minutes (ConfirmIdentity). An
+ * unattended, signed-in laptop is otherwise two clicks from a stolen account:
+ * new email, new password. See docs/ACCOUNTS.md T10.
  */
 export function IdentitiesPanel({
   supabase,
@@ -29,6 +39,7 @@ export function IdentitiesPanel({
 }) {
   const providers = new Set((user.identities ?? []).map((i) => i.provider));
   const hasGoogle = providers.has("google");
+  const { recent, check } = useRecentSignIn(supabase);
 
   // *** THERE IS DELIBERATELY NO "has a password" FLAG HERE ***
   // Supabase gives the client no reliable way to know, and both obvious signals
@@ -68,13 +79,28 @@ export function IdentitiesPanel({
       </ul>
 
       <div className="mt-5 space-y-4 border-t border-line pt-5">
-        {!hasGoogle ? <LinkGoogle supabase={supabase} /> : null}
-        {!user.email ? (
-          <AddEmail supabase={supabase} onChanged={onChanged} />
+        {recent === null ? null : !recent ? (
+          <ConfirmIdentity
+            supabase={supabase}
+            user={user}
+            reason="Changing your email, password or Google link needs a fresh sign-in."
+          />
         ) : (
           <>
-            <ChangeEmail supabase={supabase} current={user.email} onChanged={onChanged} />
-            <ChangePassword supabase={supabase} hasGoogle={hasGoogle} />
+            {!hasGoogle ? <LinkGoogle supabase={supabase} ensureRecent={check} /> : null}
+            {!user.email ? (
+              <AddEmail supabase={supabase} onChanged={onChanged} ensureRecent={check} />
+            ) : (
+              <>
+                <ChangeEmail
+                  supabase={supabase}
+                  current={user.email}
+                  onChanged={onChanged}
+                  ensureRecent={check}
+                />
+                <ChangePassword supabase={supabase} hasGoogle={hasGoogle} ensureRecent={check} />
+              </>
+            )}
           </>
         )}
       </div>
@@ -116,11 +142,12 @@ function MethodRow({
   );
 }
 
-function LinkGoogle({ supabase }: { supabase: SupabaseClient }) {
+function LinkGoogle({ supabase, ensureRecent }: { supabase: SupabaseClient; ensureRecent: EnsureRecent }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function link() {
+    if (!(await ensureRecent())) return;
     setBusy(true);
     setError(null);
     const { error } = await supabase.auth.linkIdentity({
@@ -147,7 +174,15 @@ function LinkGoogle({ supabase }: { supabase: SupabaseClient }) {
 }
 
 /** For an account that started as an anonymous guest: give it an email. */
-function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged: () => void }) {
+function AddEmail({
+  supabase,
+  onChanged,
+  ensureRecent,
+}: {
+  supabase: SupabaseClient;
+  onChanged: () => void;
+  ensureRecent: EnsureRecent;
+}) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<"pending" | "applied" | null>(null);
@@ -159,6 +194,7 @@ function AddEmail({ supabase, onChanged }: { supabase: SupabaseClient; onChanged
       setError(err);
       return;
     }
+    if (!(await ensureRecent())) return;
     setBusy(true);
     setError(null);
     const { data, error } = await supabase.auth.updateUser(
@@ -230,10 +266,12 @@ function ChangeEmail({
   supabase,
   current,
   onChanged,
+  ensureRecent,
 }: {
   supabase: SupabaseClient;
   current: string;
   onChanged: () => void;
+  ensureRecent: EnsureRecent;
 }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -253,6 +291,7 @@ function ChangeEmail({
       setError("That's already the address on this account.");
       return;
     }
+    if (!(await ensureRecent())) return;
     setBusy(true);
     setError(null);
     const { data, error } = await supabase.auth.updateUser(
@@ -336,9 +375,11 @@ function ChangeEmail({
 function ChangePassword({
   supabase,
   hasGoogle,
+  ensureRecent,
 }: {
   supabase: SupabaseClient;
   hasGoogle: boolean;
+  ensureRecent: EnsureRecent;
 }) {
   const toast = useToast();
   const [password, setPassword] = useState("");
@@ -351,6 +392,7 @@ function ChangePassword({
       setError(err);
       return;
     }
+    if (!(await ensureRecent())) return;
     setBusy(true);
     setError(null);
     const { error } = await supabase.auth.updateUser({ password });

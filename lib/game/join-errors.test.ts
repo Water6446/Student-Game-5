@@ -7,6 +7,7 @@ describe("friendlyJoinError", () => {
     expect(friendlyJoinError("this session has finished")).toMatch(/already ended/);
     expect(friendlyJoinError("late join is not allowed for this session")).toMatch(/already started/);
     expect(friendlyJoinError("this session is full")).toMatch(/full/);
+    expect(friendlyJoinError("the host removed you from this session")).toMatch(/removed you/);
   });
 
   it("covers the network and rate-limit failures supabase-js reports", () => {

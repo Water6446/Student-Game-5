@@ -13,10 +13,13 @@ export interface SessionRow {
   created_at: string;
 }
 
+/**
+ * No auth_uid: clients cannot select it (0028), so it is not here to be relied
+ * on. A student finds their own row with the get_my_player_id RPC.
+ */
 export interface PlayerRow {
   id: string;
   session_id: string;
-  auth_uid: string | null; // null for benchmark bots
   display_name: string;
   current_wealth: number;
   is_active: boolean;
@@ -26,6 +29,13 @@ export interface PlayerRow {
   strategy: string | null;
   joined_at: string;
 }
+
+/**
+ * The players columns a client may select, spelled out: `select("*")` would ask
+ * for auth_uid too, and Postgres refuses the whole query for it (0028).
+ */
+export const PLAYER_COLUMNS =
+  "id,session_id,display_name,current_wealth,is_active,is_bot,strategy,joined_at";
 
 export interface RoundRow {
   id: string;

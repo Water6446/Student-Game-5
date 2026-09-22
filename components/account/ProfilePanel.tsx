@@ -11,7 +11,8 @@ import { useToast } from "@/components/Toast";
  * Profile editing.
  *
  * display_name and institution go through a plain PostgREST update — those two
- * columns are the entire client update grant on profiles (0016). username goes
+ * columns are the entire client update grant on profiles (0016), capped at 80
+ * and 120 characters by the database (0030). username goes
  * through set_my_username() instead, because format and uniqueness have to be
  * checked server-side; role and plan have no client write path at all.
  */
@@ -56,7 +57,7 @@ export function ProfilePanel({
       .from("profiles")
       .update({
         display_name: displayName.trim().slice(0, 80),
-        institution: institution.trim() || null,
+        institution: institution.trim().slice(0, 120) || null,
       })
       .eq("id", profile.id);
 
@@ -79,14 +80,19 @@ export function ProfilePanel({
 
       <div className="mt-5 space-y-4">
         <Field label="Username" hint="3–24 characters: letters, numbers, underscore">
-          <TextInput value={username} onChange={(e) => setUsername(e.target.value)} />
+          <TextInput value={username} maxLength={24} onChange={(e) => setUsername(e.target.value)} />
         </Field>
         <Field label="Display name">
-          <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          <TextInput
+            value={displayName}
+            maxLength={80}
+            onChange={(e) => setDisplayName(e.target.value)}
+          />
         </Field>
         <Field label="Institution" hint="Optional">
           <TextInput
             value={institution}
+            maxLength={120}
             onChange={(e) => setInstitution(e.target.value)}
           />
         </Field>

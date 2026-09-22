@@ -6,6 +6,7 @@ import type { DeletionPreview } from "@/lib/auth/account";
 import { Banner, Button, Card, Field, InfoTip, TextInput } from "@/components/ui";
 import { Download, Trash } from "@/components/icons";
 import { useToast } from "@/components/Toast";
+import { useRecentSignIn } from "@/components/account/use-recent-sign-in";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -16,9 +17,14 @@ const CONFIRM_WORD = "DELETE";
  * Deleting is loud on purpose. sessions.host_id cascades, so removing a host
  * also removes the sessions they ran and every student's rows inside them; the
  * preview says exactly how many before anything is typed.
+ *
+ * It also needs a fresh sign-in, like every other change that cannot be undone
+ * (docs/ACCOUNTS.md T10). The confirm form lives once, in the Sign-in methods
+ * card above; confirming there unlocks this too, through the shared auth event.
  */
 export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
   const toast = useToast();
+  const { recent, check } = useRecentSignIn(supabase);
   const [preview, setPreview] = useState<DeletionPreview | null>(null);
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,6 +66,7 @@ export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
   }
 
   async function deleteAccount() {
+    if (!(await check())) return;
     setBusy(true);
     setError(null);
     const { error } = await supabase.rpc("delete_my_account");
@@ -126,6 +133,12 @@ export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
               Finish or delete your {preview?.live_sessions_hosted} running session
               {preview?.live_sessions_hosted === 1 ? "" : "s"} first — a class in progress must not
               vanish under the students in it.
+            </Banner>
+          </div>
+        ) : recent === null ? null : !recent ? (
+          <div className="mt-4">
+            <Banner kind="info">
+              To delete this account, first confirm it&apos;s you under Sign-in methods above.
             </Banner>
           </div>
         ) : (

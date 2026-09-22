@@ -5,7 +5,7 @@
  * what to do next. Anything unrecognised falls through to a generic line —
  * never a raw database message.
  *
- * Sources: join_session (0003_functions.sql), the player cap trigger
+ * Sources: join_session (0003, and 0028 for "removed"), the player cap trigger
  * (0018_quotas.sql), and supabase-js's own network/rate-limit errors.
  */
 export function friendlyJoinError(raw: string): string {
@@ -21,6 +21,9 @@ export function friendlyJoinError(raw: string): string {
   }
   if (m.includes("session is full")) {
     return "That game is full. Let your professor know.";
+  }
+  if (m.includes("removed you")) {
+    return "The host removed you from this game. If that's a mistake, ask them.";
   }
   if (m.includes("rate limit") || m.includes("too many")) {
     return "Too many people are joining from this network right now. Wait a moment and try again.";

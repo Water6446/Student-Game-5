@@ -83,6 +83,9 @@ supabase/migrations/  SQL migrations, applied in order (`npm run db:push`)
                       RLS on, NO policies, NO grants — deny-all)
   0016–0025           The account layer (see docs/ACCOUNTS.md)
   0026                The manager game's index fund
+  0027–0030           Security fixes: throttle counts up front, player names +
+                      host moderation, hidden odds in session_secrets,
+                      helper grants + size limits
 scripts/
   db-selftest.mjs     `npm run test:db` — applies every migration to a
                       throwaway in-process Postgres and runs both suites below

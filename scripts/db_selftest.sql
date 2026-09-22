@@ -676,4 +676,340 @@ begin
   raise notice 'PASS: index fund tracks the market exactly, less 0.05%%';
 end $$;
 
+-- =============================================================================
+-- PLAYER NAMES AND MODERATION (0028) — what reaches the projector
+-- =============================================================================
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select id as nm_sid, join_code as nm_code
+  from public.create_session('{"num_rounds":2,"market_mode":"manual"}'::jsonb) \gset
+reset role;
+select set_config('app.nm_sid', :'nm_sid', false);
+select set_config('app.nm_code', :'nm_code', false);
+
+-- join_session cleans the name: bidi overrides and control characters out,
+-- 40 characters at most. (chr(8238) is U+202E, which reverses the text after it.)
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+select id as nm_p1
+  from public.join_session(:'nm_code', '  Al' || chr(8238) || 'ice' || chr(10) || repeat('x', 60)) \gset
+reset role;
+select set_config('app.nm_p1', :'nm_p1', false);
+
+select set_config('request.jwt.claims', :'bob_jwt', false);
+set role authenticated;
+select id as nm_p2 from public.join_session(:'nm_code', 'Bob') \gset
+reset role;
+select set_config('app.nm_p2', :'nm_p2', false);
+
+do $$
+declare v text;
+begin
+  select display_name into v from public.players where id = current_setting('app.nm_p1')::uuid;
+  if char_length(v) > 40 or position(chr(8238) in v) > 0 or position(chr(10) in v) > 0 then
+    raise exception 'SECURITY FAIL: join_session stored an unclean name: %', v;
+  end if;
+  if v not like 'Alice%' then raise exception 'FAIL: cleaning mangled the name into %', v; end if;
+  raise notice 'PASS: join_session strips control/bidi characters and caps names at 40';
+end $$;
+
+-- The column enforces it on every path, even the owner's.
+do $$ begin
+  begin
+    update public.players set display_name = repeat('y', 41) where id = current_setting('app.nm_p1')::uuid;
+    raise exception 'SECURITY FAIL: stored a 41-character player name';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: players.display_name CHECK rejects 41 characters (%)', sqlerrm;
+  end;
+  begin
+    update public.players set display_name = '   ' where id = current_setting('app.nm_p1')::uuid;
+    raise exception 'SECURITY FAIL: stored a blank player name';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: players.display_name CHECK rejects a blank name (%)', sqlerrm;
+  end;
+end $$;
+
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+
+-- ---- NEGATIVE: no direct rename; the RPC works in the lobby -----------------
+do $$ begin
+  begin
+    update public.players set display_name = repeat('X', 200000)
+     where id = current_setting('app.nm_p1')::uuid;
+    raise exception 'SECURITY FAIL: a student renamed themself with a direct update';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: direct display_name update blocked (%)', sqlerrm;
+  end;
+end $$;
+
+do $$
+declare p public.players%rowtype;
+begin
+  p := public.set_my_display_name(current_setting('app.nm_sid')::uuid, '   ');
+  if p.display_name <> 'Player' then raise exception 'FAIL: a blank rename stored %', p.display_name; end if;
+  p := public.set_my_display_name(current_setting('app.nm_sid')::uuid, 'Alice B');
+  if p.display_name <> 'Alice B' then raise exception 'FAIL: the lobby rename did not apply'; end if;
+  raise notice 'PASS: set_my_display_name renames in the lobby (blank becomes Player)';
+end $$;
+
+-- ---- NEGATIVE: auth_uid is not readable by students ------------------------
+do $$
+declare n int;
+begin
+  begin
+    perform auth_uid from public.players where session_id = current_setting('app.nm_sid')::uuid;
+    raise exception 'SECURITY FAIL: a student read players.auth_uid';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: players.auth_uid is not selectable by clients (%)', sqlerrm;
+  end;
+  -- ...while the policies that use it still work: the board is on, so Alice
+  -- sees Bob too, and she can still find her own row.
+  select count(*) into n from public.players where session_id = current_setting('app.nm_sid')::uuid;
+  if n <> 2 then raise exception 'FAIL: Alice sees % players, expected 2', n; end if;
+  if public.get_my_player_id(current_setting('app.nm_sid')::uuid)
+     is distinct from current_setting('app.nm_p1')::uuid then
+    raise exception 'FAIL: get_my_player_id did not return the caller''s row';
+  end if;
+  raise notice 'PASS: the roster stays visible and get_my_player_id finds "me"';
+end $$;
+
+-- ---- NEGATIVE: a student may not moderate ----------------------------------
+do $$ begin
+  begin
+    perform public.host_rename_player(current_setting('app.nm_p2')::uuid, 'lol');
+    raise exception 'SECURITY FAIL: a student renamed a classmate';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: student host_rename_player blocked (%)', sqlerrm;
+  end;
+  begin
+    perform public.host_remove_player(current_setting('app.nm_p2')::uuid);
+    raise exception 'SECURITY FAIL: a student removed a classmate';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: student host_remove_player blocked (%)', sqlerrm;
+  end;
+end $$;
+reset role;
+
+-- ---- the host renames and removes; a removed player cannot rejoin ----------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select public.host_rename_player(:'nm_p2', 'Robert');
+do $$ begin
+  if (select display_name from public.players where id = current_setting('app.nm_p2')::uuid) <> 'Robert' then
+    raise exception 'FAIL: host_rename_player did not apply';
+  end if;
+  raise notice 'PASS: the host can rename a player';
+end $$;
+select public.host_remove_player(:'nm_p2');
+select count(*) as nm_bots from public.add_benchmark_bots(:'nm_sid') \gset
+do $$
+declare v_bot uuid;
+begin
+  select id into v_bot from public.players
+   where session_id = current_setting('app.nm_sid')::uuid and is_bot limit 1;
+  begin
+    perform public.host_remove_player(v_bot);
+    raise exception 'FAIL: removed a benchmark player';
+  exception when others then
+    if position('FAIL: removed' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: benchmark players cannot be removed (%)', sqlerrm;
+  end;
+end $$;
+reset role;
+
+do $$ begin
+  if exists (select 1 from public.players where id = current_setting('app.nm_p2')::uuid) then
+    raise exception 'FAIL: host_remove_player left the player row';
+  end if;
+  raise notice 'PASS: the host can remove a player';
+end $$;
+
+select set_config('request.jwt.claims', :'bob_jwt', false);
+set role authenticated;
+do $$ begin
+  begin
+    -- the code from the projector: Bob can no longer read the session row
+    perform public.join_session(current_setting('app.nm_code'), 'Bob again');
+    raise exception 'SECURITY FAIL: a removed player rejoined';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: a removed player cannot rejoin (%)', sqlerrm;
+  end;
+end $$;
+reset role;
+
+-- ---- once the game starts, names are fixed (except by the host) ------------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select public.start_round(:'nm_sid');
+reset role;
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+do $$ begin
+  begin
+    perform public.set_my_display_name(current_setting('app.nm_sid')::uuid, 'Surprise');
+    raise exception 'SECURITY FAIL: a student renamed themself mid-game';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: students cannot rename once the game has started (%)', sqlerrm;
+  end;
+end $$;
+reset role;
+
+-- =============================================================================
+-- HIDDEN ODDS (0029) — "hide the odds" hides them from the data, not just the UI
+-- =============================================================================
+-- good_prob 1 is chosen so it is observable without reading it: the Edge bot
+-- stakes (2p - 1) of its wealth, so it goes all-in at p = 1 and stakes 20% at
+-- the 0.6 fallback resolve_round would use if it could not see the hidden odds.
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select id as ho_sid, join_code as ho_code
+  from public.create_session('{"num_rounds":3,"market_mode":"auto","market_scope":"shared",
+      "good_prob":1,"show_odds_to_students":false}'::jsonb) \gset
+reset role;
+select set_config('app.ho_sid', :'ho_sid', false);
+
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+select id as ho_p1 from public.join_session(:'ho_code', 'Alice') \gset
+do $$
+declare c jsonb;
+begin
+  select config into c from public.sessions where id = current_setting('app.ho_sid')::uuid;
+  if c ? 'good_prob' then
+    raise exception 'SECURITY FAIL: a student can read hidden odds (good_prob = %)', c->>'good_prob';
+  end if;
+  if public.get_hidden_odds(current_setting('app.ho_sid')::uuid) is not null then
+    raise exception 'SECURITY FAIL: get_hidden_odds answered a student';
+  end if;
+  raise notice 'PASS: hidden odds are absent from the student''s copy of the session';
+end $$;
+reset role;
+
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+do $$ begin
+  if (public.get_hidden_odds(current_setting('app.ho_sid')::uuid)->>'good_prob')::numeric <> 1 then
+    raise exception 'FAIL: the host cannot read the hidden odds';
+  end if;
+  raise notice 'PASS: the host reads hidden odds through get_hidden_odds';
+end $$;
+select count(*) as ho_bots from public.add_benchmark_bots(:'ho_sid') \gset
+select public.start_round(:'ho_sid');
+select public.lock_round(:'ho_sid', 1);
+select public.resolve_round(:'ho_sid', 1);
+reset role;
+select set_config('app.ho_edge', (select id::text from public.players
+  where session_id = :'ho_sid' and strategy = 'edge'), false);
+
+do $$
+declare r public.rounds%rowtype; a public.allocations%rowtype;
+begin
+  select * into r from public.rounds where session_id = current_setting('app.ho_sid')::uuid and round_number = 1;
+  select * into a from public.allocations where round_id = r.id and player_id = current_setting('app.ho_edge')::uuid;
+  if a.risky_amount <> 100 or r.market_outcome <> 'good' then
+    raise exception 'FAIL: resolve_round ignored the hidden odds (edge staked %, market %)',
+      a.risky_amount, r.market_outcome;
+  end if;
+  raise notice 'PASS: resolve_round plays the hidden odds';
+end $$;
+
+-- ---- a second reveal of the same round is refused --------------------------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+do $$ begin
+  begin
+    perform public.resolve_round(current_setting('app.ho_sid')::uuid, 1);
+    raise exception 'FAIL: a revealed round was resolved again';
+  exception when others then
+    if position('FAIL: a revealed' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: a revealed round cannot be resolved again (%)', sqlerrm;
+  end;
+end $$;
+
+-- ---- retuning hidden odds keeps them hidden, and the next round uses them ---
+select public.set_good_prob(:'ho_sid', 0);
+select public.next_round(:'ho_sid');
+select public.lock_round(:'ho_sid', 2);
+select public.resolve_round(:'ho_sid', 2);
+reset role;
+do $$
+declare c jsonb; r public.rounds%rowtype; a public.allocations%rowtype;
+begin
+  select config into c from public.sessions where id = current_setting('app.ho_sid')::uuid;
+  if c ? 'good_prob' then
+    raise exception 'SECURITY FAIL: set_good_prob wrote hidden odds where students can read them';
+  end if;
+  select * into r from public.rounds where session_id = current_setting('app.ho_sid')::uuid and round_number = 2;
+  select * into a from public.allocations where round_id = r.id and player_id = current_setting('app.ho_edge')::uuid;
+  if a.risky_amount <> 0 or r.market_outcome <> 'bad' then
+    raise exception 'FAIL: retuned hidden odds were not used (edge staked %, market %)',
+      a.risky_amount, r.market_outcome;
+  end if;
+  raise notice 'PASS: set_good_prob while hidden stays hidden, and the next round uses it';
+end $$;
+
+-- ---- showing them puts them back; hiding again takes them away -------------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select public.set_show_odds(:'ho_sid', true);
+reset role;
+do $$ begin
+  if (select (config->>'good_prob')::numeric from public.sessions
+       where id = current_setting('app.ho_sid')::uuid) is distinct from 0 then
+    raise exception 'FAIL: showing the odds did not restore good_prob';
+  end if;
+  if exists (select 1 from public.session_secrets where session_id = current_setting('app.ho_sid')::uuid) then
+    raise exception 'FAIL: shown odds left a copy in session_secrets';
+  end if;
+  raise notice 'PASS: set_show_odds(true) restores the odds to the session';
+end $$;
+
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select public.set_show_odds(:'ho_sid', false);
+select public.finish_session(:'ho_sid');
+reset role;
+do $$ begin
+  if (select (config->>'good_prob')::numeric from public.sessions
+       where id = current_setting('app.ho_sid')::uuid) is distinct from 0 then
+    raise exception 'FAIL: finishing the game did not reveal the odds';
+  end if;
+  raise notice 'PASS: finishing the game reveals the odds to students';
+end $$;
+
+-- ---- portfolio: per-asset odds are hidden too ------------------------------
+select set_config('request.jwt.claims', :'host_jwt', false);
+set role authenticated;
+select id as hp_sid from public.create_session(
+  '{"game_type":"portfolio","num_assets":2,"num_rounds":2,"show_odds_to_students":false,
+    "assets":[{"name":"Tech","good_prob":0.9},{"name":"Bonds","good_prob":0.1}]}'::jsonb) \gset
+reset role;
+select set_config('app.hp_sid', :'hp_sid', false);
+do $$
+declare c jsonb; s jsonb;
+begin
+  select config into c from public.sessions where id = current_setting('app.hp_sid')::uuid;
+  select secret->'odds' into s from public.session_secrets
+   where session_id = current_setting('app.hp_sid')::uuid;
+  if c->'assets'->0 ? 'good_prob' or c->'assets'->1 ? 'good_prob' then
+    raise exception 'SECURITY FAIL: per-asset odds are readable while hidden';
+  end if;
+  if c->'assets'->0->>'name' <> 'Tech' then
+    raise exception 'FAIL: hiding the odds dropped the rest of the asset (%)', c->'assets'->0;
+  end if;
+  if (s->'assets'->>0)::numeric <> 0.9 or (s->'assets'->>1)::numeric <> 0.1 then
+    raise exception 'FAIL: per-asset odds were not stashed intact: %', s;
+  end if;
+  raise notice 'PASS: per-asset odds are stashed, and the assets keep their other fields';
+end $$;
+
 select '*** ALL GAME SELF-TESTS PASSED ***' as result;

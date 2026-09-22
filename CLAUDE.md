@@ -53,7 +53,7 @@ config, so it drops into Next's interactive setup — use `tsc --noEmit` instead
 ```bash
 npm run test:db                   # both suites below, EVERY migration, in-process Postgres
 npm run test:db -- game           # scripts/db_selftest.sql: game security + math + manager secrecy
-npm run test:db -- accounts       # scripts/accounts_selftest.sql: the account layer (0016–0025)
+npm run test:db -- accounts       # scripts/accounts_selftest.sql: the account layer (0016–0030)
 npm run security-check            # optional: the same assertions through a LIVE project
 ```
 
@@ -84,19 +84,28 @@ SECURITY DEFINER RPC (`create_session`, `join_session`, `start_round`,
 `submit_*_allocation`, `get_leaderboard`, `get_my_rank`, `get_manager_truth`, …).
 `resolve_round` is the **only** writer of `players.current_wealth`. The app never
 uses a service_role key. So: never compute wealth client-side and write it — the
-TS math exists for previews, the fee counter, reveals and tests.
+TS math exists for previews, the fee counter, reveals and tests. Clients have no
+direct write to any game table (students rename via `set_my_display_name`), and
+`players` SELECT is column-scoped without `auth_uid` — use `PLAYER_COLUMNS`,
+never `select("*")`, and `get_my_player_id` to find "me". Hidden market odds live
+in `session_secrets` while a game runs (0029; the host merges them back in
+`useSession`).
 
 **TS mirrors SQL; change both.** `lib/game/math.ts` (basic), `portfolio.ts` and
 `manager.ts` are 1:1 mirrors of the three branches of `resolve_round`
 (0003 / 0010 / 0015). `lib/game/db.ts` hand-mirrors the table row shapes (no
-generated types), and `lib/design/colors.ts` mirrors the CSS tokens. A mechanic
-change is three edits: the migration, its TS mirror, and MECHANICS.md.
+generated types), `lib/game/hidden-odds.ts` mirrors `_apply_odds`, and
+`lib/design/colors.ts` mirrors the CSS tokens. A mechanic change is three edits:
+the migration, its TS mirror, and MECHANICS.md.
 
 **Migrations are append-only.** `supabase/migrations/NNNN_*.sql` applied in
 order, each opening with a header comment explaining *why* it exists. Never edit
 an applied migration — add the next number. Functions use `create or replace`,
 so the highest-numbered file mentioning a function holds its real definition
-(`resolve_round` lives in 0015, not 0003).
+(`resolve_round` lives in 0029, not 0003 or 0015). Supabase grants every new
+function to `anon` and `authenticated` directly, so each one needs `revoke all
+... from public, anon` (and `authenticated`, for helpers). `accounts_selftest.sql`
+asserts the EXACT callable set for both roles — add a new client RPC there.
 
 **Three client layers:**
 

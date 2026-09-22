@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PlayerRow } from "@/lib/game/db";
+import { PLAYER_COLUMNS, type PlayerRow } from "@/lib/game/db";
 
 /**
  * Live list of players in a session. Does an initial fetch, then keeps the list
@@ -17,7 +17,7 @@ export function usePlayers(supabase: SupabaseClient, sessionId: string): PlayerR
 
     supabase
       .from("players")
-      .select("*")
+      .select(PLAYER_COLUMNS)
       .eq("session_id", sessionId)
       .order("joined_at", { ascending: true })
       .then(({ data }) => {

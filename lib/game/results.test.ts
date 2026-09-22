@@ -48,7 +48,6 @@ function player(id: string, wealth: number, strategy: string | null = null): Pla
   return {
     id,
     session_id: "s1",
-    auth_uid: strategy ? null : id,
     display_name: id,
     current_wealth: wealth,
     is_active: true,

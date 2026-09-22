@@ -9,17 +9,27 @@ import { siteUrl } from "@/lib/game/db";
 import { emailError, MIN_PASSWORD_LENGTH, passwordError } from "@/lib/auth/validation";
 import { EMAIL_DELIVERY_READY } from "@/lib/auth/email-delivery";
 import { emailSendErrorMessage } from "@/lib/auth/errors";
+import { useRecentSignIn } from "@/components/account/use-recent-sign-in";
 
 /**
  * Password reset, both halves in one page.
  *
- * Signed out -> ask for an email and send the reset link. Signed in (which is
- * what opening that link produces, via /auth/callback) -> set a new password.
+ * Signed out -> ask for an email and send the reset link. Opening that link
+ * signs the person in via /auth/callback, and a session that FRESH may set a
+ * new password here without the old one.
+ *
+ * Merely being signed in is not enough: that turned this page into "change the
+ * password of whoever left this laptop signed in" (docs/ACCOUNTS.md T10). Any
+ * other signed-in visitor is sent to /account, which asks them to confirm it is
+ * them first. While email is off there is no reset link at all, so this branch
+ * cannot be reached then.
  */
 export default function ResetPasswordPage() {
   const { supabase, user, loading } = useSupabaseUser();
+  const { recent, check } = useRecentSignIn(supabase);
+  const signedIn = Boolean(user && !user.is_anonymous);
 
-  if (loading) {
+  if (loading || (signedIn && recent === null)) {
     return (
       <PageSkeleton label="Loading" width="max-w-md" />
     );
@@ -28,15 +38,17 @@ export default function ResetPasswordPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">
       <Card className="animate-pop-in">
-        {user && !user.is_anonymous ? (
-          <SetNewPassword supabase={supabase} />
+        {signedIn && EMAIL_DELIVERY_READY && recent ? (
+          <SetNewPassword supabase={supabase} ensureRecent={check} />
+        ) : signedIn ? (
+          <UseAccountPage />
         ) : EMAIL_DELIVERY_READY ? (
           <RequestLink supabase={supabase} />
         ) : (
           // Someone can still reach this URL directly. Sending a reset that
           // cannot be delivered leaves them waiting for a message that never
-          // arrives, so say so. Setting a new password while signed in still
-          // works, which is the branch above.
+          // arrives, so say so. A signed-in visitor changes their password on
+          // /account instead (the branch above).
           <ResetUnavailable />
         )}
         <Link
@@ -124,8 +136,11 @@ function RequestLink({ supabase }: { supabase: ReturnType<typeof useSupabaseUser
 
 function SetNewPassword({
   supabase,
+  ensureRecent,
 }: {
   supabase: ReturnType<typeof useSupabaseUser>["supabase"];
+  /** false once the fresh sign-in is too old; the page then switches away */
+  ensureRecent: () => Promise<boolean>;
 }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -138,6 +153,7 @@ function SetNewPassword({
       setError(err);
       return;
     }
+    if (!(await ensureRecent())) return;
     setBusy(true);
     setError(null);
     const { error } = await supabase.auth.updateUser({ password });
@@ -181,6 +197,26 @@ function SetNewPassword({
           {busy ? "Saving…" : "Save password"}
         </Button>
       </div>
+    </>
+  );
+}
+
+/** A signed-in visitor who did not just arrive from a reset link. */
+function UseAccountPage() {
+  return (
+    <>
+      <h1 className="font-display text-2xl font-black uppercase tracking-tight text-ink">
+        You&apos;re signed in
+      </h1>
+      <p className="mt-2 text-sm text-ink-muted">
+        Change your password from your account page. It will ask you to confirm it&apos;s you first.
+      </p>
+      <Link
+        href="/account"
+        className="mt-4 inline-flex font-semibold text-ink underline underline-offset-4"
+      >
+        Go to your account
+      </Link>
     </>
   );
 }

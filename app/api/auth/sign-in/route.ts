@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { USERNAME_RE } from "@/lib/auth/validation";
 import { isRateLimited, signInErrorMessage } from "@/lib/auth/errors";
+import { clientIpFrom, isCrossSiteRequest, isJsonContentType } from "@/lib/auth/request-guard";
 
 /**
  * Username sign-in.
@@ -16,7 +17,9 @@ import { isRateLimited, signInErrorMessage } from "@/lib/auth/errors";
  *
  * Because this path is proxied, Supabase sees the Vercel egress IP for every
  * request, so it carries its own throttle (0022) keyed on both the targeted
- * username and a hash of the caller's IP.
+ * username and a hash of the caller's IP. Each attempt is booked BEFORE the
+ * password is checked (login_begin, 0027) and settled after (login_finish), so
+ * a burst of simultaneous guesses cannot all slip past the count.
  *
  * The response is deliberately uninformative: unknown username and wrong
  * password return exactly the same body and status, so this cannot be used to
@@ -33,20 +36,20 @@ const MISCONFIGURED = {
   error: "Username sign-in is not set up correctly. Sign in with your email address instead.",
 } as const;
 
-function clientIp(request: Request): string {
-  const fwd = request.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
-  return request.headers.get("x-real-ip") ?? "unknown";
-}
-
 export async function POST(request: Request) {
   // Login CSRF: a hostile page can auto-submit an HTML form here with a
   // text/plain body shaped like JSON, and the response would sign the victim's
   // browser into the ATTACKER's account (a form post is a top-level navigation,
-  // so SameSite=Lax does not stop the cookies being set). A form cannot send
-  // application/json without a CORS preflight, which this route never answers.
+  // so SameSite=Lax does not stop the cookies being set). A cross-site request
+  // cannot carry application/json without a CORS preflight, which this route
+  // never answers — so the content type must be EXACTLY that (a substring test
+  // let `text/plain; charset=application/json` through), and a browser that
+  // says the request came from another site is refused outright.
   // Checked first, so it holds however the rest of the route is configured.
-  if (!(request.headers.get("content-type") ?? "").includes("application/json")) {
+  if (isCrossSiteRequest(request.headers)) {
+    return NextResponse.json(GENERIC, { status: 403 });
+  }
+  if (!isJsonContentType(request.headers.get("content-type"))) {
     return NextResponse.json(GENERIC, { status: 415 });
   }
 
@@ -77,20 +80,24 @@ export async function POST(request: Request) {
   const buckets = [
     `u:${username.toLowerCase()}`,
     // Hashed with the server secret so the table holds no IP addresses.
-    `ip:${createHash("sha256").update(`${clientIp(request)}${secret}`).digest("hex")}`,
+    `ip:${createHash("sha256")
+      .update(`${clientIpFrom(request.headers, Boolean(process.env.VERCEL))}${secret}`)
+      .digest("hex")}`,
   ];
 
-  const { data: allowed, error: gateError } = await supabase.rpc("login_gate", {
+  // Books this attempt as a failure up front and says whether it may go ahead,
+  // in one step — see 0027 for why the count cannot wait for the answer.
+  const { data: allowed, error: gateError } = await supabase.rpc("login_begin", {
     p_buckets: buckets,
     p_secret: secret,
   });
-  // login_gate answers NULL when the secret here does not match the one stored
-  // in app_secrets (0024), and an error when the migrations are missing. Both
+  // login_begin answers NULL when the secret here does not match the one
+  // stored in app_secrets, and an error when the migrations are missing. Both
   // are deploy problems; reporting them as "too many attempts" sent people to
   // wait out a lockout that did not exist.
   if (gateError || allowed === null || allowed === undefined) {
     console.error(
-      "username sign-in misconfigured: USERNAME_LOOKUP_SECRET does not match app_secrets.username_lookup, or migrations 0021/0022/0024 are not applied",
+      "username sign-in misconfigured: USERNAME_LOOKUP_SECRET does not match app_secrets.username_lookup, or migrations 0021/0022/0024/0027 are not applied",
       gateError?.message ?? "",
     );
     return NextResponse.json(MISCONFIGURED, { status: 503 });
@@ -102,14 +109,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: email } = await supabase.rpc("email_for_username", {
+  const finish = (outcome: "ok" | "wrong" | "refund") =>
+    supabase.rpc("login_finish", { p_buckets: buckets, p_outcome: outcome, p_secret: secret });
+
+  const { data: email, error: lookupError } = await supabase.rpc("email_for_username", {
     p_username: username,
     p_secret: secret,
   });
+  if (lookupError) {
+    // The database failed, not the person: hand the attempt back.
+    await finish("refund");
+    return NextResponse.json(
+      { error: "Sign-in is not responding right now. Try again in a moment." },
+      { status: 503 },
+    );
+  }
 
-  // "wrong" is the only outcome booked as a failed guess. An outage or GoTrue's
-  // own rate limit says nothing about the password, so it must not count
-  // towards locking the username out.
+  // "wrong" is the only outcome that stays booked as a failed guess. An outage
+  // or GoTrue's own rate limit says nothing about the password, so it must not
+  // count towards locking the username out.
   let outcome: "ok" | "wrong" | { status: number; error: string; passwordWasRight: boolean } =
     "wrong";
   if (typeof email === "string" && email.length > 0) {
@@ -130,10 +148,12 @@ export async function POST(request: Request) {
     }
   }
 
-  const record = outcome === "ok" || outcome === "wrong" || outcome.passwordWasRight;
-  if (record) {
-    const ok = outcome !== "wrong";
-    await supabase.rpc("login_record", { p_buckets: buckets, p_ok: ok, p_secret: secret });
+  // The attempt was booked as a failure by login_begin. A right password (even
+  // one whose email is unconfirmed) forgives it; an outage refunds it.
+  if (outcome === "ok" || (outcome !== "wrong" && outcome.passwordWasRight)) {
+    await finish("ok");
+  } else if (outcome !== "wrong") {
+    await finish("refund");
   }
 
   if (outcome === "wrong") return NextResponse.json(GENERIC, { status: 401 });

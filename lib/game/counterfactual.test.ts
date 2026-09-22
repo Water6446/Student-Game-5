@@ -74,4 +74,19 @@ describe("csv", () => {
   it("joins rows with CRLF", () => {
     expect(toCsv([["a", "b"], [1, 2]])).toBe("a,b\r\n1,2");
   });
+
+  it("defuses text a spreadsheet would run as a formula", () => {
+    expect(csvEscape("=1+1")).toBe("'=1+1");
+    expect(csvEscape("+SUM(A1)")).toBe("'+SUM(A1)");
+    expect(csvEscape("-2+3")).toBe("'-2+3");
+    expect(csvEscape("@cmd")).toBe("'@cmd");
+    expect(csvEscape("\t=1")).toBe("'\t=1");
+    // still quoted when it also needs quoting
+    expect(csvEscape('=HYPERLINK("http://x.test","a")')).toBe(`"'=HYPERLINK(""http://x.test"",""a"")"`);
+  });
+
+  it("leaves numbers numeric, including negative ones", () => {
+    expect(csvEscape(-12.5)).toBe("-12.5");
+    expect(toCsv([["Ann", -3]])).toBe("Ann,-3");
+  });
 });

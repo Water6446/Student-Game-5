@@ -68,7 +68,10 @@ export interface SessionConfig {
   payoff_mode: PayoffMode;
   num_rounds: number;
   starting_wealth: number;
-  good_prob: number;
+  /** ABSENT while the host hides the odds and the game is running — the server
+   *  keeps them in session_secrets then (0029). Host screens merge them back
+   *  via applyHiddenOdds (hidden-odds.ts); read it as `good_prob ?? 0.6`. */
+  good_prob?: number;
   market_mode: MarketMode;
   /** basic: one outcome per round (shared) or per player (independent).
    *  portfolio: one outcome per ASSET (shared) or per player × asset (independent). */

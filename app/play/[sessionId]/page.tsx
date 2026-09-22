@@ -20,22 +20,62 @@ export default function PlayPage({ params }: { params: { sessionId: string } }) 
   const players = usePlayers(supabase, params.sessionId);
   const round = useRound(supabase, params.sessionId, session?.current_round ?? 0);
 
-  const me = user ? players.find((p) => p.auth_uid === user.id) ?? null : null;
+  // Which row is mine? The list carries no auth_uid (0028), so ask the server
+  // once. undefined = still asking; null = not a player here.
+  const [myId, setMyId] = useState<string | null | undefined>(undefined);
+  const uid = user?.id ?? null;
+  useEffect(() => {
+    if (authLoading) return;
+    if (!uid) {
+      setMyId(null);
+      return;
+    }
+    let active = true;
+    supabase.rpc("get_my_player_id", { p_session_id: params.sessionId }).then(({ data }) => {
+      if (active) setMyId((data as string | null) ?? null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [supabase, uid, authLoading, params.sessionId]);
+
+  const me = myId ? players.find((p) => p.id === myId) ?? null : null;
   useDocumentTitle(session && me ? sessionTabTitle(session, "student") : null);
 
-  // The session row usually lands before the player list, and for that moment
-  // a student who HAS joined looks like one who hasn't. A member always sees at
-  // least their own row, so an empty list is "still loading" — for a couple of
-  // seconds, after which it really does mean not joined (RLS shows a
-  // non-member nothing).
+  // Once my row has been on screen, losing it means the host removed me.
+  const [seenMe, setSeenMe] = useState(false);
+  useEffect(() => {
+    if (me) setSeenMe(true);
+  }, [me]);
+
+  // My id usually lands before my row does, and for that moment a student who
+  // HAS joined looks like one who hasn't. So a known id with no row yet is
+  // "still loading" — for a couple of seconds, after which it really does mean
+  // the row is not there.
   const [grace, setGrace] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setGrace(false), 2000);
     return () => clearTimeout(t);
   }, []);
 
-  if (authLoading || loading || (session && !me && players.length === 0 && grace)) {
+  if (
+    authLoading ||
+    loading ||
+    myId === undefined ||
+    (session && myId && !me && !seenMe && grace)
+  ) {
     return <PageSkeleton label="Loading your game" width="max-w-lg" />;
+  }
+
+  if (session && seenMe && !me) {
+    return (
+      <StatusPage
+        eyebrow="Student"
+        title="You were removed from this game"
+        body="The host took you off the roster. If that's a mistake, ask them."
+        primary={{ label: "Home", href: "/" }}
+      />
+    );
   }
 
   if (!session || !me) {

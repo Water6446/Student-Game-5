@@ -179,6 +179,24 @@ do $$ begin
   raise notice 'PASS: display_name/institution remain writable by their owner';
 end $$;
 
+-- ...within limits (0030). The form slices; PostgREST did not.
+do $$ begin
+  begin
+    update public.profiles set institution = repeat('Z', 121) where id = auth.uid();
+    raise exception 'SECURITY FAIL: stored a 121-character institution';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: institution is capped at 120 characters (%)', sqlerrm;
+  end;
+  begin
+    update public.profiles set display_name = repeat('Y', 81) where id = auth.uid();
+    raise exception 'SECURITY FAIL: stored an 81-character display name';
+  exception when others then
+    if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
+    raise notice 'PASS: profile display name is capped at 80 characters (%)', sqlerrm;
+  end;
+end $$;
+
 -- set_my_username validates format and uniqueness.
 do $$ begin
   begin
@@ -571,6 +589,80 @@ end $$;
 reset role;
 
 -- =============================================================================
+-- 10b. The attempt is counted BEFORE the password check (0027)
+-- =============================================================================
+-- login_gate only READ the counters, so a burst of simultaneous guesses all got
+-- past it before any one was booked. login_begin books each attempt as it lets
+-- it through: eight attempts that never report back still lock the bucket.
+do $$
+declare i int; v_fails int;
+begin
+  for i in 1..8 loop
+    if public.login_begin(array['u:burst', 'ip:burst'], repeat('a', 64)) is not true then
+      raise exception 'FAIL: attempt % of 8 was refused', i;
+    end if;
+  end loop;
+  if public.login_begin(array['u:burst', 'ip:burst'], repeat('a', 64)) is not false then
+    raise exception 'SECURITY FAIL: a 9th attempt got through while 8 were still unsettled';
+  end if;
+  -- the refused attempt never reached GoTrue, so it is not booked
+  select fails into v_fails from public.login_throttle where bucket = 'ip:burst';
+  if v_fails <> 8 then
+    raise exception 'FAIL: the IP bucket shows % attempts, expected 8', v_fails;
+  end if;
+  raise notice 'PASS: login_begin books attempts before they run — a burst locks after 8';
+
+  if public.login_begin(array['u:x'], 'wrong') is not null then
+    raise exception 'SECURITY FAIL: login_begin answered without the secret';
+  end if;
+  raise notice 'PASS: login_begin requires the secret, and says so with NULL';
+end $$;
+
+-- 'ok' forgives the username and hands THIS attempt back to the IP — and only
+-- this one: a wrong guess from the same address stays booked.
+do $$
+declare v_fails int;
+begin
+  perform public.login_begin(array['u:typo', 'ip:class'], repeat('a', 64));
+  perform public.login_finish(array['u:typo', 'ip:class'], 'wrong', repeat('a', 64));
+  perform public.login_begin(array['u:good', 'ip:class'], repeat('a', 64));
+  perform public.login_finish(array['u:good', 'ip:class'], 'ok', repeat('a', 64));
+  select fails into v_fails from public.login_throttle where bucket = 'ip:class';
+  if v_fails <> 1 then
+    raise exception 'FAIL: one wrong + one right sign-in left % IP failures, expected 1', v_fails;
+  end if;
+  if exists (select 1 from public.login_throttle where bucket = 'u:good') then
+    raise exception 'FAIL: a successful sign-in left its username bucket behind';
+  end if;
+  raise notice 'PASS: a success refunds only its own attempt from the IP bucket';
+end $$;
+
+-- 'refund' (GoTrue or the database failed) hands the attempt back, lifting the
+-- lock it set.
+do $$
+declare i int; v_rejected boolean := false;
+begin
+  for i in 1..8 loop
+    perform public.login_begin(array['u:outage'], repeat('a', 64));
+  end loop;
+  perform public.login_finish(array['u:outage'], 'refund', repeat('a', 64));
+  if public.login_begin(array['u:outage'], repeat('a', 64)) is not true then
+    raise exception 'FAIL: a refunded attempt left its bucket locked';
+  end if;
+  raise notice 'PASS: a refunded attempt is handed back, lifting the lock it set';
+
+  begin
+    perform public.login_finish(array['u:outage'], 'bogus', repeat('a', 64));
+  exception when others then
+    v_rejected := position('unknown outcome' in sqlerrm) > 0;
+  end;
+  if not v_rejected then
+    raise exception 'FAIL: login_finish accepted an unknown outcome';
+  end if;
+  raise notice 'PASS: login_finish rejects an unknown outcome';
+end $$;
+
+-- =============================================================================
 -- 11. Export and delete
 -- =============================================================================
 select set_config('request.jwt.claims', :'prof_jwt', false);
@@ -719,10 +811,13 @@ begin
   select string_agg(distinct p.proname, ',' order by p.proname) into v_got
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE');
-  if v_got is distinct from 'email_for_username,login_gate,login_record,username_available' then
+  -- login_gate/login_record are superseded by login_begin/login_finish (0027)
+  -- and kept only for the rollout; drop them from this list when they go.
+  if v_got is distinct from
+     'email_for_username,login_begin,login_finish,login_gate,login_record,username_available' then
     raise exception 'SECURITY FAIL: anon can execute an unexpected set of functions: %', v_got;
   end if;
-  raise notice 'PASS: anon can execute only the four sign-in functions';
+  raise notice 'PASS: anon can execute only the sign-in functions';
 end $$;
 
 -- Internal helpers are for their SECURITY DEFINER callers only.
@@ -732,12 +827,53 @@ begin
   foreach v_fn in array array[
     'public._open_next_round(uuid)', 'public._unique_username(text)',
     'public.session_quota(uuid)', 'public._throttle_window()',
-    'public.purge_stale_guests(integer)', 'public.purge_login_throttle()'] loop
+    'public.purge_stale_guests(integer)', 'public.purge_login_throttle()',
+    'public._manager_preset(text)', 'public._rand_normal(numeric,numeric)',
+    'public._gen_track_record(numeric,numeric,numeric,numeric,numeric,numeric,numeric)',
+    'public._clean_display_name(text)', 'public._odds_hidden(jsonb,text)',
+    'public._odds_of(jsonb)', 'public._strip_odds(jsonb)',
+    'public._apply_odds(jsonb,jsonb)'] loop
     if has_function_privilege('authenticated', v_fn, 'EXECUTE') then
       raise exception 'SECURITY FAIL: clients can call internal helper %', v_fn;
     end if;
   end loop;
   raise notice 'PASS: internal helpers are not client-callable';
+end $$;
+
+-- The whole signed-in surface, exactly. Supabase grants every new function to
+-- `authenticated` directly, so a helper that forgets its revoke fails HERE. A
+-- new RPC meant for clients gets added to this list in the same change.
+-- (RLS predicate helpers are on it on purpose: policies run them as the caller.)
+do $$
+declare
+  v_expected text[] := array[
+    'add_benchmark_bots', 'claim_my_account', 'create_session', 'delete_my_account',
+    'delete_session', 'email_for_username', 'export_my_data', 'finish_session',
+    'get_hidden_odds', 'get_leaderboard', 'get_manager_truth', 'get_my_history',
+    'get_my_player_id', 'get_my_rank', 'get_my_sessions_overview', 'host_remove_player',
+    'host_rename_player', 'is_host_of_round', 'is_my_player', 'is_session_host',
+    'is_session_member', 'join_session', 'lock_round', 'login_begin', 'login_finish',
+    'login_gate', 'login_record', 'my_deletion_preview', 'next_round', 'resolve_round',
+    'round_is_open', 'session_show_leaderboard', 'set_good_prob', 'set_my_display_name',
+    'set_my_username', 'set_session_label', 'set_show_odds', 'start_round',
+    'submit_allocation', 'submit_manager_allocation', 'submit_portfolio_allocation',
+    'username_available'];
+  v_got        text[];
+  v_unexpected text;
+  v_missing    text;
+begin
+  select array_agg(distinct p.proname::text) into v_got
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'EXECUTE');
+  select string_agg(x, ', ') into v_unexpected from unnest(v_got) x where x <> all(v_expected);
+  select string_agg(x, ', ') into v_missing    from unnest(v_expected) x where x <> all(v_got);
+  if v_unexpected is not null then
+    raise exception 'SECURITY FAIL: signed-in users can execute unexpected functions: %', v_unexpected;
+  end if;
+  if v_missing is not null then
+    raise exception 'FAIL: signed-in users lost EXECUTE on: %', v_missing;
+  end if;
+  raise notice 'PASS: signed-in users can execute exactly the client RPCs';
 end $$;
 
 select '*** ALL ACCOUNT SELF-TESTS PASSED ***' as result;

@@ -20,6 +20,9 @@ export function JoinForm() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when a real account is signed in on this browser: whose it is, while
+  // the student chooses between joining as it or as a guest.
+  const [accountLabel, setAccountLabel] = useState<string | null>(null);
 
   // prefill code from the QR/link (?code=...)
   useEffect(() => {
@@ -37,14 +40,32 @@ export function JoinForm() {
     }
   }, []);
 
-  async function join() {
+  async function join(as?: "account" | "guest") {
     setBusy(true);
     setError(null);
     try {
       // students authenticate anonymously — a real, server-verified identity
       // that RLS keys off of, without any account.
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
+      let user = userData.user;
+
+      // A real account signed in on this browser is often a professor's, left
+      // on a lab or classroom machine. Joining would play AS that account and
+      // leave its /account and /host one click away, so ask first.
+      if (user && !user.is_anonymous && !as) {
+        setAccountLabel(user.email ?? "an account");
+        setBusy(false);
+        return;
+      }
+      if (user && !user.is_anonymous && as === "guest") {
+        // "local": this browser only. The default would end the account's
+        // sessions on every device — the projector laptop included.
+        await supabase.auth.signOut({ scope: "local" });
+        user = null;
+      }
+      setAccountLabel(null);
+
+      if (!user) {
         const { error: signErr } = await supabase.auth.signInAnonymously();
         if (signErr) throw new Error(signErr.message);
       }
@@ -100,14 +121,41 @@ export function JoinForm() {
 
         {error ? <Banner kind="error">{error}</Banner> : null}
 
-        <Button
-          type="submit"
-          variant="gold"
-          disabled={busy || code.trim().length < 4}
-          className="w-full text-lg"
-        >
-          {busy ? "Joining…" : "Enter the market →"}
-        </Button>
+        {accountLabel ? (
+          <div className="space-y-3">
+            <Banner kind="info">
+              This browser is signed in as <span className="font-semibold">{accountLabel}</span>. Is
+              that you?
+            </Banner>
+            <Button
+              type="button"
+              variant="gold"
+              onClick={() => void join("guest")}
+              disabled={busy}
+              className="w-full"
+            >
+              No — join as a guest
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void join("account")}
+              disabled={busy}
+              className="w-full"
+            >
+              Yes — join as {accountLabel}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="submit"
+            variant="gold"
+            disabled={busy || code.trim().length < 4}
+            className="w-full text-lg"
+          >
+            {busy ? "Joining…" : "Enter the market →"}
+          </Button>
+        )}
       </form>
     </Card>
   );
