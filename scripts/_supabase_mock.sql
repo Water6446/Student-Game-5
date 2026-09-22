@@ -1,6 +1,7 @@
 -- =============================================================================
 -- _supabase_mock.sql — minimal local stand-ins for the Supabase platform so the
--- real migrations can be applied and exercised in a vanilla Postgres container.
+-- real migrations can be applied and exercised in a throwaway Postgres
+-- (scripts/db-selftest.mjs, `npm run test:db`).
 -- This is ONLY for the offline self-test; it is never deployed. It recreates
 -- just enough of the Supabase auth surface that our migrations/RPCs depend on:
 --   * schema auth + auth.users

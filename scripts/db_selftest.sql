@@ -1,12 +1,18 @@
 -- =============================================================================
--- db_selftest.sql — proves the Stage-1 security assertions and the wealth math
--- against the REAL migrations (applied just before this file). Any failed
--- assertion RAISEs and, with ON_ERROR_STOP=1, aborts the run with a nonzero
--- exit code. Identity is simulated the way Supabase does it: SET ROLE
--- authenticated + a request.jwt.claims GUC carrying sub / role / is_anonymous.
+-- db_selftest.sql — the game's security model and wealth math, proved against
+-- EVERY migration in supabase/migrations (the schema as deployed): the basic
+-- game's round loop, the manager game's secrecy model, and the index fund.
+-- The account layer has its own suite, accounts_selftest.sql.
+--
+-- Run: npm run test:db   (scripts/db-selftest.mjs — no Docker needed)
+--
+-- Any failed assertion RAISEs and aborts the run with a nonzero exit code.
+-- Identity is simulated the way Supabase does it: SET ROLE authenticated + a
+-- request.jwt.claims GUC carrying sub / role / is_anonymous.
 --
 -- Convention:
---   * "PASS:" notices mark an assertion that held.
+--   * "PASS:" notices mark an assertion that held; "NOTE:" flags a state that
+--     is deliberate for now but must change before launch.
 --   * a raised exception containing FAIL means a security/math invariant broke.
 -- =============================================================================
 \set ON_ERROR_STOP on
@@ -52,17 +58,37 @@ select id as p2 from public.join_session(:'join_code', 'Bob') \gset
 reset role;
 select set_config('app.p2', :'p2', false);
 
--- ---- NEGATIVE: anonymous student may NOT host -------------------------------
-select set_config('request.jwt.claims', :'alice_jwt', false);
-set role authenticated;
+-- ---- NEGATIVE: a signed-out caller may NOT host -----------------------------
+select set_config('request.jwt.claims', '', false);
+set role anon;
 do $$ begin
   begin
     perform public.create_session('{}'::jsonb);
-    raise exception 'SECURITY FAIL: anonymous user created a session';
+    raise exception 'SECURITY FAIL: a signed-out caller created a session';
   exception when others then
     if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
-    raise notice 'PASS: anonymous create_session blocked (%)', sqlerrm;
+    raise notice 'PASS: signed-out create_session blocked (%)', sqlerrm;
   end;
+end $$;
+reset role;
+
+-- ---- An anonymous (guest) student hosting: the testing bypass ---------------
+-- 0008_temp_allow_anon_host deliberately lets a guest host while the game is
+-- in testing (CLAUDE.md). Either outcome passes; the NOTE is the reminder. Once
+-- the launch revert lands (docs/DEPLOYMENT.md Part C.1), make this strict.
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+do $$
+declare v_id uuid;
+begin
+  begin
+    select id into v_id from public.create_session('{}'::jsonb);
+  exception when others then
+    raise notice 'PASS: anonymous create_session blocked (%)', sqlerrm;
+    return;
+  end;
+  perform public.delete_session(v_id);
+  raise notice 'NOTE: a guest can host — the 0008 testing bypass is live. Revert it before launch (docs/DEPLOYMENT.md Part C.1).';
 end $$;
 reset role;
 
@@ -79,13 +105,13 @@ select id as r1_id from public.rounds
 select set_config('app.r1_id', :'r1_id', false);
 select set_config('app.r1_num', :'r1_num', false);
 
--- Alice submits 50 risky (direct upsert, governed by RLS)
+-- Alice submits 50 risky. submit_allocation (0005) is the ONLY write path: it
+-- resolves her player from auth.uid() and computes safe = wealth - risky itself.
 select set_config('request.jwt.claims', :'alice_jwt', false);
 set role authenticated;
-insert into public.allocations(round_id, player_id, risky_amount, safe_amount)
-  values (:'r1_id', :'p1', 50, 50);
+select public.submit_allocation(:'r1_id', 50);
 
--- ---- NEGATIVE: Alice cannot create an allocation for Bob (not her player) ----
+-- ---- NEGATIVE: no direct writes to allocations, for anyone's player ---------
 do $$ begin
   begin
     insert into public.allocations(round_id, player_id, risky_amount, safe_amount)
@@ -93,21 +119,40 @@ do $$ begin
     raise exception 'SECURITY FAIL: Alice wrote Bob''s allocation';
   exception when others then
     if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
-    raise notice 'PASS: cross-player allocation insert blocked (%)', sqlerrm;
+    raise notice 'PASS: direct allocation insert blocked (%)', sqlerrm;
   end;
 end $$;
-
--- ---- NEGATIVE: Alice cannot submit risky > her wealth (100) ------------------
 do $$ begin
   begin
     update public.allocations set risky_amount = 150
       where player_id = current_setting('app.p1')::uuid;
-    raise exception 'SECURITY FAIL: risky > wealth accepted';
+    raise exception 'SECURITY FAIL: Alice rewrote her allocation directly';
   exception when others then
     if position('SECURITY FAIL' in sqlerrm) > 0 then raise; end if;
-    raise notice 'PASS: over-wealth allocation blocked (%)', sqlerrm;
+    raise notice 'PASS: direct allocation update blocked (%)', sqlerrm;
   end;
 end $$;
+
+-- ---- Alice cannot put more than her wealth (100) at risk ---------------------
+-- submit_allocation CLAMPS rather than raising: 0 <= risky <= current wealth,
+-- and safe is derived server-side, so an over-wealth request stores all-in.
+do $$
+declare a public.allocations%rowtype;
+begin
+  a := public.submit_allocation(current_setting('app.r1_id')::uuid, 150);
+  if a.risky_amount <> 100 or a.safe_amount <> 0 then
+    raise exception 'SECURITY FAIL: risky 150 on wealth 100 stored as %/%',
+      a.risky_amount, a.safe_amount;
+  end if;
+  a := public.submit_allocation(current_setting('app.r1_id')::uuid, -20);
+  if a.risky_amount <> 0 or a.safe_amount <> 100 then
+    raise exception 'SECURITY FAIL: a negative risky amount stored as %/%',
+      a.risky_amount, a.safe_amount;
+  end if;
+  raise notice 'PASS: risky is clamped to [0, wealth] server-side';
+end $$;
+-- back to the 50/50 the round-1 math below expects
+select public.submit_allocation(:'r1_id', 50);
 
 -- ---- NEGATIVE: Alice cannot directly write current_wealth -------------------
 do $$ begin
@@ -125,8 +170,7 @@ reset role;
 -- Bob submits 50 risky
 select set_config('request.jwt.claims', :'bob_jwt', false);
 set role authenticated;
-insert into public.allocations(round_id, player_id, risky_amount, safe_amount)
-  values (:'r1_id', :'p2', 50, 50);
+select public.submit_allocation(:'r1_id', 50);
 
 -- ---- NEGATIVE: Bob cannot SEE Alice's allocation ----------------------------
 do $$
@@ -233,8 +277,7 @@ select id as r2_id from public.rounds
 
 select set_config('request.jwt.claims', :'alice_jwt', false);
 set role authenticated;
-insert into public.allocations(round_id, player_id, risky_amount, safe_amount)
-  values (:'r2_id', :'p1', 105, 0);
+select public.submit_allocation(:'r2_id', 105);
 reset role;
 
 select set_config('request.jwt.claims', :'host_jwt', false);
@@ -316,8 +359,7 @@ select id as s2r1_id from public.rounds
 
 select set_config('request.jwt.claims', :'alice_jwt', false);
 set role authenticated;
-insert into public.allocations(round_id, player_id, risky_amount, safe_amount)
-  values (:'s2r1_id', :'p3', 50, 50);
+select public.submit_allocation(:'s2r1_id', 50);
 reset role;
 
 select set_config('request.jwt.claims', :'host_jwt', false);
@@ -342,9 +384,11 @@ end $$;
 -- =============================================================================
 select set_config('request.jwt.claims', :'host_jwt', false);
 set role authenticated;
+-- index_fund off: this block pins the five-manager secrecy model; the index
+-- fund has its own block at the end.
 select id as m_id, join_code as m_code from public.create_session(
   '{"game_type":"manager","num_rounds":3,"starting_wealth":100,
-    "show_full_leaderboard_to_students":true}'::jsonb) \gset
+    "show_full_leaderboard_to_students":true,"index_fund":false}'::jsonb) \gset
 reset role;
 
 select set_config('app.m_id', :'m_id', false);
@@ -505,4 +549,131 @@ begin
 end $$;
 reset role;
 
-select '*** ALL STAGE-1 SELF-TESTS PASSED ***' as result;
+-- =============================================================================
+-- INDEX FUND (0026) — appended after the shuffle, tracks the index exactly,
+-- charges 0.05%. A second host keeps these sessions clear of the first host's
+-- quota.
+-- =============================================================================
+insert into auth.users(id, email, is_anonymous) values
+  ('a0000000-0000-0000-0000-000000000002', 'prof2@example.edu', false)
+on conflict do nothing;
+\set host2_jwt '{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated","is_anonymous":false}'
+
+select set_config('request.jwt.claims', :'host2_jwt', false);
+set role authenticated;
+select id as ix_id, join_code as ix_code from public.create_session(
+  '{"game_type":"manager","num_rounds":3,"starting_wealth":100}'::jsonb) \gset
+select id as ix_hf_id from public.create_session(
+  '{"game_type":"manager","num_rounds":3,"manager_preset":"hedge_fund"}'::jsonb) \gset
+select id as ix_off_id from public.create_session(
+  '{"game_type":"manager","num_rounds":3,"index_fund":false}'::jsonb) \gset
+reset role;
+
+select set_config('app.ix_id', :'ix_id', false);
+select set_config('app.ix_hf_id', :'ix_hf_id', false);
+select set_config('app.ix_off_id', :'ix_off_id', false);
+
+-- ---- on by default, last, public-only, never shuffled -----------------------
+do $$
+declare c jsonb; f jsonb; t jsonb; s jsonb;
+begin
+  select config into c from public.sessions where id = current_setting('app.ix_id')::uuid;
+  if (c->>'index_fund')::boolean is distinct from true then
+    raise exception 'FAIL: index_fund should default to true, got %', c->'index_fund';
+  end if;
+  if (c->>'num_managers')::int <> 6 or jsonb_array_length(c->'managers') <> 6 then
+    raise exception 'FAIL: default line-up plus the index fund should be 6, got %',
+      c->>'num_managers';
+  end if;
+  f := c->'managers'->5;
+  if (f->>'index_fund')::boolean is distinct from true
+     or (f->>'mgmt_fee')::numeric <> 0.0005 or (f->>'perf_fee')::numeric <> 0 then
+    raise exception 'FAIL: the last slot is not a 0.05%% index fund: %', f;
+  end if;
+  if f ? 'alpha' or f ? 'beta' or f ? 'tracking_error' then
+    raise exception 'SECURITY FAIL: the index fund''s public entry carries truth: %', f;
+  end if;
+  if jsonb_array_length(f->'track_record'->'yearly') <> 10 then
+    raise exception 'FAIL: the index fund needs a 10-year track record';
+  end if;
+
+  select secret into s from public.session_secrets
+    where session_id = current_setting('app.ix_id')::uuid;
+  t := s->'managers'->5;
+  if (t->>'beta')::numeric <> 1 or (t->>'alpha')::numeric <> 0
+     or (t->>'tracking_error')::numeric <> 0 then
+    raise exception 'FAIL: index fund truth should be beta 1, alpha 0, TE 0: %', t;
+  end if;
+  if jsonb_array_length(s->'permutation') <> 5 then
+    raise exception 'FAIL: the shuffle must cover the 5 active slots only, got %',
+      s->'permutation';
+  end if;
+  raise notice 'PASS: index fund appended last, public-only, outside the shuffle';
+end $$;
+
+-- ---- hedge-fund preset: still 0.05%, never 2-and-20; and it can be switched off
+do $$
+declare f jsonb; n int;
+begin
+  select config->'managers'->5 into f from public.sessions
+    where id = current_setting('app.ix_hf_id')::uuid;
+  if (f->>'mgmt_fee')::numeric <> 0.0005 or (f->>'perf_fee')::numeric <> 0 then
+    raise exception 'FAIL: the hedge-fund preset put the index fund on its fees: %', f;
+  end if;
+  select (config->>'num_managers')::int into n from public.sessions
+    where id = current_setting('app.ix_off_id')::uuid;
+  if n <> 5 then
+    raise exception 'FAIL: index_fund=false should leave 5 managers, got %', n;
+  end if;
+  raise notice 'PASS: index fund keeps its own fee, and switches off';
+end $$;
+
+-- ---- a resolved year: gross = the market exactly, fee = 0.05% ----------------
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+select id as ix_p1 from public.join_session(:'ix_code', 'Alice') \gset
+reset role;
+select set_config('app.ix_p1', :'ix_p1', false);
+
+select set_config('request.jwt.claims', :'host2_jwt', false);
+set role authenticated;
+select public.start_round(:'ix_id');
+reset role;
+select id as ix_r1_id from public.rounds
+  where session_id = :'ix_id' and round_number = 1 \gset
+select set_config('app.ix_r1_id', :'ix_r1_id', false);
+
+select set_config('request.jwt.claims', :'alice_jwt', false);
+set role authenticated;
+select public.submit_manager_allocation(:'ix_r1_id', array[0,0,0,0,0,100]::numeric[]);
+reset role;
+
+select set_config('request.jwt.claims', :'host2_jwt', false);
+set role authenticated;
+select public.lock_round(:'ix_id', 1);
+select public.resolve_round(:'ix_id', 1);
+reset role;
+
+do $$
+declare r public.rounds%rowtype; a public.allocations%rowtype;
+begin
+  select * into r from public.rounds where id = current_setting('app.ix_r1_id')::uuid;
+  -- 0015 stores market_return rounded to 6 places and manager_returns unrounded,
+  -- so "exactly" is judged at the stored precision.
+  if round((r.manager_returns->>5)::numeric, 6) <> r.market_return then
+    raise exception 'FAIL: index fund returned % in a % market',
+      r.manager_returns->>5, r.market_return;
+  end if;
+  select * into a from public.allocations
+    where round_id = r.id and player_id = current_setting('app.ix_p1')::uuid;
+  if round(a.fees_paid, 4) <> 0.05 then
+    raise exception 'FAIL: $100 in the index fund should pay $0.05, paid %', a.fees_paid;
+  end if;
+  if round(a.resulting_wealth, 2) <> round(100 * (1 + r.market_return) - 0.05, 2) then
+    raise exception 'FAIL: index fund holder ended at %, expected %',
+      a.resulting_wealth, 100 * (1 + r.market_return) - 0.05;
+  end if;
+  raise notice 'PASS: index fund tracks the market exactly, less 0.05%%';
+end $$;
+
+select '*** ALL GAME SELF-TESTS PASSED ***' as result;

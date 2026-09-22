@@ -46,19 +46,19 @@ project these are dashboard settings:
 
 1. **Enable anonymous sign-ins** (students auth anonymously to join):
    Dashboard → Authentication → **Sign In / Providers** → **"Anonymous sign-ins"**
-   → toggle **ON** → Save. *(A real magic-link host can join without this, but a
+   → toggle **ON** → Save. *(A signed-in host account can join without this, but a
    true anonymous student is blocked until it's on — "anonymous sign-ins are
    disabled".)*
-2. **Redirect / Site URLs** for magic-link host login:
+2. **Redirect / Site URLs** for every sign-in that leaves the site (Google,
+   email links) — see Part B § 0b for the details:
    Dashboard → Authentication → **URL Configuration**
    - Site URL: `http://localhost:3000` (dev) and your Vercel URL in prod
    - Redirect URLs: add `http://localhost:3000/**` (and the Vercel `/**`)
 
-> **"permission denied for table allocations"** (Postgres 42501) means a missing
-> GRANT — migration `0002_rls.sql` wasn't fully applied. Run `npm run db:push`.
-> (An RLS *policy* rejection reads "violates row-level security policy" instead.)
-> Fast fallback with no CLI: paste `supabase/migrations/0002_rls.sql` then
-> `0004_delete_session.sql` into the dashboard SQL editor and run each.
+> **"permission denied for …"** (Postgres 42501) from the app almost always means
+> a migration is pending on the remote: `npm run db:status`, then
+> `npm run db:push`. (An RLS *policy* rejection reads "violates row-level
+> security policy" instead.)
 
 ### Testing with multiple students at once
 
@@ -76,7 +76,7 @@ Each isolated storage = its own anonymous user.
 
 ## Part B — Accounts setup
 
-The account layer (migrations `0016`–`0022`, see
+The account layer (migrations `0016`–`0025`, see
 **[ACCOUNTS.md](./ACCOUNTS.md)**) is in the code, but **none of the sign-in
 methods work until these dashboard steps are done.** Everything here is a
 console/DNS task only the project owner can do.
@@ -201,9 +201,12 @@ deleting the results (ACCOUNTS.md §2.4).
 
 ### 7. Verify
 
-- [ ] `npm run test:accounts-db` — 32 offline assertions against the real
-      migrations (needs Docker).
-- [ ] `npm run security-check` — the same denials over the live network path.
+- [ ] `npm run test:db` — the offline self-tests (the game suite and the
+      accounts suite) against every migration, on a throwaway in-process
+      Postgres. No Docker needed.
+- [ ] `npm run security-check` — the same denials over the live network path
+      (needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`; creates and deletes
+      its own test users).
 - [ ] Register an account, confirm the email, sign out, sign in **by username**,
       then by **email**, then reset the password.
 
@@ -215,20 +218,46 @@ Work top to bottom.
 
 ### 1. Undo the temporary testing bypass — REQUIRED
 
-While testing we let anyone host without email. This must come out before launch,
-or any student could create sessions. Tell me **"do the launch revert"** and I'll
-open this as a single PR:
+While testing, a guest (anonymous) account may host, so the "Skip email — sign in
+for testing" button works. This must come out before launch, or any student
+could create sessions. Two coupled halves — the flag only hides the button, and
+migration `0008` relaxed the **server** independently:
 
-- [ ] **Restore `create_session` security guard** — re-add the "anonymous users
-      may not host" check. **(I can do this)** — new migration re-applying the
-      `0007` definition, then `npm run db:push`.
-- [ ] **Re-lock the `/host` gate** — in `app/host/page.tsx`, change `if (!user)`
-      back to `if (!user || isAnonymous(user))` and restore the `isAnonymous`
-      import. **(I can do this)**
-- [ ] **Remove the "Skip email — sign in for testing" button** and the
-      `skipEmailForTesting` function in `components/host/HostSignIn.tsx`.
-      **(I can do this)**
-- [ ] Merge that PR and let Vercel redeploy.
+- [ ] **Server — a new migration** (next free number) rejecting guest hosts:
+
+      ```sql
+      -- 00NN_restore_host_guard.sql — undo 0008: guests may not host.
+      create or replace function public.reject_anonymous_host()
+      returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+      begin
+        if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+          raise exception 'anonymous users may not host';
+        end if;
+        return new;
+      end;
+      $$;
+      revoke all on function public.reject_anonymous_host() from public, anon, authenticated;
+      drop trigger if exists sessions_reject_anonymous_host on public.sessions;
+      create trigger sessions_reject_anonymous_host
+        before insert on public.sessions
+        for each row execute function public.reject_anonymous_host();
+      ```
+
+      **Do not** "re-apply the 0007 definition of `create_session`", as older
+      notes said: 0007 predates the portfolio game, the manager game and the
+      index fund, and re-applying it would silently remove all three. A trigger
+      (the same approach `0018` takes for quotas) guards every insert path
+      without copying `create_session`'s ~250 lines again.
+- [ ] **Tests** — in `scripts/db_selftest.sql`, make the guest-hosting block
+      strict (fail if the guest's `create_session` succeeds). In
+      `scripts/accounts_selftest.sql`, the "anonymous host survives the purge"
+      scenario creates its session as a guest; seed it as the superuser with
+      `request.jwt.claims` cleared instead. Then `npm run test:db`.
+- [ ] **Client** — set `NEXT_PUBLIC_ALLOW_ANON_HOST=false` in Vercel (hides the
+      button; `lib/auth/can-host.ts` stops letting guests into `/host`) and
+      redeploy.
+- [ ] `npm run db:push`, then update CLAUDE.md's "Notable" note — the bypass is
+      no longer live.
 
 ### 2. Supabase dashboard — Auth
 
@@ -239,8 +268,9 @@ open this as a single PR:
 - [ ] **Enable CAPTCHA / Bot Protection for anonymous sign-ins**
       (Authentication → Settings/Attack Protection). Without it a bot could
       mass-create anonymous users.
-- [ ] **Email provider is enabled** and magic links work (Authentication →
-      Providers → Email). Send yourself a test link from the live `/host` page.
+- [ ] **Email**: either still off (Part B § 2 — "Confirm email" OFF,
+      `NEXT_PUBLIC_EMAIL_DELIVERY` unset), or fully on (Part B § 2b, then send
+      yourself a magic link from the live `/login` page). Never half-on.
 - [ ] Confirm **anonymous sign-ins** stay **enabled** (students need them).
 
 ### 3. Supabase dashboard — Database
@@ -262,7 +292,8 @@ open this as a single PR:
 
 ### 5. Pre-class smoke test (5 min, on the live URL)
 
-- [ ] Host: sign in with a **real email** magic link → land on dashboard.
+- [ ] Host: sign in with a **real account** (Google, or email + password — not
+      the testing bypass) → land on the dashboard.
 - [ ] Create a session → lobby shows the join code + QR.
 - [ ] Join as a student in an **incognito window / phone** → name appears in the
       host lobby **without refreshing** (realtime works).
@@ -277,8 +308,8 @@ If realtime needs a refresh: re-check the Vercel `NEXT_PUBLIC_SUPABASE_URL`
 
 ### 6. Optional hardening (nice-to-have, not blockers)  **(I can do these)**
 
-- [ ] **Player cap + config bounds** in `join_session` (anti-abuse) + index on
-      `sessions(host_id)`.
+(The player cap and the `sessions(host_id)` index shipped in `0018`.)
+
 - [ ] **Content-Security-Policy** header (must allowlist Supabase `https`/`wss`
       so it doesn't break realtime — tested separately).
 - [ ] **Lazy-load Recharts** to shrink the host route's initial JS.

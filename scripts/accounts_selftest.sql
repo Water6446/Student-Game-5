@@ -1,11 +1,10 @@
 -- =============================================================================
--- accounts_selftest.sql — proves the account layer (migrations 0016-0022)
--- against the REAL migrations, the same way db_selftest.sql proves Stage 1.
+-- accounts_selftest.sql — proves the account layer (migrations 0016-0025)
+-- against EVERY migration in supabase/migrations, the schema as deployed.
+-- db_selftest.sql covers the game itself; the two run as separate suites, each
+-- on a fresh database.
 --
--- Why a second file: db_selftest.sql applies ONLY 0001-0003, which is what lets
--- it assert "an anonymous user may not host" — a guard migration 0008 later
--- removes on purpose for testing. This file applies every migration, so it
--- asserts the account layer against the schema as actually deployed.
+-- Run: npm run test:db   (or: npm run test:db -- accounts)
 --
 -- Convention (shared with db_selftest.sql):
 --   * "PASS:" notices mark an assertion that held.

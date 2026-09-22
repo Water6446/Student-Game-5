@@ -6,9 +6,10 @@
 -- recreates create_session identical to 0007 EXCEPT the `is_anonymous` rejection
 -- is removed.
 --
--- TO RESTORE PRODUCTION SECURITY: re-apply the create_session definition from
--- 0007_show_odds.sql (it contains the `anonymous users may not host` guard), or
--- add a follow-up migration that does. Nothing else here changes.
+-- TO RESTORE PRODUCTION SECURITY: follow docs/DEPLOYMENT.md Part C.1 (a small
+-- trigger migration). Do NOT re-apply 0007's create_session: later migrations
+-- (0010-0014, 0026) replaced it, and re-applying it would silently remove the
+-- portfolio game, the manager game and the index fund.
 -- =============================================================================
 create or replace function public.create_session(p_config jsonb default '{}'::jsonb)
 returns table (id uuid, join_code text)

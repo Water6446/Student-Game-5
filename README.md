@@ -10,34 +10,35 @@ from their phones/laptops to split their wealth between a **safe** and a
 > student with browser dev tools and the public anon key. See
 > [Security model](#security-model) and the [hardening checklist](#supabase-hardening-checklist).
 
-All five build stages are complete: schema + RLS + RPCs + game math (with tests
-and a security self-test); host create/lobby + student join (anon auth, join code,
-QR); the round loop over Realtime (submit → lock → reveal → next); leaderboard +
-chart + history + student wealth/rank view (host can tune market odds mid-game and
-see per-student allocations at lock); and the end summary + counterfactual + CSV
-export.
+Three games share one engine — lobby, rounds, lock/reveal, leaderboard, present
+mode and CSV export. Hosts have accounts (a dashboard of past and live
+sessions); students join anonymously with a code or QR and may optionally keep
+their results in an account.
 
-The **UI follows the shared "Academy Arcade" design system — see [DESIGN.md](./DESIGN.md).**
+| Doc | What's in it |
+| --- | --- |
+| [DESIGN.md](./DESIGN.md) | The "Academy Arcade" design system every screen follows |
+| [MECHANICS.md](./MECHANICS.md) | How every game number works (luck, Sharpe, returns, ρ, fees, the index fund) |
+| [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Supabase CLI workflow, dashboard setup, the launch checklist |
+| [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) | How accounts work, the security rules behind them, hosting limits |
+| [CLAUDE.md](./CLAUDE.md) | Working notes for AI-assisted changes (read before editing) |
 
 ---
 
 ## The games
 
-Three simulations share one engine — lobby, rounds, lock/reveal, leaderboard,
-present mode and CSV:
-
 | | Basic | Portfolio | Manager |
 |---|---|---|---|
-| Risky side | one risky bet | N risky assets | 5 fund managers |
+| Risky side | one risky bet | N risky assets | 5 fund managers + an index fund |
 | Outcome | good / bad | good / bad per asset | **continuous normal returns** |
 | Round = | a round | a round | **a year** (25 by default) |
 | Extra | — | correlation ρ | fees, leverage to 2×, a secret alpha |
 
 The **manager game** teaches active vs. passive: skill is real but tiny and
 statistically invisible over a career, fees compound against you regardless, and
-on the market-neutral preset the best strategy in the game still loses to its own
-fee structure. Its maths, the fee order of operations and the secrecy model are
-in [MECHANICS.md § Manager game](./MECHANICS.md#manager-game).
+a 0.05% index fund is always on the menu as the passive alternative. Its maths,
+the fee order of operations and the secrecy model are in
+[MECHANICS.md § Manager game](./MECHANICS.md#manager-game).
 
 ## The basic game (rules)
 
@@ -66,36 +67,47 @@ Worked examples (all verified by tests, in both TS and SQL):
 ## Repository layout
 
 ```
-lib/game/            Pure, unit-tested game math (single source of truth)
-  types.ts           Domain types + default config
-  math.ts            resolveAllocation / validateRisky / rollMarket
-  math.test.ts       Vitest spec incl. every worked example
-supabase/migrations/ SQL migrations (apply in order)
-  0001_schema.sql    Tables
-  0002_rls.sql       Row Level Security policies + grants + Realtime
-                     (see also 0014: session_secrets is RLS-on with NO policies
-                      and NO grants — deny-all, readable only by SECURITY
-                      DEFINER functions. It holds the manager game's true alpha.)
-  0003_functions.sql SECURITY DEFINER host RPCs + resolve_round
+app/                  Next.js routes: / (marketing), /host, /join, /play,
+                      /login, /account, /auth, /privacy, /terms
+components/           UI — ui.tsx primitives, icons.tsx, and one folder per
+                      surface (host/, student/, account/, auth/, marketing/)
+lib/game/             Pure, unit-tested game maths — the TypeScript mirror of
+                      the SQL (types, math, portfolio, manager, results, format)
+lib/auth/             Who may host, sign-in validation, open-redirect guard
+supabase/migrations/  SQL migrations, applied in order (`npm run db:push`)
+  0001–0005           Schema, RLS + grants + Realtime, host RPCs + round loop,
+                      delete_session, submit_allocation
+  0006–0013           Market odds, bots, the portfolio game, correlation
+  0008                TEMPORARY testing bypass: guests may host (see CLAUDE.md)
+  0014–0015           The manager game (session_secrets holds the true alpha:
+                      RLS on, NO policies, NO grants — deny-all)
+  0016–0025           The account layer (see docs/ACCOUNTS.md)
+  0026                The manager game's index fund
 scripts/
-  _supabase_mock.sql Local stand-in for the Supabase auth surface (test only)
-  db_selftest.sql    Proves the security assertions + math against the real SQL
-  run-db-selftest.sh Spins up throwaway Postgres in Docker and runs the above
-  security-check.ts  Optional: same assertions through a LIVE project (anon key)
+  db-selftest.mjs     `npm run test:db` — applies every migration to a
+                      throwaway in-process Postgres and runs both suites below
+  db_selftest.sql     The game: security model + wealth math + manager secrecy
+  accounts_selftest.sql  The account layer
+  _supabase_mock.sql  Local stand-in for Supabase's auth surface (test only)
+  security-check.ts   `npm run security-check` — the same denials, live
 ```
 
 ---
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` and fill in:
+Copy `.env.example` to `.env.local` and fill in. The comments there explain
+each one.
 
 | var | exposure | purpose |
 |-----|----------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | anon key (safe; protected by RLS) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | publishable key (safe; protected by RLS) |
 | `NEXT_PUBLIC_SITE_URL` | public | base URL for the join link/QR |
-| `SUPABASE_SERVICE_ROLE_KEY` | **server only** | _not used by the app_; only the optional live security check uses it |
+| `NEXT_PUBLIC_ALLOW_ANON_HOST` | public | the testing bypass; **on** until launch |
+| `NEXT_PUBLIC_EMAIL_DELIVERY` | public | show email-dependent flows; off until custom SMTP |
+| `USERNAME_LOOKUP_SECRET` | **server only** | enables username sign-in; unset = email only |
+| `SUPABASE_SERVICE_ROLE_KEY` | **server only** | _not used by the app_; only the live security check |
 
 The **service_role key is never shipped to the client** and is not needed to run
 the app — every privileged action is a host-only RPC.
@@ -104,13 +116,12 @@ the app — every privileged action is a host-only RPC.
 
 ## Supabase setup
 
-1. Create a Supabase project. Note the project URL and the **anon** key.
+1. Create a Supabase project. Note the project URL and the publishable key.
 2. Apply the migrations **in order** with the Supabase CLI (`npm run db:push`).
-3. **Auth**: enable **Email (magic link)** for hosts and **Anonymous sign-in**
-   for students (Authentication → Providers / Sign-in).
+3. **Auth**: enable **Anonymous sign-ins** (students), then the account setup
+   in [docs/DEPLOYMENT.md Part B](./docs/DEPLOYMENT.md#part-b--accounts-setup)
+   (Google, password policy, CAPTCHA, the username secret).
 4. Apply the [hardening checklist](#supabase-hardening-checklist).
-
-Full CLI workflow and the dashboard toggles are in **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**.
 
 ---
 
@@ -118,49 +129,50 @@ Full CLI workflow and the dashboard toggles are in **[docs/DEPLOYMENT.md](./docs
 
 ```bash
 npm install
-npm run test            # game-math unit tests (Vitest)
 npm run dev             # Next.js dev server on http://localhost:3000
+npm run test            # game-maths unit tests (Vitest)
+npm run test:db         # the database self-tests (no Docker, no cloud)
 ```
 
-**Prove the database security model (no cloud needed, just Docker):**
+`npm run test:db` builds a throwaway Postgres in-process (PGlite), applies a
+tiny mock of Supabase's `auth.uid()` / role surface plus **every** migration,
+and runs two suites as attacker identities — aborting on any failure. Run one
+with `npm run test:db -- game` or `-- accounts`. Among what they prove:
 
-```bash
-bash scripts/run-db-selftest.sh
-```
-
-This stands up a disposable Postgres, applies the real migrations against a tiny
-mock of Supabase's `auth.uid()` / role surface, and runs `db_selftest.sql`,
-which asserts (and aborts on any failure) that:
-
-- a **student cannot** call `resolve_round`, `lock_round`, or `create_session`;
-- a **student cannot** write `current_wealth` or another player's allocation;
-- a **student cannot** submit `risky > current_wealth`;
+- a **signed-out caller** cannot call anything but the four sign-in functions;
+- a **student cannot** lock or resolve a round, write `current_wealth`, write
+  any allocation directly, or put more than their wealth at risk (the submit
+  RPC clamps it);
 - a **student cannot** see another student's allocation, or a non-member the
   session/players; a hidden leaderboard is denied to students but not the host;
 - for a manager game, `sessions.config` **leaks no** `alpha`, `beta` or
-  `tracking_error`; a **student cannot** read `public.session_secrets` at all,
-  nor call `get_manager_truth` before the session is `finished` — while the host
-  can at any time; and the **leverage cap is enforced server-side**;
-- the **wealth math** computed by the SQL matches the spec's worked examples,
-  including the non-submitter "all-safe" default.
+  `tracking_error`; a **student cannot** read `session_secrets` or call
+  `get_manager_truth` before the game finishes; the **leverage cap is enforced
+  server-side**; the index fund stays out of the skill shuffle and tracks the
+  market exactly, less its fee;
+- the **wealth math** in SQL matches the worked examples above, including the
+  non-submitter "all-safe" default;
+- the account layer: no self-promotion through `profiles`, quotas and the player
+  cap hold, guest purges sever rather than delete results, username lookup
+  fails closed, the login throttle locks.
+
+While the testing bypass is live the game suite also prints a `NOTE:` that a
+guest can host — a reminder, not a failure.
 
 ---
 
 ## Deploying to Vercel
 
 1. Push the repo to GitHub and import it into Vercel.
-2. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
-   `NEXT_PUBLIC_SITE_URL` (your production URL) as Vercel env vars. Do **not**
-   set the service_role key in Vercel.
+2. Set the `NEXT_PUBLIC_*` variables above (and `USERNAME_LOOKUP_SECRET` if you
+   want username sign-in) as Vercel env vars. Do **not** set the service_role
+   key in Vercel.
 3. Deploy. Add the Vercel URL to Supabase **Auth → URL Configuration** (Site URL
-   + redirect URLs) so magic-link sign-in returns to your app.
+   + redirect URLs) so Google and email sign-in return to your app.
 
-The full pre-class launch checklist, dashboard steps, smoke test, and rollback
-plan live in **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**.
-
-The plan for real accounts (host sign-in methods, optional student accounts,
-abuse limits, and where Vercel/Supabase limits actually bite) is in
-**[docs/ACCOUNTS.md](./docs/ACCOUNTS.md)**.
+The full pre-class launch checklist — including closing the testing bypass —
+dashboard steps, smoke test and rollback plan live in
+**[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**.
 
 ---
 
@@ -169,34 +181,43 @@ abuse limits, and where Vercel/Supabase limits actually bite) is in
 - **Default-deny RLS on every table.** Clients connect as the non-owner
   `anon`/`authenticated` roles, so every direct query is subject to policy.
 - **All wealth/market math runs only in `resolve_round`**, a SECURITY DEFINER
-  function that asserts `auth.uid() = sessions.host_id`, refuses unless the round
-  is `locked`, validates `0 ≤ risky ≤ current_wealth`, defaults non-submitters to
-  all-safe, and is the **only** writer of `players.current_wealth`.
-- **Host privilege is tied to a verified auth uid**, not a guessable secret.
-  Hosts sign in with a magic link; `create_session` rejects anonymous callers.
-- **Students** sign in anonymously; they may upsert **only their own**
-  allocation, **only while the round is `open`**, with the risky bound enforced
-  in the RLS `WITH CHECK`. Column grants limit their writes to
-  `risky_amount`/`safe_amount` (players: `display_name` only).
+  function that asserts the caller is the session's host, refuses unless the
+  round is `locked`, and is the **only** writer of `players.current_wealth`.
+- **Students write allocations only through `submit_allocation`** (and its
+  portfolio/manager siblings): SECURITY DEFINER RPCs that tie the row to
+  `auth.uid()`, accept only while the round is `open`, validate the amounts
+  (the basic game clamps `0 ≤ risky ≤ wealth`; the manager game rejects anything
+  past the leverage cap) and derive `safe` server-side. Students hold no direct
+  insert/update grant on `allocations` at all (players: `display_name` only).
+- **Host privilege is tied to an auth uid**, not a guessable secret. Hosts sign
+  in with a real account (Google, or email/username + password). **While
+  testing, a guest may also host** — migration `0008` plus
+  `NEXT_PUBLIC_ALLOW_ANON_HOST`; both are reverted at launch
+  (docs/DEPLOYMENT.md Part C.1).
+- **Signed-out callers** can execute only the four sign-in functions (`0024`) —
+  Supabase grants every new function to `anon` directly, so this is enforced
+  explicitly and asserted by the self-test.
 - **Pending allocations are private**: a student can never select another
   student's allocation (pending or revealed).
 - **Leaderboard visibility** is config-gated. When hidden, students get only
   their rank via `get_my_rank()` (returns rank + total, never the list).
-- The market outcome is **written only at reveal time**, so it cannot leak early.
+- The market outcome is **written only at reveal time**, so it cannot leak
+  early; the manager game's true parameters live in `session_secrets`, readable
+  only through `get_manager_truth()` (the host any time, students once the game
+  finishes).
 
 ### Supabase hardening checklist
 
-- [ ] **RLS enabled** on `sessions`, `players`, `rounds`, `allocations` (done by
-      `0002_rls.sql`).
-- [ ] **Anonymous sign-in ON; all other public sign-ups OFF** except email
-      magic link for hosts.
+- [ ] **RLS enabled** on every table (done by the migrations; verify in the
+      Table editor).
+- [ ] **Anonymous sign-in ON** (students need it), with **CAPTCHA** covering it
+      and sign-up/sign-in.
 - [ ] **Auth rate limits** set (sign-in / OTP / anonymous) to throttle abuse.
-- [ ] **Realtime restricted to authenticated** and only the four game tables are
-      in the `supabase_realtime` publication (done by `0002_rls.sql`).
-- [ ] **Anon/authenticated table grants** locked to exactly what the policies
-      need — column-scoped (done by `0002_rls.sql`); verify no extra grants exist.
+- [ ] **Realtime restricted to authenticated**, and only the game tables are in
+      the `supabase_realtime` publication (done by `0002_rls.sql`).
 - [ ] **service_role key** present only in server-side secrets, never in client
       env or the repo.
-- [ ] Confirm `resolve_round` / host RPCs reject non-host callers (run the DB
-      self-test, or the live `security-check.ts`).
-```
+- [ ] **The testing bypass is closed** before real classes (docs/DEPLOYMENT.md
+      Part C.1).
+- [ ] `npm run test:db` passes, and `npm run security-check` against the live
+      project.

@@ -1,5 +1,6 @@
 /**
- * security-check.ts — OPTIONAL live counterpart to scripts/db_selftest.sql.
+ * security-check.ts — OPTIONAL live counterpart to the offline self-tests
+ * (scripts/db_selftest.sql + accounts_selftest.sql, `npm run test:db`).
  *
  * Where the SQL self-test proves the policies offline, this script exercises the
  * SAME assertions through the real network path a malicious student would use:
@@ -14,7 +15,7 @@
  * Run:  npm run security-check
  *
  * NOTE: this needs a live project with the migrations applied and anonymous
- * sign-in enabled. The canonical, no-cloud proof is `bash scripts/run-db-selftest.sh`.
+ * sign-in enabled. The canonical, no-cloud proof is `npm run test:db`.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { config as loadEnv } from "dotenv";
@@ -144,10 +145,21 @@ async function main() {
     if (joinErr) throw new Error(`join_session failed: ${joinErr.message}`);
     const myPlayerId = (me as { id: string }).id;
 
-    // 1. cannot host (anonymous)
-    await expectDenied("anonymous create_session", () =>
-      attacker.rpc("create_session", { p_config: {} }),
-    );
+    // 1. hosting as a guest. Migration 0008 deliberately allows it while the
+    //    game is in testing (CLAUDE.md), so an allowed call is reported, cleaned
+    //    up, and not counted as a failure — until the launch revert lands
+    //    (docs/DEPLOYMENT.md Part C.1), after which it must be denied.
+    {
+      const { data, error } = await attacker.rpc("create_session", { p_config: {} });
+      const rows = (data ?? []) as { id: string }[];
+      if (error) pass(`anonymous create_session — ${error.message}`);
+      else {
+        for (const r of rows) await admin.from("sessions").delete().eq("id", r.id);
+        console.log(
+          "NOTE: a guest can host — the 0008 testing bypass is live. Revert it before launch.",
+        );
+      }
+    }
     // 2. cannot lock / resolve (not host)
     await expectDenied("student lock_round", () =>
       attacker.rpc("lock_round", { p_session_id: session.id, p_round_number: 1 }),
@@ -163,18 +175,29 @@ async function main() {
     await expectDenied("student writes current_wealth", () =>
       attacker.from("players").update({ current_wealth: 999999 }).eq("id", myPlayerId),
     );
-    // 4. cannot write another player's allocation
+    // 4. no direct writes to allocations at all — submit_allocation (0005) is
+    //    the only path, and it can only ever write the caller's own row
     await expectDenied("student writes victim's allocation", () =>
       attacker
         .from("allocations")
         .insert({ round_id: round!.id, player_id: victim!.id, risky_amount: 0, safe_amount: 100 }),
     );
-    // 5. cannot submit risky > wealth
-    await expectDenied("student submits risky > wealth", () =>
+    await expectDenied("student writes own allocation directly", () =>
       attacker
         .from("allocations")
         .insert({ round_id: round!.id, player_id: myPlayerId, risky_amount: 100000, safe_amount: 0 }),
     );
+    // 5. cannot put more than their wealth at risk: the RPC clamps to wealth
+    {
+      const { data, error } = await attacker.rpc("submit_allocation", {
+        p_round_id: round!.id,
+        p_risky_amount: 100000,
+      });
+      const a = data as { risky_amount: number; safe_amount: number } | null;
+      if (!error && a && Number(a.safe_amount) === 0 && Number(a.risky_amount) <= 100)
+        pass(`risky > wealth is clamped to wealth (stored ${a.risky_amount})`);
+      else fail(`submit_allocation stored ${JSON.stringify(a)} for risky 100000 (${error?.message ?? "no error"})`);
+    }
     // 6. cannot read another player's allocation (returns zero rows)
     {
       const { data, error } = await attacker

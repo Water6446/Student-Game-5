@@ -48,19 +48,23 @@ npx tsc --noEmit                            # typecheck
 `npm run lint` is `next lint`, but ESLint is not a dependency and there is no
 config, so it drops into Next's interactive setup — use `tsc --noEmit` instead.
 
-**Database proofs (Docker only, no Supabase project needed):**
+**Database proofs (no Docker, no Supabase project needed):**
 
 ```bash
-bash scripts/run-db-selftest.sh   # migrations 0001–0003 + security/math assertions
-npm run test:accounts-db          # EVERY migration + the account layer (0016–0025)
+npm run test:db                   # both suites below, EVERY migration, in-process Postgres
+npm run test:db -- game           # scripts/db_selftest.sql: game security + math + manager secrecy
+npm run test:db -- accounts       # scripts/accounts_selftest.sql: the account layer (0016–0025)
 npm run security-check            # optional: the same assertions through a LIVE project
 ```
 
-The two self-tests apply different migration sets on purpose: `run-db-selftest.sh`
-stops at 0003 so it can still assert the anonymous-host guard that 0008
-deliberately removes; the accounts test needs the schema as actually deployed.
-`security-check` is the only thing in the repo that uses a service key, and it
-needs `.env.local` plus a live project.
+`scripts/db-selftest.mjs` gives each suite a fresh PGlite database (real Postgres
+in WebAssembly), applies `scripts/_supabase_mock.sql` plus every migration, and
+runs the suite through a small psql emulator (`\set`, `\gset`, `:'var'`). While
+the 0008 bypass is live the game suite prints a `NOTE:` that a guest can host —
+expected, not a failure. A new RPC or policy gets a denial test in
+`scripts/*_selftest.sql` in the same change. `security-check` is the only thing
+in the repo that uses a service key, and it needs `.env.local` plus a live
+project.
 
 Supabase CLI: `npm run db:link`, `db:push` (apply migrations), `db:diff`, `db:status`.
 
@@ -68,7 +72,7 @@ Env: `cp .env.example .env.local`. The browser client throws on a missing/empty
 URL or anon key and strips a trailing slash from the URL — a trailing slash
 breaks only the realtime socket, which presents as "live updates work locally
 but not on Vercel". Dashboard toggles and the launch checklist are in
-[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md); the accounts plan is in
+[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md); how accounts work is in
 [docs/ACCOUNTS.md](./docs/ACCOUNTS.md).
 
 ## Architecture
@@ -145,4 +149,6 @@ browser to Supabase so GoTrue sees the real client IP.
   **Pre-deploy checklist** (two coupled changes, do both):
   set `NEXT_PUBLIC_ALLOW_ANON_HOST=false`, and add a migration reverting
   `supabase/migrations/0008_temp_allow_anon_host.sql`, which relaxes the
-  **server** side independently of the flag.
+  **server** side independently of the flag. The exact migration (a trigger —
+  never re-apply an old `create_session`) and the test updates that go with it
+  are in [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) Part C.1.
