@@ -8,8 +8,8 @@ import type { SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
 import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
-import { Banner, Button, SectionTitle, buttonClasses } from "@/components/ui";
-import { SECTION } from "@/components/ledger";
+import { Banner, Button, buttonClasses } from "@/components/ui";
+import { FlapText, Panel, PanelGrid, StatStrip, type Stat } from "@/components/terminal";
 import { Masthead } from "@/components/Masthead";
 import { ArrowRight, Check, Monitor, Trash, Users } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
@@ -17,7 +17,10 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { ManagePlayerButton } from "@/components/host/ManagePlayer";
-import { isManager } from "@/lib/game/types";
+import { isManager, isPortfolio } from "@/lib/game/types";
+import { managerCountLabel } from "@/lib/game/manager";
+import { numAssets } from "@/lib/game/portfolio";
+import { money } from "@/lib/game/format";
 import { COLOR } from "@/lib/design/colors";
 
 // The lobby is a live roster, not a ranking, so every name stays visible until
@@ -90,6 +93,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
     // sheet with the join code as its only block (DESIGN.md §4, §8).
     <main className="min-h-dvh bg-surface">
       <Masthead
+        width="max-w-6xl"
         back={{ href: "/host", label: "Dashboard" }}
         title="Lobby"
         status={
@@ -139,31 +143,21 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
           </Button>
         }
       />
-      <div className="mx-auto max-w-5xl px-4 pb-12 pt-8 sm:px-6">
-      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
-        {/* Projectable join panel — dark ink block */}
-        {/* A solid ink block on the sheet — the one object here, made to be
-            projected. No offset shadow: the block itself is the emphasis. */}
-        <div className="flex animate-pop-in flex-col items-center rounded-2xl bg-ink p-6 text-center text-paper-inverse">
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
+      <StatStrip items={lobbyStats(session.config, players.length)} />
+      <PanelGrid className="mt-6 lg:grid-cols-2">
+        {/* The join panel: an ink body under its title strip, made to be read
+            from the back of the room. */}
+        <Panel title="Join the game" bodyClassName="flex flex-col items-center bg-ink p-6 text-center text-paper-inverse sm:p-8">
           <p className="font-display text-sm font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
             Game code
           </p>
-          <p className="flex font-mono text-6xl font-black text-paper-inverse sm:text-7xl">
-            {/* One tile per character lands in turn — the code reads as a code. */}
-            {session.join_code.split("").map((ch, i) => (
-              <span
-                key={i}
-                className="stagger inline-block w-[0.9em] animate-count-pop text-center"
-                style={{ "--i": i + 2 } as React.CSSProperties}
-              >
-                {ch}
-              </span>
-            ))}
-          </p>
+          {/* A split-flap board: the code reads as a code, and flips in. */}
+          <FlapText text={session.join_code} onInk className="mt-3 text-5xl sm:text-6xl" />
 
           {/* The SVG scales to its wrapper, so the card interior still fits at
               375px without a second QR size. */}
-          <div className="my-6 rounded-2xl border-2 border-ink bg-white p-4">
+          <div className="my-6 rounded-lg bg-white p-4">
             <div className="w-[180px] sm:w-[220px]">
               <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} className="h-auto w-full" />
             </div>
@@ -184,29 +178,28 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               )}
             </Button>
           </div>
-        </div>
+        </Panel>
 
-        {/* Roster + controls */}
-        <section className={`flex flex-col ${SECTION}`}>
-          <SectionTitle
-            action={
-              <span
-                key={players.length}
-                className="flex animate-count-pop items-center gap-2 font-mono text-3xl font-black text-ink"
-                aria-label={`${players.length} joined`}
-              >
-                <Users className="text-[0.8em] text-ink-muted" />
-                {players.length}
-              </span>
-            }
-          >
-            Players joined
-          </SectionTitle>
+        {/* Roster */}
+        <Panel
+          title="Players joined"
+          bodyClassName="flex flex-col"
+          action={
+            <span
+              key={players.length}
+              className="flex animate-count-pop items-center gap-2 font-mono text-xl font-black text-ink"
+              aria-label={`${players.length} joined`}
+            >
+              <Users className="text-[0.8em] text-ink-muted" />
+              {players.length}
+            </span>
+          }
+        >
 
           {/* Name chips that wrap, not a column of rows: a hundred students fit
               on one screen, and each one pops in as they join. */}
           {players.length === 0 ? (
-            <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-16 text-center">
               <span className="flex gap-1.5" aria-hidden="true">
                 {[0, 1, 2].map((i) => (
                   <span
@@ -227,7 +220,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               as="ul"
               options={LOBBY_CONDENSE}
               moreNoun="players"
-              className="mt-2 grid max-h-[42vh] flex-1 grid-cols-2 content-start gap-x-6 overflow-y-auto sm:grid-cols-3"
+              className="grid max-h-[46vh] flex-1 grid-cols-2 content-start gap-x-6 overflow-y-auto sm:grid-cols-3"
               gapClassName="font-editorial text-sm italic text-ink-muted hover:text-ink"
               toggleClassName="mt-2 font-editorial text-sm italic text-ink-muted hover:text-ink"
               renderItem={(p, i) => (
@@ -252,23 +245,51 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               <Banner kind="error">{error}</Banner>
             </div>
           ) : null}
-
-        </section>
-      </div>
+        </Panel>
 
       {isManager(session.config) ? (
-        <section className={`mt-12 ${SECTION}`}>
-          <SectionTitle
-            className="mb-4"
-            info="What your students see before they hire. Regenerated for every session."
-            infoLabel="About the manager line-up"
-          >
-            The manager line-up
-          </SectionTitle>
+        <Panel
+          className="lg:col-span-2"
+          title="The manager line-up"
+          info="What your students see before they hire. Regenerated for every session."
+          infoLabel="About the manager line-up"
+        >
           <ManagerProspectus config={session.config} />
-        </section>
+        </Panel>
       ) : null}
+      </PanelGrid>
       </div>
     </main>
   );
+}
+
+/** The lobby's market-data row: what this session will be. */
+function lobbyStats(config: SessionRow["config"], joined: number): Stat[] {
+  const manager = isManager(config);
+  const portfolio = isPortfolio(config);
+  return [
+    { label: "Players joined", value: joined, sub: joined === 0 ? "waiting for the room" : "and counting" },
+    {
+      label: "Game",
+      value: manager ? "Manager" : portfolio ? "Portfolio" : "Basic",
+      sub: manager
+        ? managerCountLabel(config)
+        : portfolio
+          ? `${numAssets(config)} risky assets`
+          : `${config.payoff_mode} payoffs`,
+    },
+    { label: manager ? "Years" : "Rounds", value: config.num_rounds, sub: config.allow_late_join ? "late joins allowed" : "no late joins" },
+    { label: "Starting wealth", value: money(config.starting_wealth), sub: "each" },
+    manager
+      ? {
+          label: "The index",
+          value: `${Math.round((config.market_mean ?? 0.08) * 100)}%/yr`,
+          sub: `±${Math.round((config.market_sd ?? 0.16) * 100)}% volatility`,
+        }
+      : {
+          label: "Market",
+          value: config.market_mode === "manual" ? "Manual" : `${Math.round((config.good_prob ?? 0.6) * 100)}% up`,
+          sub: config.market_scope === "independent" ? "each player draws their own" : "one draw for the class",
+        },
+  ];
 }

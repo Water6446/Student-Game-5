@@ -79,6 +79,9 @@ Defined as **RGB channel triplets** in `:root` so Tailwind opacity modifiers
 
   --play: 37 87 232;          /* #2557E8 electric blue — "you" / primary nav accent / toggles */
   --play-soft: 228 236 255;   /* #E4ECFF */
+
+  --gain-bright: 94 211 142;  /* #5ED38E up, ON INK ONLY (the ticker tape) */
+  --loss-bright: 255 122 102; /* #FF7A66 down, ON INK ONLY */
 }
 ```
 
@@ -91,6 +94,9 @@ Defined as **RGB channel triplets** in `:root` so Tailwind opacity modifiers
 - `play` (electric blue): the "you" highlight on leaderboards, stateful toggles,
   navigational primary CTAs (join / next round), info banners.
 - `ink` scale: text **and borders**. `paper`/`surface`: structure.
+- `gain-bright` / `loss-bright`: up and down **on an ink ground** — the ticker
+  tape. The regular `gain`/`loss` fail contrast on ink; these pass it. Never
+  on paper or surface (they fail there instead).
 - `paper-inverse` (cream): the text colour **on** a dark `bg-ink` panel — the
   join-code block in the lobby and present views. Use `text-paper-inverse` and
   its opacity modifiers (`/70`, `/80`) for the quieter lines in that block; never
@@ -106,8 +112,8 @@ colors: {
   ink: { DEFAULT: token("--ink"), muted: token("--ink-muted"), subtle: token("--ink-subtle") },
   line: { DEFAULT: token("--line"), strong: token("--line-strong") },
   brand: { DEFAULT: token("--brand"), strong: token("--brand-strong"), soft: token("--brand-soft") },
-  gain: { DEFAULT: token("--gain"), soft: token("--gain-soft") },
-  loss: { DEFAULT: token("--loss"), soft: token("--loss-soft") },
+  gain: { DEFAULT: token("--gain"), soft: token("--gain-soft"), bright: token("--gain-bright") },
+  loss: { DEFAULT: token("--loss"), soft: token("--loss-soft"), bright: token("--loss-bright") },
   play: { DEFAULT: token("--play"), soft: token("--play-soft") },
 }
 ```
@@ -190,15 +196,17 @@ fontFamily: {
     "lift-brand": "6px 6px 0 rgb(var(--brand)), 6px 6px 0 2px rgb(var(--ink))",
   }
   ```
-- **Sections, not cards.** Every game screen (host lobby / control / summary,
-  projector, student waiting / round / finish, the host dashboard) is **one
-  cream sheet**: `<main className="min-h-dvh bg-surface">`, no dot texture, and
-  a **paper masthead** on top (below), and content grouped into open
-  `Section`s — a 2px ink rule across the top
-  (`SECTION` in `components/ledger.ts`), the `SectionTitle`, then content
-  straight on the page. Two sections side by side sit in a grid with a wide
-  gutter (`gap-x-12`); their rules line up. Inside a section, group with
-  hairlines (`border-ink/15`) and whitespace, never another box.
+- **One frame, subdivided — not cards.** Every game screen (host lobby /
+  control / summary, projector, student waiting / round / finish) is **one
+  cream sheet**: `<main className="min-h-dvh bg-surface">`, no dot texture, a
+  **paper masthead** on top, and its content tiled into **panels** — one ink
+  frame split by ink lines, each panel with a title strip (`PanelGrid` /
+  `Panel`, §8 "The trading floor"). Panels touch; they never float apart with
+  gutters between them. Inside a panel, group with hairlines (`border-ink/15`)
+  and whitespace, never another box. Site pages that are not game screens (the
+  host dashboard, the join form) keep open `Section`s — a 2px ink rule across
+  the top (`SECTION` in `components/ledger.ts`), the `SectionTitle`, then
+  content straight on the page.
 - **Cards** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card` —
   are for a standalone form or dialog on a site page (sign in, account panels,
   a status page, confirm dialogs), not for grouping content on a game screen.
@@ -256,6 +264,8 @@ Tailwind keyframes/animations; everything below is gated by a global
 | `animate-ping` | The live dot on the host's "Open" status pill. |
 | `animate-spin-slow` | The sunburst rays behind a projector reveal takeover. |
 | `animate-fade-in` | Dialog backdrops. |
+| `animate-ticker` | The ticker tape sliding left, forever; pauses under the pointer or focus, stands still under reduced motion (§8 "The trading floor"). |
+| `animate-flap` | A split-flap tile turning over to a new character; tiles land in turn (`animationDelay: i * 70ms`). Keyed on the character, so only changed tiles flip. |
 | `CountUp` / `useCountUp` | **Numbers roll, they don't jump.** A student's new wealth rolls from the pre-round balance; the final wealth from the starting wealth; the projector's balances and the submitted counters roll on every change. Display only — screen readers get the final value once. |
 
 - **Stagger** long lists with `className="stagger animate-rise"` and
@@ -399,6 +409,56 @@ in `globals.css`).
 
 ## 8. Reusable patterns
 
+**The trading floor** (`components/terminal.tsx`). Game screens borrow their
+structure from four places a room already knows how to read, so data sits in a
+frame instead of floating in bubbles:
+
+- **`PanelGrid` + `Panel` — a Bloomberg terminal.** One screen tiled into
+  panels split by sharp lines. `PanelGrid` is `grid gap-[2px] rounded-xl
+  border-2 border-ink bg-ink`: the 2px gap lets the ink ground show through, so
+  neighbouring panels share one line. Every cell must be filled (span the last
+  one, `lg:col-span-2`) or ink shows as a hole. A `Panel` is a title strip —
+  small tracked caps (`0.75rem`, `tracking-[0.12em]`) on `bg-paper-2`, with an
+  optional `InfoTip`, a mono `meta` figure and an `action` at the right end —
+  over its body. Content that should fill a panel edge to edge (a verdict band,
+  a ruled list) takes `bodyClassName="p-0 sm:p-0"` rather than negative
+  margins. `size="lg"` is the projector's: taller strip, `text-base` title.
+  Plain cells are allowed too: a coloured `div` (the student's final-wealth
+  cell) or a `dl` of ruled cells (`grid gap-[2px] bg-ink`, each cell
+  `bg-surface`) sits straight in the grid.
+- **`StatStrip` — an exchange's market-data row.** The key figures across the
+  top of a screen, under the masthead: tracked label, mono figure, one quiet
+  line of context (`+355% since the start`, `8/8 submitted`). Two per row on a
+  phone (an odd last cell spans the row), all in one row from `sm`. `tone`
+  colours a figure only when it is a verdict.
+- **`Ticker` — a news channel's tape.** The latest round's results running
+  across an ink strip: the market's verdict, class average, average move,
+  leader, best and worst move, dollars at risk, wipe-outs
+  (`components/host/round-feed.ts` derives them — pure, humans only, from the
+  same rows as the standings, so the tape never disagrees with the table). Two
+  copies slide one copy's width, so it loops without a seam; longer tapes run
+  longer (`max(24, n × 6)s`), so the speed stays readable. It **pauses under
+  the pointer or keyboard focus** (WCAG 2.2.2), stands still under reduced
+  motion, and is a summary — nothing lives only on the tape. Up/down use
+  `gain-bright`/`loss-bright` with arrows; amber diamonds separate items. On the
+  control screen it runs under the masthead; on the projector, along the
+  bottom edge (`size="lg"`).
+- **`FlapText` — a station's split-flap board.** A code or counter shown as
+  characters on dark tiles with a hinge line; changed tiles turn over in turn.
+  Used for the join code (lobby, projector lobby and header) and the
+  projector's round counter. `onInk` lightens the tiles for an ink panel.
+  `aria-label` carries the whole string; the tiles are hidden.
+
+**Standings are a timing tower** (F1's, on a broadcast). Columns: position (a
+`RankBadge`), **movement** since the last round (`▲2` green / `▼1` red / a dash,
+from `rankMovement()` in `lib/game/results.ts`), a **colour key** bar that
+matches the player's line on the wealth chart (`seriesColors()` in
+`WealthChart.tsx` — the table is the chart's legend), name, stats, **gap to the
+leader** (`−$1,130`, or "Leader"), then wealth. On a phone the tower collapses
+to two lines and shows movement beside the name only when there was one. The
+student's own row carries the tower's highlight: a `bg-play-soft` band with a
+4px `play` bar on its left edge.
+
 **Primary-action placement.** Keep the main CTA pinned to the same spot across a
 state machine so sequential actions are clickable in place. On every game
 screen that spot is the **masthead's top right**: `Start the game` in the
@@ -438,13 +498,16 @@ ruled strip with column dividers, not three tiles.
 +$858" — is coloured mono text with an arrow, never a filled pill. A status is
 text too: the host's OPEN / LOCKED / REVEALED is a coloured label with a dot.
 
-**Colour bands, not panels.** The student's verdicts — GOOD!/Down, "LOCKED IN",
-starting and final wealth — run the full width of the screen (`-mx-5`) as a
-solid band under the masthead or between ink rules, with square ends. Colour does the work; there
-is no rounded box around it.
+**Colour bands, not boxes.** The student's verdicts — GOOD!/Down, "LOCKED IN",
+starting and final wealth — are solid colour with square ends: a full-width
+band under the masthead (the reveal), or a whole cell of the screen's
+`PanelGrid` (the starting-wealth ticket, the final-wealth slip, the locked
+band filling its panel). Colour does the work; there is no rounded box inside
+the frame.
 
-**Rosters, not pill walls.** Names in the lobby are a ruled list in columns — a
-small colour square, the name, the edit pencil — not a chip per student.
+**Rosters, not pill walls.** Names in the lobby — the host's and the
+projector's — are a ruled list in columns: a small colour square, the name
+(and, for the host, the edit pencil), not a chip per student.
 
 **Where the game is.** Every live screen says the round: the student's ink pill
 carries a thin amber progress track under "Round 6 / 10"; the host's header
@@ -518,26 +581,31 @@ first round"). Prefer skeletons for >300ms loads.
 Every game gets a dedicated **read-only big-screen view** for the projector while
 the host drives from their laptop. Pattern (see `components/host/HostPresent.tsx`,
 route `app/host/[sessionId]/present/page.tsx`): the projector is the same cream
-sheet as every game screen, at stage size — open sections under heavy rules,
-the leaderboard a scoreboard-sized ledger. The solid blocks are the objects
-the room reads: the ink join-code block, the white QR, the verdict block, the
-podium.
+sheet as every game screen, at stage size — one `PanelGrid` of `size="lg"`
+panels filling the screen, the ticker tape along the bottom edge. The solid
+blocks are the objects the room reads: the ink join panel, the white QR, the
+verdict block, the podium.
 
 - A **"Present"** link (Monitor icon, `target="_blank"`) on the lobby, the live
   control screen, and the summary.
 - Read-only; auto-updates via the same realtime hooks as the control screen.
   Header = wordmark + a join-code chip (latecomers) + fullscreen toggle + exit.
-- Covers all states: **lobby** (giant mono join code — one tile per character,
-  landing in turn — + QR + live count on an ink panel with `shadow-lift-brand`,
-  and the newest ~36 names popping in as chips), **in-progress open** ("Place
+- Covers all states: **lobby** (two panels: "Join the game" — an ink body with
+  the split-flap join code and the QR — and "In the room" — the live count,
+  huge, over a three-column ruled roster of the newest ~36 names; a manager
+  game shows the line-up there instead), **in-progress open** ("Place
   your bets" + huge rolling submitted/total + a chunky meter; "Everyone's in"
   when it fills), **locked** (a "Bets are locked" stamp), **revealed**
   (full-bleed GOOD/BAD `RevealTakeover` — slow-turning sunburst rays, the arrow
   flying in from its direction, the headline stamping down, confetti on good; a
   neutral "Results are in" when outcomes are per-player), **finished** (a
   **podium** — 2-1-3 blocks rising third-first, balances rolling up from the
-  starting wealth, confetti — then places 4+ as a list). Big type throughout
-  (`clamp()` sizes).
+  starting wealth, confetti — then places 4+ in a "The rest of the class"
+  panel). Big type throughout (`clamp()` sizes).
+- **The live board:** "This round" (status, with a split-flap round counter
+  in its strip) over the wealth chart on the left; the standings tower
+  spanning both rows on the right, with the class's market luck in its strip;
+  the ticker tape under all of it.
 - The live leaderboard shows each player's **change this round** (a delta chip),
   not the market's arrow: in a shared up-market an all-safe player gained
   nothing, and a player can lose money in a good round.
@@ -578,6 +646,8 @@ components/use-count-up.ts       useCountUp() — the rolling-number hook behind
 components/RankBadge.tsx         the standings rank (amber block for 1st, bold ink for 2nd–3rd)
 components/ledger.ts             SECTION (open-section rule), LEDGER / LEDGER_ROW (ruled lists)
 components/Masthead.tsx          the paper band atop every game screen: title, status, tools, the one action
+components/terminal.tsx          the trading floor: PanelGrid / Panel, StatStrip, Ticker, FlapText (§8)
+components/host/round-feed.ts    roundFeed() + tickerItems(): the latest round's figures for the tape and strips
 components/OutcomeChips.tsx      outcome history as ink-edged up/down tiles
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti
@@ -598,7 +668,9 @@ components/use-hotkeys.ts         window keyboard shortcuts, guarded against typ
 ```
 
 **Starting a new game:** copy `globals.css`, `tailwind.config.ts`, the
-`next/font` block in `layout.tsx`, `components/ui.tsx`, `components/use-count-up.ts`,
-`components/icons.tsx`, and `components/Confetti.tsx`. Build screens from `ui.tsx` primitives using the
+`next/font` block in `layout.tsx`, `components/ui.tsx` (with `button-classes.ts`),
+`components/use-count-up.ts`, `components/icons.tsx`, `components/Confetti.tsx`,
+`components/Masthead.tsx`, `components/ledger.ts` and `components/terminal.tsx`
+(with `lib/design/colors.ts`). Build screens from `ui.tsx` primitives using the
 semantic tokens, follow the patterns in §8–§9, and run the §10 checklist before
 shipping.

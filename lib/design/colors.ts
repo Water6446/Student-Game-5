@@ -16,6 +16,8 @@ export const COLOR = {
   gain: "#1F8A4C",
   loss: "#DB3B2B",
   play: "#2557E8",
+  gainBright: "#5ED38E",
+  lossBright: "#FF7A66",
 } as const;
 
 /**

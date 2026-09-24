@@ -46,8 +46,8 @@ const config: Config = {
           strong: token("--brand-strong"),
           soft: token("--brand-soft"),
         },
-        gain: { DEFAULT: token("--gain"), soft: token("--gain-soft") },
-        loss: { DEFAULT: token("--loss"), soft: token("--loss-soft") },
+        gain: { DEFAULT: token("--gain"), soft: token("--gain-soft"), bright: token("--gain-bright") },
+        loss: { DEFAULT: token("--loss"), soft: token("--loss-soft"), bright: token("--loss-bright") },
         play: { DEFAULT: token("--play"), soft: token("--play-soft") },
       },
       boxShadow: {
@@ -121,6 +121,15 @@ const config: Config = {
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "fade-in": { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
+        // The ticker tape: two copies of the tape side by side; sliding one
+        // copy's width left lands on an identical frame, so the loop is seamless.
+        ticker: { "0%": { transform: "translateX(0)" }, "100%": { transform: "translateX(-50%)" } },
+        // A split-flap tile turning over to its new character.
+        flap: {
+          "0%": { transform: "rotateX(-90deg)", opacity: "0.3" },
+          "60%": { transform: "rotateX(12deg)", opacity: "1" },
+          "100%": { transform: "rotateX(0deg)", opacity: "1" },
+        },
         // Waiting, but alive: a slow bob instead of a fade.
         bob: {
           "0%, 100%": { transform: "translateY(0) rotate(-3deg)" },
@@ -142,6 +151,8 @@ const config: Config = {
         "drop-in": "drop-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both",
         bob: "bob 2.6s ease-in-out infinite",
         "fade-in": "fade-in 0.2s ease-out both",
+        ticker: "ticker 40s linear infinite",
+        flap: "flap 0.45s cubic-bezier(0.3, 0.9, 0.4, 1.2) both",
         "spin-slow": "spin 40s linear infinite",
       },
     },

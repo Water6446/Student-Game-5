@@ -24,8 +24,9 @@ import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, SectionTitle, buttonClasses } from "@/components/ui";
+import { Panel, PanelGrid, StatStrip, type Stat } from "@/components/terminal";
 import { RankBadge } from "@/components/RankBadge";
-import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
+import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 import { Masthead } from "@/components/Masthead";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerReveal } from "@/components/ManagerReveal";
@@ -201,10 +202,52 @@ export function HostSummary({
   // ±1σ binomial band on the observed rate — the "this spread is normal" line
   const sigma = totalDraws > 0 ? Math.sqrt((expected * (1 - expected)) / totalDraws) : 0;
 
+  // The summary's market-data row: who won, how the class did, the lesson.
+  const start = session.config.starting_wealth;
+  const winner = humanResults[0] ?? null;
+  const classAvg =
+    humanResults.length > 0
+      ? humanResults.reduce((sum, r) => sum + r.finalWealth, 0) / humanResults.length
+      : start;
+  const toneOf = (v: number) => (v > start + 0.005 ? "gain" : v < start - 0.005 ? "loss" : undefined);
+  const summaryStats: Stat[] = [
+    {
+      label: "Winner",
+      value: winner?.player.display_name ?? "—",
+      sub: winner ? money(winner.finalWealth) : undefined,
+    },
+    {
+      label: "Class average",
+      value: money(classAvg),
+      sub: start > 0 ? `${signedPct((classAvg / start - 1) * 100)} on ${money(start)}` : undefined,
+      tone: toneOf(classAvg),
+    },
+    { label: "Class median", value: money(medianWealth), tone: toneOf(medianWealth) },
+    managerGame
+      ? {
+          label: "Beat the index",
+          value: `${beatIndex}/${humanResults.length}`,
+          sub: indexFinal != null ? `index finished at ${money(indexFinal)}` : undefined,
+        }
+      : {
+          label: "Beat all-safe",
+          value: `${cf.beatAllSafe}/${cf.total}`,
+          sub: `all-safe kept ${money(cf.strategy.all_safe)}`,
+        },
+    managerGame
+      ? { label: "Fees paid", value: money(classFees), sub: "by the class, in total", tone: "loss" }
+      : {
+          label: "Wiped out",
+          value: humanResults.filter((r) => r.finalWealth <= 0).length,
+          sub: "finished at $0",
+        },
+  ];
+
   return (
     // One cream sheet, no cards: sections sit on the page (DESIGN.md §4).
     <main className="min-h-dvh bg-surface">
       <Masthead
+        width="max-w-6xl"
         back={{ href: "/host", label: "Dashboard" }}
         title={
           <span className="inline-flex items-center gap-3">
@@ -256,22 +299,20 @@ export function HostSummary({
           {managerGame ? <FeeCounter total={classFees} label="Class fees paid" /> : null}
         </div>
       </Masthead>
-      <div className="mx-auto max-w-5xl px-4 pb-12 pt-8 sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
+      <StatStrip items={summaryStats} />
+      <PanelGrid className="mt-6 lg:grid-cols-2">
 
       {/* Who was actually skilled — the payoff of the whole module. */}
       {managerGame ? (
-        <div className="mb-6">
-          <ManagerReveal supabase={supabase} session={session} rounds={rounds} />
-        </div>
+        <ManagerReveal supabase={supabase} session={session} rounds={rounds} className="lg:col-span-2" />
       ) : null}
 
       {/* The class against the index. The strategy counterfactual cannot run
           here — it replays good/bad draws, and a manager game has none, so every
           card came out at the starting wealth. This is what replaces it. */}
       {managerGame ? (
-        <section className={`mb-12 ${SECTION}`}>
-          <SectionTitle
-            className="mb-4"
+        <Panel className="lg:col-span-2"
             infoLabel="About the index comparison"
             info={
               <>
@@ -279,9 +320,8 @@ export function HostSummary({
                 {money(session.config.starting_wealth)}.
               </>
             }
-          >
-            How the class did against the index
-          </SectionTitle>
+          title="How the class did against the index"
+        >
           <div className="grid grid-cols-2 border-y-[1.5px] border-ink/15 sm:grid-cols-4 [&>*]:border-ink/15 [&>*:nth-child(even)]:border-l-[1.5px] sm:[&>*:not(:first-child)]:border-l-[1.5px] [&>*:nth-child(n+3)]:border-t-[1.5px] sm:[&>*:nth-child(n+3)]:border-t-0">
             <StrategyCard
               label="The Index"
@@ -314,14 +354,12 @@ export function HostSummary({
             {humanResults.length === 1 ? "player" : "players"} beat the index
             {indexFinal != null ? ` of ${money(indexFinal)}` : ""}.
           </p>
-        </section>
+        </Panel>
       ) : null}
 
       {/* Counterfactual */}
       {managerGame ? null : (
-      <section className={`mb-12 ${SECTION}`}>
-        <SectionTitle
-          className="mb-4"
+      <Panel className="lg:col-span-2"
           infoLabel="About the strategy comparison"
           info={
             <>
@@ -331,9 +369,8 @@ export function HostSummary({
               Starting wealth was {money(cf.startWealth)}. Green finished above it, red below.
             </>
           }
+          title="If everyone had picked one strategy"
         >
-          If everyone had picked one strategy
-        </SectionTitle>
         <div className="grid grid-cols-2 border-y-[1.5px] border-ink/15 sm:grid-cols-4 [&>*]:border-ink/15 [&>*:nth-child(even)]:border-l-[1.5px] sm:[&>*:not(:first-child)]:border-l-[1.5px] [&>*:nth-child(n+3)]:border-t-[1.5px] sm:[&>*:nth-child(n+3)]:border-t-0">
           {portfolio ? (
             <>
@@ -403,14 +440,11 @@ export function HostSummary({
           <span className="font-bold text-gain">{cf.beatAllSafe}</span> of {cf.total}{" "}
           players beat the all-safe baseline of {money(cf.strategy.all_safe)}.
         </p>
-      </section>
+      </Panel>
       )}
 
-      <div className="grid gap-x-12 gap-y-12 lg:grid-cols-2">
         {/* Final standings — click a player to see their whole-match outcomes */}
-        <section className={SECTION}>
-          <SectionTitle
-            className="mb-1"
+        <Panel
             infoLabel="About the final standings"
             info={
               <>
@@ -418,9 +452,8 @@ export function HostSummary({
                 {independent ? " The clover is each player's luck vs the expected odds." : ""}
               </>
             }
-          >
-            Final standings
-          </SectionTitle>
+          title="Final standings"
+        >
           {/* Kept on screen: it is how the rows work, not background. A manager
               game has no market outcomes to list, so it names what opens. */}
           <p className="mb-3 font-editorial text-sm italic text-ink-muted">
@@ -538,16 +571,13 @@ export function HostSummary({
               );
             }}
           />
-        </section>
+        </Panel>
 
         {/* Round history — collapsed shows a bounded, scrollable window; "Show
             all" expands to full height. The bound is a plain max-h at every
             breakpoint, and print variants unbind it so every round makes it
             onto paper regardless of collapse state. */}
-        <section className={SECTION}>
-          {/* The heading sits outside the toggle so its InfoTip is not a
-              button nested inside another button. */}
-          <SectionTitle
+        <Panel
             info={historyInfo(managerGame)}
             infoLabel="About the history table"
             action={
@@ -563,9 +593,8 @@ export function HostSummary({
                 />
               </Button>
             }
-          >
-            {managerGame ? "Year" : "Round"} history
-          </SectionTitle>
+          title={<>{managerGame ? "Year" : "Round"} history</>}
+        >
           <div className="mt-3">
             <SessionHistoryTable
               rounds={rounds}
@@ -576,48 +605,46 @@ export function HostSummary({
               }
             />
           </div>
-        </section>
-      </div>
+        </Panel>
 
       {/* Luck — who drew the best markets (independent outcomes). Suppressed for
           manager games: there are no good/bad draws to be lucky in, so every row
           would read "no draws". */}
       {managerGame ? null : (
-      <section className={`mt-12 ${SECTION}`}>
-        <SectionTitle
-          className="mb-3"
-          icon={<Clover className="text-gain" />}
+      <Panel className="lg:col-span-2"
+          icon={<Clover />}
           infoLabel="About luck"
           info={
             <>
             ± = GOOD-draw rate vs the expected {Math.round(expected * 100)}%. Expected{" "}
-            <span className="font-semibold text-gain">
+            <span>
               ~{expectedGood.toFixed(1)} of {totalDraws}
             </span>{" "}
             good
             {sigma > 0 ? (
               <>
                 {" "}
-                · <span className="font-semibold">±{Math.round(sigma * 100)}%</span> spread is
+                · <span>±{Math.round(sigma * 100)}%</span> spread is
                 normal chance
               </>
             ) : null}
             .{!independent ? " Everyone faced the same draws." : ""}
             </>
           }
+          title="Luck"
         >
-          Luck
-        </SectionTitle>
+        {/* Two newspaper columns on a wide screen: a ranked list this narrow
+            would otherwise leave half the panel blank. */}
         <CondensedList
           items={luck}
           keyOf={(l) => l.id}
-          className={LEDGER}
+          className="border-t-[1.5px] border-ink/15 lg:columns-2 lg:gap-x-10 lg:border-t-0"
           gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           renderItem={(l, i) => (
             <li
               style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
-              className={`stagger flex animate-rise flex-wrap items-center justify-between gap-x-3 gap-y-1 ${LEDGER_ROW}`}
+              className={`stagger flex animate-rise break-inside-avoid flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b-[1.5px] border-ink/15 ${LEDGER_ROW}`}
             >
               <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
                 <span className="flex w-7 shrink-0 justify-center">
@@ -648,12 +675,13 @@ export function HostSummary({
             </li>
           )}
         />
-      </section>
+      </Panel>
       )}
 
       {/* Wealth chart */}
-      <section className={`mt-12 ${SECTION}`}>
-        <SectionTitle className="mb-3">Wealth over {managerGame ? "years" : "rounds"}</SectionTitle>
+      <Panel className="lg:col-span-2"
+          title={<>Wealth over {managerGame ? "years" : "rounds"}</>}
+        >
         <WealthChart
           players={visiblePlayers}
           rounds={rounds}
@@ -662,7 +690,8 @@ export function HostSummary({
           benchmark={benchmark}
           unitLabel={managerGame ? "Year" : "Round"}
         />
-      </section>
+      </Panel>
+      </PanelGrid>
       </div>
     </main>
   );

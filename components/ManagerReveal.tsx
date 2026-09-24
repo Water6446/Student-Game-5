@@ -5,8 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RoundRow, SessionRow } from "@/lib/game/db";
 import { managerName, numManagers } from "@/lib/game/manager";
 import { signedPct } from "@/lib/game/format";
-import { SectionTitle } from "@/components/ui";
-import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
+import { Panel } from "@/components/terminal";
+import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 import { CondensedList } from "@/components/CondensedList";
 import { useManagerTruth } from "@/components/use-manager-truth";
 
@@ -23,12 +23,12 @@ export function ManagerReveal({
   supabase,
   session,
   rounds,
-  className = "mt-6",
+  className,
 }: {
   supabase: SupabaseClient;
   session: SessionRow;
   rounds: RoundRow[];
-  /** the student end screen stacks its own cards, so the margin is caller-owned */
+  /** a Panel, so it sits in the caller's PanelGrid; this is for spans, never margins */
   className?: string;
 }) {
   const { truth, loading } = useManagerTruth(supabase, session.id, true);
@@ -64,9 +64,9 @@ export function ManagerReveal({
 
   if (loading) {
     return (
-      <section className={`${SECTION} ${className ?? ""}`}>
+      <Panel title="Who was actually skilled" className={className}>
         <p className="font-editorial italic text-ink-muted">Revealing the managers…</p>
-      </section>
+      </Panel>
     );
   }
   if (!truth) return null;
@@ -95,15 +95,8 @@ export function ManagerReveal({
         }
       : null;
 
-  return (
-    <section className={`${SECTION} ${className ?? ""}`}>
-      {/* The tip is derived from THIS line-up and THIS many years — the
-          numbers were once hardcoded to the default preset and a 25-year game,
-          and quietly lied whenever the host changed either. */}
-      <SectionTitle
-        className="mb-3"
-        infoLabel="About who was actually skilled"
-        info={<>
+  const infoTip = (
+    <>
           <p>
             The true parameters, hidden until now. <span className="font-semibold">Delivered</span>{" "}
             is what each manager actually produced over these {years} year
@@ -126,11 +119,19 @@ export function ManagerReveal({
               </>
             )}
           </p>
-        </>}
-      >
-        Who was actually skilled
-      </SectionTitle>
+        </>
+  );
 
+  return (
+    <Panel
+      className={className}
+      title="Who was actually skilled"
+      infoLabel="About who was actually skilled"
+      info={infoTip}
+    >
+      {/* The tip is derived from THIS line-up and THIS many years — the
+          numbers were once hardcoded to the default preset and a 25-year game,
+          and quietly lied whenever the host changed either. */}
       <div className="mb-1.5 hidden gap-3 px-2 font-display text-[11px] font-extrabold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
         <span>Manager</span>
         <span className="text-right">True alpha</span>
@@ -168,7 +169,7 @@ export function ManagerReveal({
           </li>
         )}
       />
-    </section>
+    </Panel>
   );
 }
 

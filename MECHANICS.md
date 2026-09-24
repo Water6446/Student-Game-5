@@ -406,6 +406,13 @@ row lock).
   to bust sits last (`bustRoundByPlayer` + `compareStandings` in results.ts).
   (Student-screen tie order still comes from the server; bust-order there needs
   a `get_leaderboard` tweak — deferred.)
+- **Movement** (▲2 / ▼1 on the host's standings): a player's place going into
+  the latest revealed round versus their place now. "Going in" is the stake
+  they carried into that round (risky + safe; a player with no row keeps their
+  current wealth; anyone bust before it stays bust), ordered by the same
+  `compareStandings`. Blank until two rounds are revealed. Display only —
+  `rankMovement` in results.ts.
+- **Gap**: a player's wealth minus the leader's, among the players shown.
 - **Condensation**: lists over 10 participants show the **top 5**, a
   "+N more ▾" expander, and the **bottom 3**. The student's own row always
   stays visible on their screen. Rank numbers never renumber across the gap.

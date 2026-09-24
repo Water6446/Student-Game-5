@@ -404,6 +404,45 @@ export function compareStandings(
 }
 
 /**
+ * How far each player moved in the standings over the latest revealed round:
+ * positive climbed, negative fell, 0 held — the ▲/▼ column of the host's
+ * timing-tower standings. The "before" table ranks everyone by their stake
+ * going into that round (their wealth before it resolved); a player with no
+ * row that round held their current wealth. Empty until a second round has
+ * resolved: before round one everyone is tied at the starting wealth, and
+ * ranking a tie would invent movement.
+ */
+export function rankMovement(
+  players: PlayerRow[],
+  rounds: RoundRow[],
+  allocations: AllocationRow[],
+  bust: Map<string, number>,
+): Map<string, number> {
+  const revealed = revealedRounds(rounds);
+  const out = new Map<string, number>();
+  if (revealed.length < 2) return out;
+  const last = revealed[revealed.length - 1];
+  const stake = new Map<string, number>();
+  for (const a of allocations) {
+    if (a.round_id === last.id) {
+      stake.set(a.player_id, Number(a.risky_amount) + Number(a.safe_amount));
+    }
+  }
+  // Busts that happened IN the last round had not happened before it.
+  const bustBefore = new Map([...bust].filter(([, r]) => r < last.round_number));
+  const before = players
+    .map((p) => ({ id: p.id, current_wealth: stake.get(p.id) ?? Number(p.current_wealth) }))
+    .sort((a, b) => compareStandings(a, b, bustBefore));
+  const now = [...players].sort((a, b) => compareStandings(a, b, bust));
+  const prevRank = new Map(before.map((p, i) => [p.id, i]));
+  now.forEach((p, i) => {
+    const was = prevRank.get(p.id);
+    if (was != null) out.set(p.id, was - i);
+  });
+  return out;
+}
+
+/**
  * The ordered market outcomes each player faced across the revealed rounds,
  * keyed by player id. Builds the allocation lookup once, so reading every
  * player's sequence (e.g. for live standings) is cheap.

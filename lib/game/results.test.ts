@@ -10,6 +10,7 @@ import {
   managerRunningStats,
   marketSummary,
   perRoundReturns,
+  rankMovement,
   sharpeRatio,
   submittedHumanCount,
 } from "./results";
@@ -650,5 +651,42 @@ describe("managerRunningStats", () => {
   it("has nothing to say before the first year", () => {
     const s = managerRunningStats(100, 0.03, [], [], null);
     expect(s).toEqual({ sharpe: null, market: null, player: null });
+  });
+});
+
+describe("rankMovement", () => {
+  const r1 = round("r1", 1);
+  const r2 = round("r2", 2);
+  // After round 1: A 150, B 120, C 80. Round 2 reshuffles: B 200, C 90, A 50.
+  const r1Allocs = [
+    alloc("r1", "A", 50, 50, "good", 150),
+    alloc("r1", "B", 20, 80, "good", 120),
+    alloc("r1", "C", 20, 80, "bad", 80),
+  ];
+  const r2Allocs = [
+    alloc("r2", "A", 100, 50, "bad", 50),
+    alloc("r2", "B", 80, 40, "good", 200),
+    alloc("r2", "C", 10, 70, "good", 90),
+  ];
+  const players = [player("A", 50), player("B", 200), player("C", 90)];
+
+  it("is empty until a second round has resolved", () => {
+    expect(rankMovement(players, [r1], r1Allocs, new Map()).size).toBe(0);
+  });
+
+  it("compares the stakes going into the latest round with the standings now", () => {
+    const m = rankMovement(players, [r1, r2], [...r1Allocs, ...r2Allocs], new Map());
+    // before: A 1st, B 2nd, C 3rd → now: B 1st, C 2nd, A 3rd
+    expect(m.get("B")).toBe(1);
+    expect(m.get("C")).toBe(1);
+    expect(m.get("A")).toBe(-2);
+  });
+
+  it("treats a player with no row in the latest round as holding their wealth", () => {
+    const late = [...players, player("D", 175)];
+    const m = rankMovement(late, [r1, r2], [...r1Allocs, ...r2Allocs], new Map());
+    // before: D 175, A 150, B 120, C 80 → now: B 200, D 175, C 90, A 50
+    expect(m.get("D")).toBe(-1);
+    expect(m.get("B")).toBe(2);
   });
 });

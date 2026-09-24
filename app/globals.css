@@ -29,6 +29,11 @@
   --loss: 219 59 43; /* #DB3B2B BAD market / loss */
   --loss-soft: 255 227 221; /* #FFE3DD */
 
+  /* Up / down for text on an INK ground (the ticker tape, the split-flap
+     board): the regular gain/loss are too dark to read on ink. */
+  --gain-bright: 94 211 142; /* #5ED38E */
+  --loss-bright: 255 122 102; /* #FF7A66 */
+
   --play: 37 87 232; /* #2557E8 electric blue — "you" / primary accent */
   --play-soft: 228 236 255; /* #E4ECFF blue tint */
 }

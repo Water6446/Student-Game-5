@@ -20,9 +20,10 @@ import { money, ordinal, sharpeText, signedMoney, signedPct } from "@/lib/game/f
 import { CountUp, InfoTip } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ManagerReveal } from "@/components/ManagerReveal";
+import { Panel, PanelGrid } from "@/components/terminal";
 import { Trophy, ArrowDown, ArrowLeft, ArrowUp, Clover } from "@/components/icons";
 import { SaveResultsPrompt } from "@/components/student/SaveResultsPrompt";
-import { LEDGER, LEDGER_ROW } from "@/components/ledger";
+import { LEDGER_ROW } from "@/components/ledger";
 
 export function StudentFinished({
   supabase,
@@ -117,8 +118,8 @@ export function StudentFinished({
     : null;
 
   return (
-    // No card: the result sheet itself, with the final wealth as a full-width
-    // band and the comparisons as ruled lists (DESIGN.md §4).
+    // No card: the result sheet, with everything after the heading on one
+    // tiled results slip (DESIGN.md §8 "The trading floor").
     <main className="min-h-dvh bg-surface">
       {topThree ? <Confetti /> : null}
       <div
@@ -132,112 +133,110 @@ export function StudentFinished({
           Game over
         </h1>
 
-        {/* Green only if the game made money: a red block for a student who
-            finished below where they started, instead of congratulating a loss. */}
-        <div
-          className={`-mx-5 mt-6 border-y-[3px] border-ink px-5 py-6 text-white ${
-            me.current_wealth >= session.config.starting_wealth ? "bg-gain" : "bg-loss"
-          }`}
-        >
-          <div className="font-display text-xs font-extrabold uppercase tracking-wide text-white/85">
-            Final wealth
-          </div>
-          <CountUp
-            value={me.current_wealth}
-            from={session.config.starting_wealth}
-            duration={1400}
-            format={money}
-            className="block font-mono text-4xl font-black"
-          />
-          {result?.totalReturn != null ? (
-            <div className="mt-1 font-mono text-sm font-bold text-white/90">
-              {signedPct(result.totalReturn * 100)} total
-              {result.perRoundReturn != null
-                ? ` · ${signedPct(result.perRoundReturn * 100, 1)}/${manager ? "yr" : "round"}`
-                : ""}
-            </div>
-          ) : null}
-        </div>
-
-        {/* Rank, Sharpe and luck as three tiles: the old sentence-per-line
-            layout broke mid-phrase on a phone. */}
-        {rank || result ? (
-          <dl
-            className={`mt-5 grid divide-x-[1.5px] divide-ink/15 border-y-2 border-ink ${
-              myLuck ? "grid-cols-3" : "grid-cols-2"
+        {/* The results slip: one tiled frame, read top to bottom — the final
+            figure, the scorecard, then each comparison in its own panel
+            (DESIGN.md §8 "The trading floor"). */}
+        <PanelGrid className="mt-6 text-left">
+          {/* Green only if the game made money: a red block for a student who
+              finished below where they started, instead of congratulating a loss. */}
+          <div
+            className={`px-5 py-6 text-center text-white ${
+              me.current_wealth >= session.config.starting_wealth ? "bg-gain" : "bg-loss"
             }`}
           >
-            <StatTile label="Rank" tone={topThree ? "brand" : undefined}>
-              {rank ? (
-                <>
-                  {ordinal(rank.rank)}
-                  <span className="text-xs font-bold text-ink-muted"> /{rank.total}</span>
-                </>
-              ) : (
-                "—"
-              )}
-            </StatTile>
-            <StatTile
-              label="Sharpe"
-              info={
-                <>
-                  Return per unit of risk taken — higher is better.
-                  {result?.sharpe == null ? " A dash (—) means you took no risk." : ""}
-                </>
-              }
-            >
-              {result ? sharpeText(result.sharpe) : "—"}
-            </StatTile>
-            {myLuck ? (
-              <StatTile
-                label="Luck"
-                tone={myLuck.delta > 0 ? "gain" : myLuck.delta < 0 ? "loss" : undefined}
-                info={`You drew ${myLuck.good} good markets out of ${myLuck.total}. At ${Math.round(expected * 100)}% odds you'd expect ${Math.round(expected * myLuck.total)}.`}
-              >
-                <span className="inline-flex items-center gap-1">
-                  <Clover className="text-base" />
-                  {signedPct(myLuck.delta * 100)}
-                </span>
-              </StatTile>
-            ) : null}
-          </dl>
-        ) : null}
-
-        {/* The punchline: your wealth, the index (no fees at all), and the
-            gap — with the fee total sitting inside it. */}
-        {manager && managerSummary ? (
-          <div className="mt-6 border-y-2 border-ink py-3 text-left">
-            <dl className="space-y-1 font-mono text-sm">
-              <SumRow label="Final wealth" value={money(me.current_wealth)} />
-              <SumRow
-                label="If you had just held the index"
-                value={money(managerSummary.indexWealth)}
-              />
-              <div className="!mt-2 border-t-2 border-ink pt-2">
-                <SumRow
-                  label="You paid in fees"
-                  value={money(managerSummary.fees)}
-                  tone="loss"
-                />
-                <SumRow
-                  label={
-                    me.current_wealth >= managerSummary.indexWealth
-                      ? "You beat the index by"
-                      : "You trailed the index by"
-                  }
-                  value={money(Math.abs(me.current_wealth - managerSummary.indexWealth))}
-                  tone={me.current_wealth >= managerSummary.indexWealth ? "gain" : "loss"}
-                  bold
-                />
+            <div className="font-display text-xs font-extrabold uppercase tracking-[0.12em] text-white/85">
+              Final wealth
+            </div>
+            <CountUp
+              value={me.current_wealth}
+              from={session.config.starting_wealth}
+              duration={1400}
+              format={money}
+              className="block font-mono text-4xl font-black"
+            />
+            {result?.totalReturn != null ? (
+              <div className="mt-1 font-mono text-sm font-bold text-white/90">
+                {signedPct(result.totalReturn * 100)} total
+                {result.perRoundReturn != null
+                  ? ` · ${signedPct(result.perRoundReturn * 100, 1)}/${manager ? "yr" : "round"}`
+                  : ""}
               </div>
-            </dl>
+            ) : null}
           </div>
-        ) : null}
 
-        {portfolio && pfCf ? (
-          <div className="mt-6 text-left">
-            <StrategiesHeading outcomes="asset outcomes" />
-            <ul className={LEDGER}>
+          {/* Rank, Sharpe and luck as ruled cells of the same frame: the old
+              sentence-per-line layout broke mid-phrase on a phone. */}
+          {rank || result ? (
+            <dl className={`grid gap-[2px] bg-ink ${myLuck ? "grid-cols-3" : "grid-cols-2"}`}>
+              <StatTile label="Rank" tone={topThree ? "brand" : undefined}>
+                {rank ? (
+                  <>
+                    {ordinal(rank.rank)}
+                    <span className="text-xs font-bold text-ink-muted"> /{rank.total}</span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </StatTile>
+              <StatTile
+                label="Sharpe"
+                info={
+                  <>
+                    Return per unit of risk taken — higher is better.
+                    {result?.sharpe == null ? " A dash (—) means you took no risk." : ""}
+                  </>
+                }
+              >
+                {result ? sharpeText(result.sharpe) : "—"}
+              </StatTile>
+              {myLuck ? (
+                <StatTile
+                  label="Luck"
+                  tone={myLuck.delta > 0 ? "gain" : myLuck.delta < 0 ? "loss" : undefined}
+                  info={`You drew ${myLuck.good} good markets out of ${myLuck.total}. At ${Math.round(expected * 100)}% odds you'd expect ${Math.round(expected * myLuck.total)}.`}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    <Clover className="text-base" />
+                    {signedPct(myLuck.delta * 100)}
+                  </span>
+                </StatTile>
+              ) : null}
+            </dl>
+          ) : null}
+
+          {/* The punchline: your wealth, the index (no fees at all), and the
+              gap — with the fee total sitting inside it. */}
+          {manager && managerSummary ? (
+            <Panel title="You vs the index">
+              <dl className="space-y-1 font-mono text-sm">
+                <SumRow label="Final wealth" value={money(me.current_wealth)} />
+                <SumRow
+                  label="If you had just held the index"
+                  value={money(managerSummary.indexWealth)}
+                />
+                <div className="!mt-2 border-t-2 border-ink pt-2">
+                  <SumRow
+                    label="You paid in fees"
+                    value={money(managerSummary.fees)}
+                    tone="loss"
+                  />
+                  <SumRow
+                    label={
+                      me.current_wealth >= managerSummary.indexWealth
+                        ? "You beat the index by"
+                        : "You trailed the index by"
+                    }
+                    value={money(Math.abs(me.current_wealth - managerSummary.indexWealth))}
+                    tone={me.current_wealth >= managerSummary.indexWealth ? "gain" : "loss"}
+                    bold
+                  />
+                </div>
+              </dl>
+            </Panel>
+          ) : null}
+
+          {portfolio && pfCf ? (
+            <StrategiesPanel outcomes="asset outcomes">
               <CfRow
                 label="All safe"
                 desc="nothing invested, ever"
@@ -262,14 +261,11 @@ export function StudentFinished({
                 value={pfCf.diversified}
                 actual={me.current_wealth}
               />
-            </ul>
-          </div>
-        ) : null}
+            </StrategiesPanel>
+          ) : null}
 
-        {!portfolio && cf ? (
-          <div className="mt-6 text-left">
-            <StrategiesHeading outcomes="market outcomes" />
-            <ul className={LEDGER}>
+          {!portfolio && cf ? (
+            <StrategiesPanel outcomes="market outcomes">
               <CfRow
                 label="All safe"
                 desc="0% at risk each round"
@@ -289,22 +285,18 @@ export function StudentFinished({
                 value={cf.all_risky}
                 actual={me.current_wealth}
               />
-            </ul>
-          </div>
-        ) : null}
+            </StrategiesPanel>
+          ) : null}
 
-        {/* The other half of the module's payoff: the fee/index card above says
-            what it cost you, this says who was actually worth hiring. Students
-            may read it only once the session is finished — get_manager_truth
-            enforces that server-side, so this is not a client-side secret. */}
-        {manager && managerRounds ? (
-          <ManagerReveal
-            supabase={supabase}
-            session={session}
-            rounds={managerRounds}
-            className="mt-6 text-left"
-          />
-        ) : null}
+          {/* The other half of the module's payoff: the fee/index panel above
+              says what it cost you, this says who was actually worth hiring.
+              Students may read it only once the session is finished —
+              get_manager_truth enforces that server-side, so this is not a
+              client-side secret. */}
+          {manager && managerRounds ? (
+            <ManagerReveal supabase={supabase} session={session} rounds={managerRounds} />
+          ) : null}
+        </PanelGrid>
 
         {/* Offered only after the results they came for, and only to guests. */}
         <SaveResultsPrompt supabase={supabase} user={user ?? null} />
@@ -321,16 +313,16 @@ export function StudentFinished({
   );
 }
 
-function StrategiesHeading({ outcomes }: { outcomes: string }) {
+function StrategiesPanel({ outcomes, children }: { outcomes: string; children: React.ReactNode }) {
   return (
-    <div className="mb-2.5 flex items-center justify-center gap-1.5">
-      <h2 className="font-display text-sm font-extrabold uppercase tracking-tight text-ink">
-        How other strategies would have done
-      </h2>
-      <InfoTip label="About the strategy comparison">
-        Same {outcomes} you faced — only your strategy changes.
-      </InfoTip>
-    </div>
+    <Panel
+      title="Other strategies"
+      info={<>Same {outcomes} you faced — only your strategy changes.</>}
+      infoLabel="About the strategy comparison"
+      bodyClassName="px-2 py-1 sm:px-3 sm:py-1"
+    >
+      <ul className="divide-y-[1.5px] divide-ink/15">{children}</ul>
+    </Panel>
   );
 }
 
@@ -415,7 +407,7 @@ function StatTile({
   const fg = tone === "gain" ? "text-gain" : tone === "loss" ? "text-loss" : "text-ink";
   return (
     <div
-      className={`flex flex-col items-center justify-center px-2 py-3 ${tone === "brand" ? "bg-brand-soft" : ""}`}
+      className={`flex flex-col items-center justify-center px-2 py-3 ${tone === "brand" ? "bg-brand-soft" : "bg-surface"}`}
     >
       <dt className="flex items-center gap-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
         {label}

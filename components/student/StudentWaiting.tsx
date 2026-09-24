@@ -3,10 +3,11 @@
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlayerRow, SessionRow } from "@/lib/game/db";
-import { Banner, Button, Section, TextInput } from "@/components/ui";
+import { Banner, Button, TextInput } from "@/components/ui";
+import { Panel, PanelGrid } from "@/components/terminal";
 import { money } from "@/lib/game/format";
 import { Pencil, Sparkle } from "@/components/icons";
-import { isManager } from "@/lib/game/types";
+import { isManager, isPortfolio } from "@/lib/game/types";
 import { managerCountLabel } from "@/lib/game/manager";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 
@@ -39,8 +40,8 @@ export function StudentWaiting({
   const manager = isManager(session.config);
 
   return (
-    // No card: centred on the cream sheet, with the starting wealth as a
-    // full-width band (DESIGN.md §4).
+    // No card: centred on the cream sheet, with the starting wealth heading a
+    // small tiled ticket (DESIGN.md §4, §8).
     <main className="min-h-dvh bg-surface">
       <div
         className={`mx-auto flex min-h-dvh flex-col justify-center px-5 py-8 ${
@@ -102,12 +103,23 @@ export function StudentWaiting({
           </div>
         ) : null}
 
-        <div className="-mx-5 mt-6 border-y-[3px] border-ink bg-gain px-5 py-5 text-white">
-          <div className="font-display text-xs font-extrabold uppercase tracking-wide text-white/85">
-            Starting wealth
+        {/* The ticket: starting wealth as the headline cell, then what this
+            game is, on one tiled frame (DESIGN.md §8 "The trading floor"). */}
+        <PanelGrid className="mt-6">
+          <div className="bg-gain px-5 py-5 text-white">
+            <div className="font-display text-xs font-extrabold uppercase tracking-[0.12em] text-white/85">
+              Starting wealth
+            </div>
+            <div className="font-mono text-4xl font-bold">{money(me.current_wealth)}</div>
           </div>
-          <div className="font-mono text-4xl font-bold">{money(me.current_wealth)}</div>
-        </div>
+          <dl className="grid grid-cols-3 gap-[2px] bg-ink">
+            <TicketCell label="Code">{session.join_code}</TicketCell>
+            <TicketCell label="Game">
+              {manager ? "Manager" : isPortfolio(session.config) ? "Portfolio" : "Basic"}
+            </TicketCell>
+            <TicketCell label={manager ? "Years" : "Rounds"}>{session.config.num_rounds}</TicketCell>
+          </dl>
+        </PanelGrid>
 
         <p className="mt-6 font-editorial italic text-ink-muted">
           Waiting for the professor to start the game
@@ -122,9 +134,7 @@ export function StudentWaiting({
           ))}
         </span>
         <p className="mt-1 font-mono text-xs text-ink-subtle">
-          {manager
-            ? `${session.config.num_rounds} years · ${managerCountLabel(session.config)}`
-            : `${session.config.num_rounds} rounds · ${session.config.payoff_mode} payoffs`}
+          {manager ? managerCountLabel(session.config) : `${session.config.payoff_mode} payoffs`}
           {(session.config.correlation ?? 0) > 0
             ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`
             : ""}
@@ -134,16 +144,29 @@ export function StudentWaiting({
       {/* The lobby is the "read the prospectuses before the game starts" moment
           — it is the only time a student can study the line-up unhurried. */}
       {manager ? (
-        <Section
-          className="mt-10"
-          title="Who will you hire?"
-          info="Read the prospectuses before the game starts. Every figure is net of fees."
-          infoLabel="About the prospectuses"
-        >
-          <ManagerProspectus config={session.config} />
-        </Section>
+        <PanelGrid className="mt-10">
+          <Panel
+            title="Who will you hire?"
+            info="Read the prospectuses before the game starts. Every figure is net of fees."
+            infoLabel="About the prospectuses"
+          >
+            <ManagerProspectus config={session.config} />
+          </Panel>
+        </PanelGrid>
       ) : null}
       </div>
     </main>
+  );
+}
+
+/** One ruled cell of the ticket: a tracked label over a mono figure. */
+function TicketCell({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-surface px-2 py-2.5">
+      <dt className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate font-mono text-lg font-bold text-ink">{children}</dd>
+    </div>
   );
 }

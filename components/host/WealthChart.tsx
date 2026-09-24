@@ -32,6 +32,19 @@ interface TooltipEntry {
   payload?: ChartRow;
 }
 
+/**
+ * The colour each player's line is drawn in, so a table beside the chart can
+ * carry the same colour as a key. Mirrors the chart's own assignment exactly
+ * (players in the order given, the index bot dropped when there is a
+ * benchmark line). Null when the class outgrows the palette and the chart
+ * greys most lines out — a key would then mislead.
+ */
+export function seriesColors(players: PlayerRow[], hasBenchmark: boolean): Map<string, string> | null {
+  const line = hasBenchmark ? players.filter((p) => p.strategy !== "index") : players;
+  if (line.length > SERIES_COLORS.length) return null;
+  return new Map(line.map((p, i) => [p.id, SERIES_COLORS[i % SERIES_COLORS.length]]));
+}
+
 export const WealthChart = memo(function WealthChart({
   players,
   rounds,

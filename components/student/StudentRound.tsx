@@ -19,8 +19,8 @@ import { managerRunningStats } from "@/lib/game/results";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { money, signedMoney, signedPct, ordinal, sharpeText } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
-import { LEDGER } from "@/components/ledger";
 import { Banner, Button, CountUp } from "@/components/ui";
+import { Panel, PanelGrid } from "@/components/terminal";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, ChevronDown, Lock } from "@/components/icons";
 
@@ -186,6 +186,7 @@ export function StudentRound({
   if (phase === "open" && liveRound) {
     return (
       <Shell
+        title={manager || portfolio ? "Your portfolio" : "Your bet"}
         wealth={me.current_wealth}
         roundNumber={session.current_round}
         session={session}
@@ -279,14 +280,16 @@ export function StudentRound({
   if (phase !== "revealed" || !liveRound || (revealPending && !revealTimedOut)) {
     return (
       <Shell
+        title="Waiting for the reveal"
+        flush
         wealth={me.current_wealth}
         roundNumber={session.current_round}
         session={session}
         sharpe={manager ? progress.sharpe : null}
       >
-        {/* A full-width colour band, not a panel: the waiting state fills the
-            screen's width the way a result slip would. */}
-        <div className="-mx-5 bg-brand-soft bg-dots px-5 pb-8 pt-10 text-center">
+        {/* A colour band filling the ticket edge to edge: the waiting state
+            fills the frame the way a result slip would. */}
+        <div className="bg-brand-soft bg-dots px-5 pb-8 pt-10 text-center">
           {/* The stamp lands once per round (keyed), a small game-show beat for
               "your choice is in". "Loading" keeps it quiet: nothing locked yet. */}
           {phase === "loading" ? (
@@ -401,12 +404,18 @@ function RoundPill({ session, roundNumber }: { session: SessionRow; roundNumber:
 
 function Shell({
   children,
+  title,
+  flush,
   wealth,
   roundNumber,
   session,
   sharpe,
 }: {
   children: React.ReactNode;
+  /** the ticket's title strip: "Your bet", "Waiting for the reveal" */
+  title: string;
+  /** the content fills the panel edge to edge (a colour band) */
+  flush?: boolean;
   wealth: number;
   /** always the session's current round — never a stale row's number */
   roundNumber: number;
@@ -472,7 +481,12 @@ function Shell({
           </span>
         </div>
       ) : null}
-      <div className="animate-pop-in space-y-5 pt-1">{children}</div>
+      {/* The bet slip: one framed panel with a title strip, like a ticket. */}
+      <PanelGrid className="animate-pop-in">
+        <Panel title={title} bodyClassName={flush ? "p-0 sm:p-0" : "space-y-5"}>
+          {children}
+        </Panel>
+      </PanelGrid>
       </div>
     </main>
   );
@@ -673,18 +687,38 @@ function Reveal({
           </div>
         </div>
 
-        {rank ? (
-          <div className="flex animate-rise items-center justify-center gap-3 py-1 text-lg font-semibold text-ink">
-            <span className="flex h-10 min-w-10 items-center justify-center rounded-lg border-2 border-ink bg-brand px-1.5 font-display text-xl font-black">
-              {ordinal(rank.rank)}
-            </span>
-            <span>
-              of {rank.total} {rank.rank === 1 ? "— top of the class" : "in the class"}
-            </span>
-          </div>
+        {/* Where you stand: a panel whose title strip carries your place. */}
+        {rank || board ? (
+          <PanelGrid className="animate-rise text-left">
+            <Panel
+              title="Class standings"
+              bodyClassName="p-0 sm:p-0"
+              action={
+                rank ? (
+                  <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <span className="flex h-8 min-w-8 items-center justify-center rounded-md border-2 border-ink bg-brand px-1.5 font-display text-base font-black">
+                      {ordinal(rank.rank)}
+                    </span>
+                    of {rank.total}
+                  </span>
+                ) : null
+              }
+            >
+              {board ? (
+                <StudentBoard board={board} />
+              ) : (
+                <p className="px-4 py-3 font-editorial italic text-ink-muted">
+                  {/* the table is still on its way, not withheld */}
+                  {session.config.show_full_leaderboard_to_students
+                    ? "Loading the table…"
+                    : rank && rank.rank === 1
+                      ? "Top of the class."
+                      : "The host keeps the full table private."}
+                </p>
+              )}
+            </Panel>
+          </PanelGrid>
         ) : null}
-
-        {board ? <StudentBoard board={board} /> : null}
 
         <p className="flex items-center justify-center gap-2 font-editorial text-sm italic text-ink-muted">
           <span aria-hidden="true" className="h-2 w-2 animate-pulse-soft rounded-full bg-play" />
@@ -712,14 +746,15 @@ function StudentBoard({ board }: { board: LeaderboardRow[] }) {
         items={board}
         keyOf={(r) => r.player_id}
         keepIndices={keepIndices}
-        className={`${LEDGER} text-left`}
-        gapClassName="font-editorial text-xs italic text-ink-subtle hover:text-ink"
-        toggleClassName="mt-1 font-editorial text-xs italic text-ink-subtle hover:text-ink"
+        className="divide-y-[1.5px] divide-ink/15 text-left"
+        gapClassName="px-4 font-editorial text-xs italic text-ink-subtle hover:text-ink"
+        toggleClassName="my-1 px-4 font-editorial text-xs italic text-ink-subtle hover:text-ink"
         renderItem={(r, i) => (
           <li
             style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
-            className={`stagger flex animate-rise items-center justify-between gap-3 px-2 py-2 text-sm ${
-              r.is_me ? "bg-play-soft font-bold text-ink" : "text-ink-muted"
+            className={`stagger flex animate-rise items-center justify-between gap-3 px-4 py-2 text-sm ${
+              // your row carries the timing tower's highlight bar
+              r.is_me ? "bg-play-soft font-bold text-ink shadow-[inset_4px_0_0_rgb(var(--play))]" : "text-ink-muted"
             }`}
           >
             <span className="flex min-w-0 items-center gap-2.5">

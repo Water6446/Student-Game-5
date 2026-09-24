@@ -17,6 +17,7 @@ import {
   bustRoundByPlayer,
   classLuckSoFar,
   compareStandings,
+  rankMovement,
   submittedHumanCount,
 } from "@/lib/game/results";
 import type { AllocationRow, RoundRow } from "@/lib/game/db";
@@ -27,7 +28,9 @@ import { indexSeries } from "@/lib/game/manager";
 import { isManager, isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
 import { money, signedMoney, signedPct } from "@/lib/game/format";
 import { CountUp } from "@/components/ui";
-import { SECTION } from "@/components/ledger";
+import { FlapText, Panel, PanelGrid, Ticker } from "@/components/terminal";
+import { roundFeed, tickerItems } from "@/components/host/round-feed";
+import { seriesColors } from "@/components/host/WealthChart";
 import { Confetti } from "@/components/Confetti";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { ManagerReveal } from "@/components/ManagerReveal";
@@ -92,9 +95,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
             <span className="font-display text-sm font-extrabold uppercase tracking-wide text-ink-muted">
               join code
             </span>
-            <span className="font-mono text-xl font-bold tracking-[0.25em] text-ink">
-              {session.join_code}
-            </span>
+            <FlapText text={session.join_code} className="text-xl" />
           </span>
         ) : null}
         <button
@@ -125,75 +126,87 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
   const link = joinUrl(session.join_code);
 
   return (
-    <div className="grid flex-1 items-center gap-8 py-4 lg:grid-cols-2">
-      {/* Dark ink panel: giant game code + join caption. shadow-lift-brand:
-          an ink offset under an ink panel reads as a glitch (DESIGN.md §4). */}
-      <div className="flex animate-pop-in flex-col items-center justify-center rounded-3xl bg-ink p-10 text-center text-paper-inverse">
+    // The same tiled board as the rest of the game: the join panel and the
+    // room, one ink frame around both (DESIGN.md §8).
+    <PanelGrid className="my-4 flex-1 animate-pop-in lg:grid-cols-[1fr_1.15fr]">
+      <Panel
+        size="lg"
+        title="Join the game"
+        bodyClassName="flex flex-col items-center justify-center bg-ink p-10 text-center text-paper-inverse"
+      >
         <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
           Game code
         </p>
-        <p className="flex font-mono text-7xl font-black text-paper-inverse sm:text-8xl">
-          {session.join_code.split("").map((ch, i) => (
-            <span
-              key={i}
-              className="stagger inline-block w-[0.9em] animate-count-pop text-center"
-              style={{ "--i": i + 3 } as React.CSSProperties}
-            >
-              {ch}
-            </span>
-          ))}
-        </p>
-        <div className="mt-8 rounded-2xl bg-white p-6">
+        {/* A split-flap board, as at a station: the code flips in, tile by tile. */}
+        <FlapText text={session.join_code} onInk className="mt-4 text-7xl sm:text-8xl" />
+        <div className="mt-8 rounded-lg bg-white p-6">
           <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} />
         </div>
         <p className="mt-6 break-all font-editorial text-2xl italic text-paper-inverse/80">
           join from your phone — {link}
         </p>
-      </div>
+      </Panel>
 
       {/* Live count — or, in a manager game, the line-up the class is reading */}
-      {isManager(session.config) ? (
-        <div className="flex flex-col justify-center">
-          <p className="mb-3 flex items-center gap-3 font-display text-2xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
-            <Users className="text-[0.8em]" />
-            <CountUp value={players.length} duration={400} /> in the room
-          </p>
-          <ManagerProspectus config={session.config} />
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-4 text-center">
-          <p className="font-display text-2xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
-            In the room
-          </p>
-          <p
+      <Panel
+        size="lg"
+        title={isManager(session.config) ? "The manager line-up" : "In the room"}
+        bodyClassName="flex flex-col"
+        action={
+          <span
             key={players.length}
-            className="animate-count-pop font-mono text-[clamp(5rem,16vw,11rem)] font-black leading-none text-ink"
+            className="flex animate-count-pop items-center gap-2 font-mono text-2xl font-black text-ink"
+            aria-label={`${players.length} in the room`}
           >
-            {players.length}
-          </p>
-          <p className="flex items-center gap-3 text-3xl font-bold text-ink">
             <Users className="text-[0.8em] text-ink-muted" />
-            {players.length === 1 ? "player" : "players"} in
-          </p>
-          {/* The newest names pop in as they join — the room sees itself arrive.
-              Only the latest few dozen: this is a welcome, not the roster. */}
-          {players.length > 0 ? (
-            <ul className="mt-4 flex max-h-[30vh] max-w-2xl flex-wrap content-start justify-center gap-2 overflow-hidden">
-              {players.slice(-36).map((p, i) => (
-                <li
-                  key={p.id}
-                  className={`animate-pop-in rounded-full border-2 border-ink px-4 py-1.5 font-display text-xl font-extrabold text-ink ${
-                    ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-surface"][i % 4]
-                  }`}
-                >
-                  {p.display_name}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      )}
-    </div>
+            <CountUp value={players.length} duration={400} />
+          </span>
+        }
+      >
+        {isManager(session.config) ? (
+          <ManagerProspectus config={session.config} />
+        ) : (
+          <>
+            <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
+              <p
+                key={players.length}
+                className="animate-count-pop font-mono text-[clamp(5rem,14vw,10rem)] font-black leading-none text-ink"
+              >
+                {players.length}
+              </p>
+              <p className="mt-2 font-display text-3xl font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+                {players.length === 1 ? "player" : "players"} in
+              </p>
+            </div>
+            {/* The newest names land on a printed roster as they join — the
+                room sees itself arrive. Only the latest few dozen: this is a
+                welcome, not the register. */}
+            {players.length > 0 ? (
+              <ul className="grid max-h-[30vh] grid-cols-3 content-start gap-x-8 overflow-hidden border-t-2 border-ink pt-2">
+                {players.slice(-36).map((p, i) => (
+                  <li
+                    key={p.id}
+                    className="flex min-w-0 animate-pop-in items-center gap-3 border-b-2 border-ink/10 py-2 font-display text-2xl font-extrabold text-ink"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`h-3.5 w-3.5 shrink-0 rounded-[3px] ${
+                        ["bg-brand", "bg-play", "bg-gain", "bg-loss"][i % 4]
+                      }`}
+                    />
+                    <span className="truncate">{p.display_name}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="pb-6 text-center font-editorial text-2xl italic text-ink-muted">
+                Waiting for the first player…
+              </p>
+            )}
+          </>
+        )}
+      </Panel>
+    </PanelGrid>
   );
 }
 
@@ -256,6 +269,10 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     () => lastRoundDeltas(history.rounds, history.allocations),
     [history.rounds, history.allocations],
   );
+  const ticker = useMemo(
+    () => tickerItems(session, roundFeed(players, history.rounds, history.allocations)),
+    [session, players, history.rounds, history.allocations],
+  );
 
   // $0-tied players order by when they busted (first to bust sits last)
   const bust = useMemo(
@@ -265,6 +282,14 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
   const ranked = useMemo(
     () => [...visiblePlayers].sort((a, b) => compareStandings(a, b, bust)),
     [visiblePlayers, bust],
+  );
+  const movement = useMemo(
+    () => rankMovement(visiblePlayers, history.rounds, history.allocations, bust),
+    [visiblePlayers, history.rounds, history.allocations, bust],
+  );
+  const colors = useMemo(
+    () => seriesColors(visiblePlayers, manager),
+    [visiblePlayers, manager],
   );
 
   const shared = session.config.market_scope === "shared";
@@ -290,17 +315,23 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
   }, [round, phase]);
 
   return (
-    <div className="grid flex-1 gap-6 py-4 lg:grid-cols-[1fr_1.1fr]">
-      {/* Left column: status panel on top, wealth chart below */}
-      <div className="flex min-h-0 flex-col gap-6">
-        {/* Open, like every section: big type on the sheet is the focus. The
-            verdict block below is the only colour field here. */}
-        <section className={`flex flex-1 flex-col items-center justify-center px-8 pb-8 text-center ${SECTION}`}>
-          <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
-            {manager ? "Year" : "Round"} {session.current_round} /{" "}
-            {session.config.num_rounds}
-          </p>
-
+    <>
+    {/* A tiled board: status and chart on the left, the standings tower on
+        the right, one ink frame around them all (DESIGN.md §8). */}
+    <PanelGrid className="my-4 flex-1 lg:grid-cols-[1fr_1.1fr] lg:grid-rows-[1fr_auto]">
+        <Panel
+          size="lg"
+          title={manager ? "This year" : "This round"}
+          bodyClassName="flex flex-1 flex-col items-center justify-center px-8 py-8 text-center"
+          action={
+            // The round counter as a split-flap board: it flips when the round turns.
+            <span className="flex items-center gap-2 font-display text-xs font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+              {manager ? "Year" : "Round"}
+              <FlapText text={String(session.current_round).padStart(2, "0")} className="text-lg" />
+              <span className="font-mono text-lg font-bold text-ink-muted">/{session.config.num_rounds}</span>
+            </span>
+          }
+        >
           {phase === "loading" ? (
             /* One fetch round-trip while the next round loads. Showing the
                previous round's outcome under a new round number is the bug. */
@@ -361,12 +392,9 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
               </p>
             </>
           )}
-        </section>
+        </Panel>
 
-        <section className={SECTION}>
-          <h2 className="mb-2 font-display text-xl font-extrabold uppercase tracking-tight text-ink">
-            Wealth over {manager ? "years" : "rounds"}
-          </h2>
+        <Panel size="lg" title={`Wealth over ${manager ? "years" : "rounds"}`} className="lg:row-start-2" bodyClassName="p-3 sm:p-4">
           <WealthChart
             players={visiblePlayers}
             rounds={history.rounds}
@@ -376,31 +404,33 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
             benchmark={benchmark}
             unitLabel={manager ? "Year" : "Round"}
           />
-        </section>
-      </div>
+        </Panel>
 
-      {/* Leaderboard */}
-      <section className={SECTION}>
-        <h2 className="mb-1 flex items-center gap-2 font-display text-2xl font-black uppercase tracking-tight text-ink">
-          <Trophy className="text-ink" /> Standings so far
-        </h2>
-        {classLuck ? (
-          <p className="mb-4 font-editorial text-lg italic text-ink-muted">
-            Markets: {classLuck.good}/{classLuck.total} good ·{" "}
-            <span
-              className={
-                classLuck.delta > 0 ? "text-gain" : classLuck.delta < 0 ? "text-loss" : "text-ink-muted"
-              }
-            >
-              {signedPct(classLuck.delta * 100)}
-            </span>{" "}
-            vs {Math.round(classLuck.expected * 100)}% expected
-          </p>
-        ) : (
-          <div className="mb-4" />
-        )}
-        <Leaderboard ranked={ranked} lastDelta={lastDelta} />
-      </section>
+      {/* Leaderboard — a timing tower: position, movement, the colour key */}
+      <Panel
+        size="lg"
+        title="Standings"
+        icon={<Trophy />}
+        className="lg:col-start-2 lg:row-span-2 lg:row-start-1"
+        bodyClassName="px-3 pb-3 pt-2"
+        action={
+          classLuck ? (
+            <span className="font-mono text-base text-ink-muted">
+              Markets {classLuck.good}/{classLuck.total} up ·{" "}
+              <span className={classLuck.delta > 0 ? "text-gain" : classLuck.delta < 0 ? "text-loss" : ""}>
+                {signedPct(classLuck.delta * 100)}
+              </span>{" "}
+              vs {Math.round(classLuck.expected * 100)}%
+            </span>
+          ) : null
+        }
+      >
+        <Leaderboard ranked={ranked} lastDelta={lastDelta} movement={movement} colors={colors} />
+      </Panel>
+    </PanelGrid>
+
+    {/* The tape along the bottom of the screen, news-channel style. */}
+    <Ticker items={ticker} size="lg" className="-mx-[3vw] -mb-[2.5vh] border-t-2 border-ink" />
 
       {revealFor ? (
         <RevealTakeover
@@ -413,7 +443,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
           onDismiss={() => setRevealFor(null)}
         />
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -667,18 +697,21 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
         <Podium players={podium} startingWealth={session.config.starting_wealth} />
       ) : null}
 
-      {rest.length > 0 ? (
-        <div className="mx-auto mt-8 w-full max-w-3xl">
-          <Leaderboard ranked={rest} rankOffset={3} />
-        </div>
-      ) : null}
-
-      {/* The reveal belongs on the projector too — it is the moment the class
-          finds out whether the fund they trusted ever had an edge. */}
-      {isManager(session.config) ? (
-        <div className="mx-auto mt-6 w-full max-w-3xl">
-          <ManagerReveal supabase={supabase} session={session} rounds={history.rounds} />
-        </div>
+      {/* Below the podium, the rest of the field and (manager) the reveal on
+          one tiled frame. */}
+      {rest.length > 0 || isManager(session.config) ? (
+        <PanelGrid className="mx-auto mt-8 w-full max-w-3xl">
+          {rest.length > 0 ? (
+            <Panel size="lg" title="The rest of the class" bodyClassName="px-3 pb-3 pt-2">
+              <Leaderboard ranked={rest} rankOffset={3} />
+            </Panel>
+          ) : null}
+          {/* The reveal belongs on the projector too — it is the moment the
+              class finds out whether the fund they trusted ever had an edge. */}
+          {isManager(session.config) ? (
+            <ManagerReveal supabase={supabase} session={session} rounds={history.rounds} />
+          ) : null}
+        </PanelGrid>
       ) : null}
     </div>
   );
@@ -736,10 +769,16 @@ function Leaderboard({
   ranked,
   lastDelta,
   rankOffset = 0,
+  movement,
+  colors,
 }: {
   ranked: PlayerRow[];
   /** each player's change in the latest round; omit to show balances only */
   lastDelta?: Map<string, number>;
+  /** places gained (+) or lost (−) last round — the timing tower's arrows */
+  movement?: Map<string, number>;
+  /** each player's line colour on the chart, shown as a key bar */
+  colors?: Map<string, string> | null;
   /** the final screen lists places 4+ under the podium */
   rankOffset?: number;
 }) {
@@ -754,7 +793,7 @@ function Leaderboard({
         items={ranked}
         keyOf={(p) => p.id}
         moreNoun="players"
-        className="divide-y-2 divide-ink/15 border-y-2 border-ink/15"
+        className="divide-y-2 divide-ink/15 border-b-2 border-ink/15"
         gapClassName="font-editorial text-lg italic text-ink-muted hover:text-ink"
         toggleClassName="mt-3 font-editorial text-lg italic text-ink-muted hover:text-ink"
         renderItem={(p, i) => {
@@ -779,6 +818,14 @@ function Leaderboard({
                 >
                   {rank}
                 </span>
+                {movement ? <TowerMove d={movement.get(p.id)} /> : null}
+                {colors?.get(p.id) ? (
+                  <span
+                    aria-hidden="true"
+                    className="h-8 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: colors.get(p.id) }}
+                  />
+                ) : null}
                 <span className="truncate font-display text-2xl font-extrabold text-ink sm:text-3xl">
                   {p.display_name}
                 </span>
@@ -806,5 +853,24 @@ function Leaderboard({
         }}
       />
     </div>
+  );
+}
+
+/** Places gained (▲) or lost (▼) last round, projector-sized; a dash for none. */
+function TowerMove({ d }: { d: number | undefined }) {
+  if (d == null || d === 0) {
+    return <span className="w-10 shrink-0 text-center font-mono text-lg text-ink-subtle">–</span>;
+  }
+  const up = d > 0;
+  return (
+    <span
+      className={`inline-flex w-10 shrink-0 items-center justify-center font-mono text-lg font-bold ${
+        up ? "text-gain" : "text-loss"
+      }`}
+      aria-label={`${up ? "up" : "down"} ${Math.abs(d)}`}
+    >
+      {up ? <ArrowUp /> : <ArrowDown />}
+      {Math.abs(d)}
+    </span>
   );
 }

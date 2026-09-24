@@ -13,7 +13,9 @@ import { useRoundAllocations } from "@/components/use-round-allocations";
 import { useSessionHistory } from "@/components/use-session-history";
 import { MarketOddsControl } from "@/components/host/MarketOddsControl";
 import { AllocationsBreakdown } from "@/components/host/AllocationsBreakdown";
-import { WealthChart } from "@/components/host/WealthChart";
+import { WealthChart, seriesColors } from "@/components/host/WealthChart";
+import { roundFeed, tickerItems } from "@/components/host/round-feed";
+import { Panel, PanelGrid, StatStrip, Ticker, type Stat } from "@/components/terminal";
 import { SessionHistoryTable, historyInfo } from "@/components/host/SessionHistoryTable";
 import { OutcomeChips } from "@/components/OutcomeChips";
 import {
@@ -29,6 +31,7 @@ import {
   playerDeltaChipsMap,
   playerOutcomesMap,
   portfolioOutcomeMatrix,
+  rankMovement,
   returnSummaryByPlayer,
   submittedHumanCount,
   type LuckStats,
@@ -37,11 +40,11 @@ import { CondensedList } from "@/components/CondensedList";
 import { LuckChip } from "@/components/LuckChip";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { indexSeries } from "@/lib/game/manager";
-import { FeeCounter, feesByPlayer, sumFees } from "@/components/FeeCounter";
+import { feesByPlayer, sumFees } from "@/components/FeeCounter";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { cost, money, sharpeText, signedPct } from "@/lib/game/format";
-import { Banner, Button, CountUp, SectionTitle, buttonClasses } from "@/components/ui";
+import { Banner, Button, CountUp, buttonClasses } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useShowBots } from "@/components/use-show-bots";
@@ -50,7 +53,7 @@ import { FinalResults } from "@/components/host/FinalResults";
 import { ManagePlayerButton } from "@/components/host/ManagePlayer";
 import { RankBadge } from "@/components/RankBadge";
 import { Masthead } from "@/components/Masthead";
-import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
+import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 import {
   ArrowDown,
   ArrowRight,
@@ -69,7 +72,7 @@ import {
 
 // Standings columns from sm up: rank, name, stats, wealth. Shared by the
 // column heads and every row so they line up.
-const STANDINGS_GRID = "sm:grid-cols-[1.75rem_minmax(0,1fr)_auto_7.5rem]";
+const STANDINGS_GRID = "sm:grid-cols-[1.75rem_2rem_minmax(0,1fr)_auto_5.5rem_7rem]";
 
 // The submitted checklist exists to spot who HASN'T submitted, so pending
 // players sort first and the collapse keeps them in the visible top slice.
@@ -438,11 +441,78 @@ export function HostRoundControl({
     [gameOver, session, visiblePlayers, history.rounds, history.allocations, bust],
   );
 
+  // ── The trading-floor layer: tape, key figures, timing-tower columns ──
+  const feed = useMemo(
+    () => roundFeed(players, history.rounds, history.allocations),
+    [players, history.rounds, history.allocations],
+  );
+  const ticker = useMemo(() => tickerItems(session, feed), [session, feed]);
+  // ▲/▼ over the last resolved round, among the players on show
+  const movement = useMemo(
+    () => rankMovement(visiblePlayers, history.rounds, history.allocations, bust),
+    [visiblePlayers, history.rounds, history.allocations, bust],
+  );
+  const colors = useMemo(() => seriesColors(visiblePlayers, benchmark != null), [visiblePlayers, benchmark]);
+  const leaderWealth = Number(standings[0]?.current_wealth ?? 0);
+  const unit = managerGame ? "year" : "round";
+  const humanIds = useMemo(() => new Set(humanPlayers.map((p) => p.id)), [humanPlayers]);
+  const atRiskNow = allocs.reduce(
+    (s, a) => (humanIds.has(a.player_id) ? s + Number(a.risky_amount) : s),
+    0,
+  );
+  const start = session.config.starting_wealth;
+  const botCount = players.length - humanPlayers.length;
+  const stats: Stat[] = [
+    {
+      label: "Players",
+      value: humanPlayers.length,
+      sub: botCount > 0 ? `+ ${botCount} benchmark bot${botCount === 1 ? "" : "s"}` : "in the room",
+    },
+    {
+      label: "Class average",
+      value: money(feed.avgWealth),
+      sub: start > 0 ? `${signedPct((feed.avgWealth / start - 1) * 100)} since the start` : undefined,
+      tone: feed.avgWealth > start + 0.005 ? "gain" : feed.avgWealth < start - 0.005 ? "loss" : undefined,
+    },
+    {
+      label: "Leader",
+      value: feed.leader?.display_name ?? "—",
+      sub: feed.leader ? money(feed.leader.current_wealth) : undefined,
+    },
+    {
+      label: `At risk this ${unit}`,
+      value: allocsLoading ? "—" : money(atRiskNow),
+      sub: `${submitted.submitted}/${submitted.total} submitted`,
+    },
+    managerGame
+      ? {
+          label: "The index",
+          value: marketLine ? `${signedPct(marketLine.annualized * 100, 1)}/yr` : "—",
+          sub: marketLine ? `${signedPct(marketLine.latest * 100, 1)} last year` : "no years yet",
+          tone: marketLine ? (marketLine.annualized >= 0 ? "gain" : "loss") : undefined,
+        }
+      : classLuck
+        ? {
+            label: "Markets up",
+            value: `${classLuck.good}/${classLuck.total}`,
+            sub: `${signedPct(classLuck.delta * 100)} vs ${Math.round(classLuck.expected * 100)}% odds`,
+          }
+        : {
+            label: `${managerGame ? "Years" : "Rounds"} left`,
+            value: Math.max(session.config.num_rounds - session.current_round, 0),
+            sub: `of ${session.config.num_rounds}`,
+          },
+    ...(managerGame
+      ? [{ label: "Class fees", value: cost(classFees), sub: "paid to managers so far", tone: "loss" as const }]
+      : []),
+  ];
+
   return (
     // A paper masthead (title, status, progress, the one action) over a cream
     // sheet of open sections — no cards (DESIGN.md §4, §8).
     <main className="min-h-dvh bg-surface">
       <Masthead
+        width="max-w-6xl"
         back={{ href: "/host", label: "Dashboard" }}
         title={
           <>
@@ -519,22 +589,27 @@ export function HostRoundControl({
           sharedBasic={!portfolioGame && !managerGame && !independent}
         />
       </Masthead>
+      {/* The tape: what the last round did, running under the masthead. */}
+      <Ticker items={ticker} className="border-b-2 border-ink" />
 
-      <div className="mx-auto max-w-5xl px-4 pb-12 pt-8 sm:px-6">
-      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[5fr_7fr]">
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
+      <StatStrip items={stats} />
+      <PanelGrid className="mt-6 lg:grid-cols-[5fr_7fr]">
         {/* This round: who is in, what they bet, what happened */}
-        <section className={`space-y-5 ${SECTION}`}>
-          <SectionTitle>
-            {phase === "open"
+        <Panel
+          bodyClassName="space-y-5"
+          title={
+            phase === "open"
               ? "Submissions"
               : phase === "locked"
                 ? "Locked — review, then reveal"
                 : phase === "revealed"
                   ? gameOver
                     ? "Final results"
-                    : "Result"
-                  : "Loading"}
-          </SectionTitle>
+                    : `${managerGame ? "Year" : "Round"} ${session.current_round} result`
+                  : "Loading"
+          }
+        >
           {error ? <Banner kind="error">{error}</Banner> : null}
 
           {/* Supporting context for each phase, below the pinned action. */}
@@ -697,14 +772,16 @@ export function HostRoundControl({
                   </ul>
                 </div>
               ) : session.config.market_scope === "independent" ? (
-                <div className="flex animate-pop-in items-center gap-2 font-editorial text-base italic text-ink-muted">
+                <div className="-mx-4 -mt-4 flex animate-pop-in items-center gap-2 border-b-[1.5px] border-ink/15 bg-paper-2/50 px-4 py-3 font-editorial text-base italic text-ink-muted sm:-mx-5 sm:-mt-5 sm:px-5">
                   <Shuffle className="shrink-0 not-italic text-ink" />
                   Independent market — each player drew their own outcome
                   {portfolioGame ? "s" : ""}.
                 </div>
               ) : (
+                // The verdict runs the panel's full width, flush under its title
+                // strip — a band, not a box inside the panel.
                 <div
-                  className={`flex items-center justify-center overflow-hidden rounded-xl border-2 border-ink bg-dots-light p-4 text-center font-display text-2xl font-black uppercase tracking-tight text-white shadow-card ${
+                  className={`-mx-4 -mt-4 flex items-center justify-center overflow-hidden border-b-2 border-ink bg-dots-light px-4 py-5 text-center font-display text-3xl font-black uppercase tracking-tight text-white sm:-mx-5 sm:-mt-5 ${
                     round?.market_outcome === "good" ? "bg-gain" : "bg-loss"
                   }`}
                 >
@@ -730,13 +807,12 @@ export function HostRoundControl({
               )}
             </>
           )}
-        </section>
+        </Panel>
 
-        {/* Live standings — each player's last 5 markets shown inline */}
-        <section className={SECTION}>
-          <SectionTitle
-            className="mb-3"
-            infoLabel="About the standings"
+        {/* Live standings — a timing tower: position, movement, gap to the lead */}
+        <Panel
+          bodyClassName="px-2 pb-2 pt-3 sm:px-3"
+          infoLabel="About the standings"
             info={
               <>
                 {managerGame
@@ -744,51 +820,23 @@ export function HostRoundControl({
                   : portfolioGame
                     ? "Arrows show each player's last 5 rounds (up = gained, down = lost)"
                     : "Arrows show each player's last 5 markets"}
-                {independent ? ". ± is their luck vs the expected odds" : ""}
-                {sharpeFor ? ". S = Sharpe Ratio (return per unit of risk)" : ""}
-                {feesFor ? ". Red figures are fees paid to managers so far" : ""}.
+                {independent ? ". Luck is their share of good draws vs the expected odds" : ""}
+                {sharpeFor ? ". Sharpe = return per unit of risk" : ""}
+                {feesFor ? ". Fees are what each player has paid managers so far" : ""}. ± is
+                the places gained or lost last {managerGame ? "year" : "round"}; Gap is the
+                distance to the leader. The colour bar matches each player&apos;s line on the chart.
               </>
             }
             action={hasBots ? <BotToggle showBots={showBots} onToggle={setShowBots} /> : null}
+            title={gameOver ? "Final standings" : "Standings"}
           >
-            {gameOver ? "Final standings" : "Standings"}
-          </SectionTitle>
-          {marketLine ? (
-            <p className="mb-3 font-editorial text-sm italic text-ink-muted">
-              Market: <span className={marketLine.latest >= 0 ? "text-gain" : "text-loss"}>
-                {signedPct(marketLine.latest * 100, 1)}
-              </span>{" "}
-              this year ·{" "}
-              <span className={marketLine.annualized >= 0 ? "text-gain" : "text-loss"}>
-                {signedPct(marketLine.annualized * 100, 1)}
-              </span>
-              /yr over {marketLine.years} year{marketLine.years === 1 ? "" : "s"}
-            </p>
-          ) : null}
-          {managerGame ? (
-            <p className="mb-3">
-              <FeeCounter total={classFees} label="Class fees so far" />
-            </p>
-          ) : null}
-          {classLuck ? (
-            <p className="mb-3 font-editorial text-sm italic text-ink-muted">
-              Markets: {classLuck.good}/{classLuck.total} good ·{" "}
-              <span
-                className={
-                  classLuck.delta > 0 ? "text-gain" : classLuck.delta < 0 ? "text-loss" : "text-ink-muted"
-                }
-              >
-                {signedPct(classLuck.delta * 100)}
-              </span>{" "}
-              vs {Math.round(classLuck.expected * 100)}% expected
-            </p>
-          ) : null}
           {/* Column heads, so every row's figures line up under a name. */}
           <div
             aria-hidden="true"
             className={`hidden gap-x-3 px-2 pb-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted sm:grid ${STANDINGS_GRID}`}
           >
             <span className="text-center">#</span>
+            <span className="text-center">±</span>
             <span>Player</span>
             <span className="flex justify-end gap-3">
               {showLuck ? <span className="w-14 text-right">Luck</span> : null}
@@ -796,6 +844,7 @@ export function HostRoundControl({
               {feesFor ? <span className="w-14 text-right">Fees</span> : null}
               <span className="w-[5.75rem] text-right">Last 5</span>
             </span>
+            <span className="text-right">Gap</span>
             <span className="text-right">Wealth</span>
           </div>
           <CondensedList
@@ -820,12 +869,31 @@ export function HostRoundControl({
                   style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
                   className={`stagger grid animate-rise grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 ${STANDINGS_GRID} ${LEDGER_ROW}`}
                 >
-                  <RankBadge rank={index + 1} />
-                  <span className="flex min-w-0 items-center gap-1 text-ink">
+                  <span className="col-start-1 row-start-1">
+                    <RankBadge rank={index + 1} />
+                  </span>
+                  <span className="hidden justify-center sm:col-start-2 sm:row-start-1 sm:flex">
+                    <Movement d={movement.get(p.id)} />
+                  </span>
+                  <span className="col-start-2 row-start-1 flex min-w-0 items-center gap-2 text-ink sm:col-start-3">
+                    {/* the player's colour on the chart below: the table is its key */}
+                    {colors?.get(p.id) ? (
+                      <span
+                        aria-hidden="true"
+                        className="h-5 w-1 shrink-0 rounded-full"
+                        style={{ backgroundColor: colors.get(p.id) }}
+                      />
+                    ) : null}
                     <span className="min-w-0 truncate font-semibold">{p.display_name}</span>
+                    {/* on a phone only a real move earns space beside the name */}
+                    {movement.get(p.id) ? (
+                      <span className="sm:hidden">
+                        <Movement d={movement.get(p.id)} />
+                      </span>
+                    ) : null}
                     <ManagePlayerButton supabase={supabase} session={session} player={p} />
                   </span>
-                  <span className="col-span-3 row-start-2 flex items-center justify-end gap-3 sm:col-span-1 sm:col-start-3 sm:row-start-1">
+                  <span className="col-span-3 row-start-2 flex items-center justify-end gap-3 sm:col-span-1 sm:col-start-4 sm:row-start-1">
                     {showLuck ? (
                       <span className="flex w-14 justify-end">
                         <LuckChip luck={rowLuck} expected={expected} />
@@ -851,7 +919,16 @@ export function HostRoundControl({
                       <OutcomeChips outcomes={last5} />
                     </span>
                   </span>
-                  <span className="col-start-3 row-start-1 text-right sm:col-start-4">
+                  <span className="hidden text-right font-mono text-xs text-ink-muted sm:col-start-5 sm:row-start-1 sm:block">
+                    {index === 0 ? (
+                      <span className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink">
+                        Leader
+                      </span>
+                    ) : (
+                      `−${money(Math.max(leaderWealth - Number(p.current_wealth), 0))}`
+                    )}
+                  </span>
+                  <span className="col-start-3 row-start-1 text-right sm:col-start-6">
                     {/* Ink, not green: a balance is not a gain. The chips beside it
                         say which way each round went. */}
                     <span className="block font-mono text-lg font-bold text-ink">
@@ -879,12 +956,10 @@ export function HostRoundControl({
               );
             }}
           />
-        </section>
-      </div>
+        </Panel>
 
-      {/* Wealth over rounds */}
-      <section className={`mt-12 ${SECTION}`}>
-        <SectionTitle className="mb-3">Wealth over {managerGame ? "years" : "rounds"}</SectionTitle>
+      {/* Wealth over rounds — the standings' colour bars are its key */}
+      <Panel className="lg:col-span-2" title={`Wealth over ${managerGame ? "years" : "rounds"}`}>
         <WealthChart
           players={visiblePlayers}
           rounds={history.rounds}
@@ -893,23 +968,23 @@ export function HostRoundControl({
           benchmark={benchmark}
           unitLabel={managerGame ? "Year" : "Round"}
         />
-      </section>
+      </Panel>
 
       {/* Per-round history */}
-      <section className={`mt-12 ${SECTION}`}>
-        <SectionTitle
-          className="mb-3"
-          info={historyInfo(managerGame)}
-          infoLabel="About the history table"
-        >
-          {managerGame ? "Year" : "Round"} history
-        </SectionTitle>
+      <Panel
+        className="lg:col-span-2"
+        bodyClassName="px-2 pb-2 pt-2 sm:px-3"
+        info={historyInfo(managerGame)}
+        infoLabel="About the history table"
+        title={`${managerGame ? "Year" : "Round"} history`}
+      >
         <SessionHistoryTable
           rounds={history.rounds}
           allocations={history.allocations}
           manager={managerGame}
         />
-      </section>
+      </Panel>
+      </PanelGrid>
       </div>
     </main>
   );
@@ -1024,6 +1099,23 @@ function RoundTrack({
         );
       })}
     </ol>
+  );
+}
+
+/** Places gained (▲) or lost (▼) over the last round; a quiet dash for none. */
+function Movement({ d }: { d: number | undefined }) {
+  if (d == null || d === 0) {
+    return <span className="font-mono text-xs text-ink-subtle" aria-label="no change">–</span>;
+  }
+  const up = d > 0;
+  return (
+    <span
+      className={`inline-flex items-center font-mono text-xs font-bold ${up ? "text-gain" : "text-loss"}`}
+      aria-label={`${up ? "up" : "down"} ${Math.abs(d)}`}
+    >
+      {up ? <ArrowUp /> : <ArrowDown />}
+      {Math.abs(d)}
+    </span>
   );
 }
 
