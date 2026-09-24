@@ -41,7 +41,7 @@ import { FeeCounter, feesByPlayer, sumFees } from "@/components/FeeCounter";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { cost, money, sharpeText, signedPct } from "@/lib/game/format";
-import { Banner, Button, Card, CountUp, SectionTitle, buttonClasses } from "@/components/ui";
+import { Banner, Button, CountUp, SectionTitle, buttonClasses } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useShowBots } from "@/components/use-show-bots";
@@ -49,7 +49,7 @@ import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
 import { ManagePlayerButton } from "@/components/host/ManagePlayer";
 import { RankBadge } from "@/components/RankBadge";
-import { LEDGER, LEDGER_ROW } from "@/components/ledger";
+import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
 import {
   ArrowDown,
   ArrowLeft,
@@ -432,8 +432,11 @@ export function HostRoundControl({
   );
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-6">
+    // One cream sheet, no cards: sections sit on the page under a heavy rule
+    // (DESIGN.md §4). Only real objects — buttons, stamps, the verdict — box up.
+    <main className="min-h-dvh bg-surface">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <header className="mb-8">
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
           <div>
             <Link
@@ -495,9 +498,10 @@ export function HostRoundControl({
         />
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
         {/* Control panel */}
-        <Card className="space-y-5">
+        <section className={`space-y-5 ${SECTION}`}>
+          <SectionTitle>{managerGame ? "This year" : "This round"}</SectionTitle>
           {/* Primary action — pinned to the top of the panel so it stays in the
               same place across open → reveal → next. In auto mode the host can
               click "Lock & reveal" then "Next round" without moving the cursor. */}
@@ -665,7 +669,7 @@ export function HostRoundControl({
                   startWealth={0}
                 />
               ) : portfolioGame && round?.market_outcomes ? (
-                <div className="rounded-xl border-2 border-ink bg-paper-2 p-3">
+                <div>
                   <ul className="grid grid-cols-2 gap-1.5">
                     {round.market_outcomes.map((o, i) => (
                       <li
@@ -685,8 +689,8 @@ export function HostRoundControl({
                   </ul>
                 </div>
               ) : session.config.market_scope === "independent" ? (
-                <div className="flex animate-pop-in items-center gap-2 rounded-xl border-2 border-ink bg-paper-2 px-4 py-2.5 text-sm text-ink-muted">
-                  <Shuffle className="shrink-0 text-ink" />
+                <div className="flex animate-pop-in items-center gap-2 font-editorial text-base italic text-ink-muted">
+                  <Shuffle className="shrink-0 not-italic text-ink" />
                   Independent market — each player drew their own outcome
                   {portfolioGame ? "s" : ""}.
                 </div>
@@ -718,10 +722,10 @@ export function HostRoundControl({
               )}
             </>
           )}
-        </Card>
+        </section>
 
         {/* Live standings — each player's last 5 markets shown inline */}
-        <Card>
+        <section className={SECTION}>
           <SectionTitle
             className="mb-3"
             infoLabel="About the standings"
@@ -845,11 +849,11 @@ export function HostRoundControl({
               );
             }}
           />
-        </Card>
+        </section>
       </div>
 
       {/* Wealth over rounds */}
-      <Card className="mt-6">
+      <section className={`mt-12 ${SECTION}`}>
         <SectionTitle className="mb-3">Wealth over {managerGame ? "years" : "rounds"}</SectionTitle>
         <WealthChart
           players={visiblePlayers}
@@ -859,10 +863,10 @@ export function HostRoundControl({
           benchmark={benchmark}
           unitLabel={managerGame ? "Year" : "Round"}
         />
-      </Card>
+      </section>
 
       {/* Per-round history */}
-      <Card className="mt-6">
+      <section className={`mt-12 ${SECTION}`}>
         <SectionTitle
           className="mb-3"
           info={historyInfo(managerGame)}
@@ -875,7 +879,8 @@ export function HostRoundControl({
           allocations={history.allocations}
           manager={managerGame}
         />
-      </Card>
+      </section>
+      </div>
     </main>
   );
 }
@@ -891,7 +896,7 @@ function OddsDisclosure({
 }) {
   return (
     <details className="group">
-      <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between rounded-xl border-2 border-ink bg-paper-2 px-4 text-sm font-semibold text-ink transition marker:content-none hover:bg-brand-soft [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between border-y-[1.5px] border-ink/15 px-1 text-sm font-semibold text-ink transition marker:content-none hover:bg-brand-soft/60 [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-2">
           <Sliders /> Adjust market odds
         </span>
@@ -905,19 +910,19 @@ function OddsDisclosure({
 }
 
 function StatusBadge({ phase }: { phase: RoundPhase }) {
-  // A label, not a button: no offset shadow, so nobody tries to click it. The
-  // dot pings while students can still act.
+  // A label, not a button — plain text with a dot, no pill. The dot pings
+  // while students can still act.
   const styles: Record<RoundPhase, { cls: string; dot: string; label: string }> = {
-    loading: { cls: "bg-paper-2 text-ink-muted", dot: "bg-ink-subtle", label: "Loading" },
-    open: { cls: "bg-gain-soft text-gain", dot: "bg-gain", label: "Open" },
-    locked: { cls: "bg-brand-soft text-ink", dot: "bg-brand-strong", label: "Locked" },
-    revealed: { cls: "bg-play-soft text-play", dot: "bg-play", label: "Revealed" },
+    loading: { cls: "text-ink-muted", dot: "bg-ink-subtle", label: "Loading" },
+    open: { cls: "text-gain", dot: "bg-gain", label: "Open" },
+    locked: { cls: "text-ink", dot: "bg-brand-strong", label: "Locked" },
+    revealed: { cls: "text-play", dot: "bg-play", label: "Revealed" },
   };
   const s = styles[phase];
   return (
     <span
       role="status"
-      className={`inline-flex items-center gap-2 rounded-full border-2 border-ink px-3 py-1 font-display text-xs font-extrabold uppercase tracking-wide ${s.cls}`}
+      className={`inline-flex items-center gap-2 font-display text-sm font-extrabold uppercase tracking-wide ${s.cls}`}
     >
       <span className="relative flex h-2 w-2" aria-hidden="true">
         {phase === "open" ? (

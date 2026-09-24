@@ -18,12 +18,15 @@ Next.js + Tailwind project.
 
 1. **Light & legible first.** Warm paper background, dark ink text. Light themes
    read better on classroom projectors in lit rooms. No dark mode.
-2. **Hard edges, solid fills — and a budget for them.** Surfaces get a
-   2–2.5px **ink border**; only the top level gets a **hard offset shadow**
-   (solid ink, no blur). A card is raised; what sits inside it is printed on it.
-   When every input, chip, row and badge is its own raised, rounded box the
-   screen turns into a pile of bubbles and nothing leads (§4 "Elevation
-   budget"). Always put text on a solid fill, never directly on the dot texture.
+2. **Printed, not boxed.** Content sits on the page, grouped by rules and
+   headings — not inside containers. A game screen is one cream sheet with
+   open sections under a heavy ink rule; a list is ruled rows; a verdict is a
+   full-width colour band. Boxes are for real objects only: a button, an input,
+   a stamp, the join-code block. Card inside card, row-box inside that, pill
+   inside that is the "everything is a bubble" look, and it is banned (§4
+   "Sections, not cards"). Hard ink offset shadows are rarer still (§4
+   "Elevation budget"). Text sits on a solid fill — the cream sheet or a band —
+   never on the dot texture.
 3. **Semantic, not decorative, color.** Green = gain / GOOD / safe-ish upside;
    rose/red = loss / BAD / risk. These map to game meaning and must always be
    paired with an icon or text (never color alone).
@@ -171,7 +174,7 @@ fontFamily: {
   corners, not soft bubbles: cards `rounded-2xl` (12px), controls/inputs/panels
   `rounded-xl` (8px), small blocks `rounded-lg` (6px), present-mode panels
   `rounded-3xl` (16px). `rounded-full` is for true tags and round things only
-  (a status pill, a name chip, a dot, the round pill) — never a number or delta.
+  (a dot, the round pill, a switch) — never a number, a delta or a status.
 - **Borders:** **ink**, `border-2` on cards/buttons/inputs, `border-[2.5px]`/`border-[3px]`
   on hero elements, the phone shell, and the projector stage. Prefer explicit
   `border-2 border-ink` per surface (clearer than a global default).
@@ -187,7 +190,17 @@ fontFamily: {
     "lift-brand": "6px 6px 0 rgb(var(--brand)), 6px 6px 0 2px rgb(var(--ink))",
   }
   ```
-  Cards: `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
+- **Sections, not cards.** Every game screen (host lobby / control / summary,
+  projector, student waiting / round / finish, the host dashboard) is **one
+  cream sheet**: `<main className="min-h-dvh bg-surface">`, no dot texture, and
+  content grouped into open `Section`s — a 3px ink rule across the top
+  (`SECTION` in `components/ledger.ts`), the `SectionTitle`, then content
+  straight on the page. Two sections side by side sit in a grid with a wide
+  gutter (`gap-x-12`); their rules line up. Inside a section, group with
+  hairlines (`border-ink/15`) and whitespace, never another box.
+- **Cards** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card` —
+  are for a standalone form or dialog on a site page (sign in, account panels,
+  a status page, confirm dialogs), not for grouping content on a game screen.
 - **Elevation budget.** A hard shadow means "this is an object"; spend it on
   (1) top-level cards and panels, (2) the **one** headline action on a screen
   (`shadow-pop`), and (3) moments — a stamp, the trophy medallion, the podium,
@@ -282,7 +295,10 @@ Build screens from these; they encode the tokens so restyles cascade. Everything
 gets `border-2 border-ink`; only cards and the headline button carry
 `shadow-card` at rest (§4 "Elevation budget").
 
+- **`Section`** — the game screens' container: heavy ink rule, `SectionTitle`
+  (with optional `info`, `icon`, `action`), content on the page. See §4.
 - **`Card`** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
+  Standalone forms and dialogs only (§4).
 - **`Button`** — `variant`: `primary` (electric blue, navigational CTAs),
   `gold` (amber fill, **ink** text — the headline "lock in / start" CTA),
   `secondary` (`bg-surface` outline → `hover:bg-paper-2`), `ghost` (borderless,
@@ -391,10 +407,10 @@ strategy or player they are.
 
 **Lists are ledgers, not stacks of cards.** Standings, leaderboards, strategy
 comparisons and the manager reveal are ruled like a printed scoreboard:
-`LEDGER` (`components/ledger.ts` — a heavy ink rule top and bottom, hairlines
-between) around `LEDGER_ROW`s (padding + a quiet amber hover band). A row is
+`LEDGER` (`components/ledger.ts` — hairlines above, between and below; the
+Section's heavy rule and heading sit over it) around `LEDGER_ROW`s (padding + a quiet amber hover band). A row is
 never its own bordered, shadowed box. Each row: a `RankBadge` first (amber
-block for 1st, cream blocks for 2nd–3rd, a plain number after), name, stats,
+block for 1st, bold ink numbers for 2nd–3rd, a quiet number after), name, stats,
 then the balance. "You" is a `bg-play-soft` band with a small blue "you" label,
 not a pill. The projector's leaderboard is the same ledger at scoreboard size
 (`border-y-[3px]`, 1st on an amber band). Outcome history renders as
@@ -403,7 +419,16 @@ a data strip, not a row of buttons. Stat groups (rank / Sharpe / luck) are one
 ruled strip with column dividers, not three tiles.
 
 **Deltas are text.** A change — "+$54.48 this round", a leaderboard delta, "you
-+$858" — is coloured mono text with an arrow, never a filled pill.
++$858" — is coloured mono text with an arrow, never a filled pill. A status is
+text too: the host's OPEN / LOCKED / REVEALED is a coloured label with a dot.
+
+**Colour bands, not panels.** The student's verdicts — GOOD!/Down, "LOCKED IN",
+starting and final wealth — run the full width of the screen (`-mx-5`) as a
+solid band between 3px ink rules, with square ends. Colour does the work; there
+is no rounded box around it.
+
+**Rosters, not pill walls.** Names in the lobby are a ruled list in columns — a
+small colour square, the name, the edit pencil — not a chip per student.
 
 **Where the game is.** Every live screen says the round: the student's ink pill
 carries a thin amber progress track under "Round 6 / 10"; the host's header
@@ -474,8 +499,11 @@ first round"). Prefer skeletons for >300ms loads.
 
 Every game gets a dedicated **read-only big-screen view** for the projector while
 the host drives from their laptop. Pattern (see `components/host/HostPresent.tsx`,
-route `app/host/[sessionId]/present/page.tsx`): the stage is an ink-bordered
-`rounded-3xl` panel with `shadow-lift` and the ink dot-grid inside.
+route `app/host/[sessionId]/present/page.tsx`): the projector is the same cream
+sheet as every game screen, at stage size — open sections under heavy rules,
+the leaderboard a scoreboard-sized ledger. The solid blocks are the objects
+the room reads: the ink join-code block, the white QR, the verdict block, the
+podium.
 
 - A **"Present"** link (Monitor icon, `target="_blank"`) on the lobby, the live
   control screen, and the summary.
@@ -529,8 +557,8 @@ components/marketing/SiteHeader.tsx   the site header (see §8); SiteHeaderGate.
 lib/site-chrome.ts        which routes show the header; current-page matching
 components/ConnectionBanner.tsx  offline / realtime-down pill for live screens
 components/use-count-up.ts       useCountUp() — the rolling-number hook behind ui.tsx's CountUp
-components/RankBadge.tsx         the standings rank block (amber 1st, cream 2nd–3rd)
-components/ledger.ts             LEDGER / LEDGER_ROW — ruled list styling for every standings-type list
+components/RankBadge.tsx         the standings rank (amber block for 1st, bold ink for 2nd–3rd)
+components/ledger.ts             SECTION (open-section rule), LEDGER / LEDGER_ROW (ruled lists)
 components/OutcomeChips.tsx      outcome history as ink-edged up/down tiles
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti

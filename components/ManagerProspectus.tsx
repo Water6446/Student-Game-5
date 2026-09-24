@@ -49,7 +49,7 @@ export function ManagerProspectus({
         // a choice the student is making — hiding one behind "+1 more" (which
         // six funds used to trigger) would hide a fund they can buy.
         options={{ top: 9, bottom: 0, threshold: 9 }}
-        className="grid gap-3 sm:grid-cols-2"
+        className="grid gap-x-8 gap-y-8 sm:grid-cols-2"
         gapClassName="font-editorial text-sm italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         renderItem={(m) => (
@@ -72,7 +72,9 @@ export function ProspectusCard({
 }) {
   const t = manager.track_record;
   return (
-    <div className="flex h-full flex-col rounded-2xl border-2 border-ink bg-surface p-4 shadow-card">
+    // An entry in a printed prospectus, not a card: a rule over the name and
+    // the figures on the page (DESIGN.md §4).
+    <div className="flex h-full flex-col border-t-2 border-ink pt-3">
       <span className="font-display text-base font-extrabold uppercase tracking-tight text-ink">
         {manager.name}
       </span>

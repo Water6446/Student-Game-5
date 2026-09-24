@@ -20,7 +20,7 @@ import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { money, signedMoney, signedPct, ordinal, sharpeText } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
 import { LEDGER } from "@/components/ledger";
-import { Banner, Button, Card, CountUp } from "@/components/ui";
+import { Banner, Button, CountUp } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, ChevronDown, Lock } from "@/components/icons";
 
@@ -284,7 +284,9 @@ export function StudentRound({
         session={session}
         sharpe={manager ? progress.sharpe : null}
       >
-        <div className="overflow-hidden rounded-xl border-2 border-ink bg-brand-soft bg-dots px-5 pb-5 pt-7 text-center">
+        {/* A full-width colour band, not a panel: the waiting state fills the
+            screen's width the way a result slip would. */}
+        <div className="-mx-5 bg-brand-soft bg-dots px-5 pb-8 pt-10 text-center">
           {/* The stamp lands once per round (keyed), a small game-show beat for
               "your choice is in". "Loading" keeps it quiet: nothing locked yet. */}
           {phase === "loading" ? (
@@ -431,8 +433,11 @@ function Shell({
   const goodPct = Math.round((session.config.good_prob ?? 0.6) * 100);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
-      <div className="mb-4 flex items-center justify-between">
+    // No card: the phone IS the sheet. A thick rule under the header, then the
+    // controls straight on the page (DESIGN.md §4).
+    <main className="min-h-dvh bg-surface">
+      <div className="mx-auto flex max-w-lg flex-col px-5 pb-10 pt-5">
+      <div className="mb-4 flex items-center justify-between border-b-[3px] border-ink pb-3">
         <RoundPill session={session} roundNumber={roundNumber} />
         <span className="text-right">
           <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
@@ -448,7 +453,7 @@ function Shell({
         </div>
       ) : null}
       {showOdds ? (
-        <div className="mb-4 flex items-center justify-between border-y-2 border-ink/15 px-1 py-2 text-sm">
+        <div className="mb-4 flex items-center justify-between border-b-[1.5px] border-ink/15 px-1 pb-3 text-sm">
           <span className="font-editorial italic text-ink-muted">
             {isPortfolio(session.config) ? "Each asset looks like" : "The market looks like"}
           </span>
@@ -463,7 +468,8 @@ function Shell({
           </span>
         </div>
       ) : null}
-      <Card className="animate-pop-in space-y-5">{children}</Card>
+      <div className="animate-pop-in space-y-5 pt-1">{children}</div>
+      </div>
     </main>
   );
 }
@@ -542,14 +548,17 @@ function Reveal({
   const celebrate = delta > 0;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
+    <main className="min-h-dvh bg-surface">
       {celebrate ? <Confetti /> : null}
+      <div className="mx-auto flex max-w-lg flex-col px-5 pb-10 pt-5">
       <div className="mb-4 flex justify-center">
         <RoundPill session={session} roundNumber={round.round_number} />
       </div>
-      <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
+      <div className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
+        {/* The verdict as a full-width band across the screen, not a card
+            header: colour does the work, no box around it. */}
         <div
-          className={`-mx-6 -mt-6 mb-1 flex items-center justify-center overflow-hidden rounded-t-[10px] border-b-2 border-ink bg-dots-light px-6 py-5 font-display text-3xl font-black uppercase tracking-tight text-white ${
+          className={`-mx-5 mb-1 flex items-center justify-center overflow-hidden border-y-[3px] border-ink bg-dots-light px-5 py-6 font-display text-4xl font-black uppercase tracking-tight text-white ${
             personal
               ? delta > 0
                 ? "bg-gain"
@@ -675,7 +684,8 @@ function Reveal({
           <span aria-hidden="true" className="h-2 w-2 animate-pulse-soft rounded-full bg-play" />
           Waiting for the next round…
         </p>
-      </Card>
+      </div>
+      </div>
     </main>
   );
 }

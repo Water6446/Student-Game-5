@@ -121,25 +121,27 @@ export function SessionHistoryTable({
     <div>
       {/* One scroll container for BOTH axes so the sticky header sticks to it
           (a nested overflow-x box would capture the vertical scroll instead). */}
-      <div className={`overflow-auto rounded-xl border-2 border-ink ${scrollClassName ?? ""}`}>
+      <div className={`overflow-auto border-b-[1.5px] border-ink/15 ${scrollClassName ?? ""}`}>
         {/* min-w keeps six columns readable on a phone by scrolling INSIDE the
             container instead of squashing them or widening the page. */}
         <table className="w-full min-w-[32rem] text-sm">
         <thead>
-          <tr className="sticky top-0 z-10 bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper-inverse">
-            <th className="px-3 py-2.5">{manager ? "Year" : "Round"}</th>
-            <th className="px-3 py-2.5">{manager ? "Index" : "Market"}</th>
-            <th className="px-3 py-2.5 text-right">Avg</th>
-            <th className="px-3 py-2.5 text-right">Median</th>
-            <th className="px-3 py-2.5 text-right">High</th>
-            <th className="px-3 py-2.5 text-right">Low</th>
+          {/* An open table: column heads over a rule, hairlines between rows —
+              no box around it and no ink band (DESIGN.md §8 ledgers). */}
+          <tr className="sticky top-0 z-10 border-b-2 border-ink bg-surface text-left font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
+            <th className="px-2 py-2">{manager ? "Year" : "Round"}</th>
+            <th className="px-2 py-2">{manager ? "Index" : "Market"}</th>
+            <th className="px-2 py-2 text-right">Avg</th>
+            <th className="px-2 py-2 text-right">Median</th>
+            <th className="px-2 py-2 text-right">High</th>
+            <th className="px-2 py-2 text-right">Low</th>
           </tr>
         </thead>
         <tbody>
           {history.map((h) => (
-            <tr key={h.round} className="border-t border-ink/10 transition-colors odd:bg-paper-2/40 hover:bg-brand-soft">
-              <td className="px-3 py-2 font-mono text-ink">{h.round}</td>
-              <td className="px-3 py-2">
+            <tr key={h.round} className="border-t-[1.5px] border-ink/15 transition-colors first:border-t-0 hover:bg-brand-soft/60">
+              <td className="px-2 py-2 font-mono text-ink">{h.round}</td>
+              <td className="px-2 py-2">
                 {h.marketReturn != null ? (
                   // Manager years have no good/bad flag — the index return IS
                   // the market column.
@@ -207,7 +209,7 @@ function DeltaCell({ value, percentFirst }: { value: Delta | null; percentFirst?
           ? "text-loss"
           : "text-ink-muted";
   return (
-    <td className={`px-3 py-2 text-right font-mono ${cls}`}>
+    <td className={`px-2 py-2 text-right font-mono ${cls}`}>
       {value == null ? (
         "—"
       ) : percentFirst ? (

@@ -27,6 +27,7 @@ import { indexSeries } from "@/lib/game/manager";
 import { isManager, isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
 import { money, signedMoney, signedPct } from "@/lib/game/format";
 import { CountUp } from "@/components/ui";
+import { SECTION } from "@/components/ledger";
 import { Confetti } from "@/components/Confetti";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { ManagerReveal } from "@/components/ManagerReveal";
@@ -46,7 +47,7 @@ export function HostPresent({
   session: SessionRow;
 }) {
   return (
-    <main className="flex min-h-dvh flex-col px-[3vw] py-[2.5vh]">
+    <main className="flex min-h-dvh flex-col bg-surface px-[3vw] py-[2.5vh]">
       <PresentHeader session={session} />
       <div className="flex flex-1 flex-col">
         {session.status === "lobby" ? (
@@ -86,7 +87,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
 
       <div className="flex items-center gap-3">
         {session.status !== "finished" ? (
-          <span className="hidden items-baseline gap-2 rounded-full border-2 border-ink bg-surface px-4 py-1.5 sm:flex">
+          <span className="hidden items-baseline gap-2 px-2 sm:flex">
             <span className="font-display text-sm font-extrabold uppercase tracking-wide text-ink-muted">
               join code
             </span>
@@ -126,7 +127,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
     <div className="grid flex-1 items-center gap-8 py-4 lg:grid-cols-2">
       {/* Dark ink panel: giant game code + join caption. shadow-lift-brand:
           an ink offset under an ink panel reads as a glitch (DESIGN.md §4). */}
-      <div className="flex animate-pop-in flex-col items-center justify-center rounded-3xl border-2 border-ink bg-ink p-10 text-center text-paper-inverse shadow-lift-brand">
+      <div className="flex animate-pop-in flex-col items-center justify-center rounded-3xl bg-ink p-10 text-center text-paper-inverse">
         <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
           Game code
         </p>
@@ -141,7 +142,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
             </span>
           ))}
         </p>
-        <div className="mt-8 rounded-3xl border-2 border-ink bg-white p-6 shadow-[5px_5px_0_rgb(var(--brand))]">
+        <div className="mt-8 rounded-2xl bg-white p-6">
           <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} />
         </div>
         <p className="mt-6 break-all font-editorial text-2xl italic text-paper-inverse/80">
@@ -291,7 +292,9 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     <div className="grid flex-1 gap-6 py-4 lg:grid-cols-[1fr_1.1fr]">
       {/* Left column: status panel on top, wealth chart below */}
       <div className="flex min-h-0 flex-col gap-6">
-        <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border-2 border-ink bg-play-soft bg-dots p-8 text-center shadow-card">
+        {/* Open, like every section: big type on the sheet is the focus. The
+            verdict block below is the only colour field here. */}
+        <section className={`flex flex-1 flex-col items-center justify-center px-8 pb-8 text-center ${SECTION}`}>
           <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
             {manager ? "Year" : "Round"} {session.current_round} /{" "}
             {session.config.num_rounds}
@@ -359,7 +362,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
           )}
         </section>
 
-        <section className="rounded-3xl border-2 border-ink bg-surface p-5 shadow-card">
+        <section className={SECTION}>
           <h2 className="mb-2 font-display text-xl font-extrabold uppercase tracking-tight text-ink">
             Wealth over {manager ? "years" : "rounds"}
           </h2>
@@ -376,7 +379,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
       </div>
 
       {/* Leaderboard */}
-      <section className="rounded-3xl border-2 border-ink bg-surface p-6 shadow-card sm:p-8">
+      <section className={SECTION}>
         <h2 className="mb-1 flex items-center gap-2 font-display text-2xl font-black uppercase tracking-tight text-ink">
           <Trophy className="text-ink" /> Standings so far
         </h2>
@@ -750,7 +753,7 @@ function Leaderboard({
         items={ranked}
         keyOf={(p) => p.id}
         moreNoun="players"
-        className="divide-y-2 divide-ink/15 border-y-[3px] border-ink"
+        className="divide-y-2 divide-ink/15 border-y-2 border-ink/15"
         gapClassName="font-editorial text-lg italic text-ink-muted hover:text-ink"
         toggleClassName="mt-3 font-editorial text-lg italic text-ink-muted hover:text-ink"
         renderItem={(p, i) => {
@@ -769,7 +772,7 @@ function Leaderboard({
                     rank === 1
                       ? "border-ink bg-brand text-ink"
                       : rank <= 3
-                        ? "border-ink bg-paper-2 text-ink"
+                        ? "border-transparent font-black text-ink"
                         : "border-transparent text-ink-muted"
                   }`}
                 >

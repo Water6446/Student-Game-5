@@ -37,6 +37,51 @@ export function Card({ children, className }: { children: ReactNode; className?:
 }
 
 /**
+ * An open section: a heavy ink rule, the heading, then the content straight on
+ * the page — no box around it. This is the default container on every game
+ * screen. A Card (a raised, bordered box) is for a standalone form or dialog,
+ * not for every group of content: a page of cards, each full of boxed rows and
+ * pills, reads as a pile of bubbles (DESIGN.md §4).
+ */
+export function Section({
+  title,
+  info,
+  infoLabel,
+  action,
+  icon,
+  children,
+  className,
+  as = "h2",
+}: {
+  title?: ReactNode;
+  info?: ReactNode;
+  infoLabel?: string;
+  action?: ReactNode;
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  as?: "h1" | "h2" | "h3";
+}) {
+  return (
+    <section className={clsx("border-t-[3px] border-ink pt-3", className)}>
+      {title ? (
+        <SectionTitle
+          as={as}
+          info={info}
+          infoLabel={infoLabel}
+          action={action}
+          icon={icon}
+          className="mb-4"
+        >
+          {title}
+        </SectionTitle>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+/**
  * A placeholder block for content still loading. Size it with `className`
  * (`h-6 w-40`). Decorative only — the page around it should say "Loading" to
  * assistive tech once, via `PageSkeleton`'s status label or its own.
@@ -63,12 +108,12 @@ export function SkeletonCards({ label = "Loading" }: { label?: string }) {
       <Skeleton className="h-4 w-28" />
       <Skeleton className="mt-4 h-10 w-2/3" />
       <div className="mt-8 space-y-6">
-        <div className="rounded-2xl border-2 border-ink/15 p-6">
+        <div className="border-t-[3px] border-ink/15 pt-4">
           <Skeleton className="h-6 w-40" />
           <Skeleton className="mt-5 h-12 w-full" />
           <Skeleton className="mt-3 h-12 w-full" />
         </div>
-        <div className="rounded-2xl border-2 border-ink/15 p-6">
+        <div className="border-t-[3px] border-ink/15 pt-4">
           <Skeleton className="h-6 w-32" />
           <Skeleton className="mt-5 h-24 w-full" />
         </div>
@@ -87,7 +132,7 @@ export function PageSkeleton({
   width?: string;
 }) {
   return (
-    <main className="min-h-dvh">
+    <main className="min-h-dvh bg-surface">
       <div className={clsx("mx-auto px-5 py-10 sm:px-8 sm:py-14", width)}>
         <SkeletonCards label={label} />
       </div>
@@ -652,7 +697,8 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={clsx(
-        "flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-surface px-4 py-3 transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-60",
+        // No box: a label and a switch on the page. The switch is the affordance.
+        "flex min-h-[44px] items-center justify-between gap-3 rounded-lg transition hover:bg-ink/[0.04] disabled:cursor-not-allowed disabled:opacity-60",
         className ? className : "w-full"
       )}
     >

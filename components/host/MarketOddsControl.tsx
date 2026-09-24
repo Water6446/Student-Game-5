@@ -56,7 +56,7 @@ export function MarketOddsControl({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border-2 border-ink bg-paper-2 p-4">
+    <div className="space-y-3 px-1 pb-2 pt-3">
       <div className="flex items-baseline justify-between">
         <span className="text-sm font-semibold text-ink">Market odds (auto)</span>
         <span className="font-mono text-sm font-bold">

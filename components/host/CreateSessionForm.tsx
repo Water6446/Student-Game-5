@@ -14,12 +14,10 @@ import { money } from "@/lib/game/format";
 import {
   Button,
   Banner,
-  Card,
   ChipButton,
   ChipRow,
   Field,
   InfoTip,
-  PRESSABLE,
   SectionTitle,
   Select,
   TextInput,
@@ -96,7 +94,7 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
 
   if (gameType === null) {
     return (
-      <Card>
+      <div>
         <SectionTitle
           info="Pick which simulation to run, then tune its settings."
           infoLabel="About hosting a game"
@@ -140,7 +138,7 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
             onClick={() => setGameType("manager")}
           />
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -166,7 +164,9 @@ function GameCard({
     <button
       type="button"
       onClick={onClick}
-      className={`group flex flex-col rounded-2xl border-2 border-ink bg-paper-2 p-5 text-left shadow-card hover:bg-brand-soft ${PRESSABLE}`}
+      // An open column under a rule, like a prospectus entry — the whole column
+      // is the button, and it takes the amber band on hover.
+      className="group flex flex-col border-t-[3px] border-ink px-1 pb-3 pt-4 text-left transition-colors hover:bg-brand-soft/60"
     >
       <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-ink bg-brand text-xl text-ink transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-105">
         {icon}
@@ -376,7 +376,7 @@ export function CreateSessionForm({
   }
 
   return (
-    <Card>
+    <div>
       {onBack ? (
         <button
           type="button"
@@ -575,7 +575,7 @@ export function CreateSessionForm({
                 onChange={toggleCustomAssets}
               />
               {customAssets ? (
-                <div className="space-y-2 rounded-xl border-2 border-ink bg-paper-2 p-3">
+                <div className="space-y-2 border-y-[1.5px] border-ink/15 py-3">
                   {/* Three columns need ~450px; below sm the fields stack and
                       carry their own labels instead. */}
                   <div className="hidden gap-2 text-xs font-bold uppercase tracking-wide text-ink-subtle sm:grid sm:grid-cols-[1fr_110px_150px]">
@@ -677,7 +677,7 @@ export function CreateSessionForm({
           </div>
         </>
       ) : (
-        <div className="mt-6 rounded-xl border-2 border-ink bg-brand-soft p-4">
+        <div className="mt-6 border-y-[1.5px] border-ink/15 py-4">
           <div className="font-display text-sm font-extrabold uppercase tracking-tight text-ink">
             Standard setup
           </div>
@@ -717,6 +717,6 @@ export function CreateSessionForm({
           )}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

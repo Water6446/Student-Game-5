@@ -8,7 +8,8 @@ import type { SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
 import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
-import { Banner, Button, Card, SectionTitle, buttonClasses } from "@/components/ui";
+import { Banner, Button, SectionTitle, buttonClasses } from "@/components/ui";
+import { SECTION } from "@/components/ledger";
 import { ArrowRight, Check, Monitor, Trash, Users } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -84,12 +85,14 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-      <div className="grid gap-8 lg:grid-cols-2">
+    // One cream sheet: the join code is the only block on it (DESIGN.md §4).
+    <main className="min-h-dvh bg-surface">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
         {/* Projectable join panel — dark ink block */}
-        {/* shadow-lift-brand, never shadow-lift: an ink offset under an ink
-            panel shows only as a notch at two corners (DESIGN.md §4). */}
-        <div className="flex animate-pop-in flex-col items-center rounded-2xl border-2 border-ink bg-ink p-6 text-center text-paper-inverse shadow-lift-brand">
+        {/* A solid ink block on the sheet — the one object here, made to be
+            projected. No offset shadow: the block itself is the emphasis. */}
+        <div className="flex animate-pop-in flex-col items-center rounded-2xl bg-ink p-6 text-center text-paper-inverse">
           <p className="font-display text-sm font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
             Game code
           </p>
@@ -140,7 +143,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
         </div>
 
         {/* Roster + controls */}
-        <Card className="flex flex-col">
+        <section className={`flex flex-col ${SECTION}`}>
           <SectionTitle
             action={
               <span
@@ -159,7 +162,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
           {/* Name chips that wrap, not a column of rows: a hundred students fit
               on one screen, and each one pops in as they join. */}
           {players.length === 0 ? (
-            <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-ink/30 px-4 py-10 text-center">
+            <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-center">
               <span className="flex gap-1.5" aria-hidden="true">
                 {[0, 1, 2].map((i) => (
                   <span
@@ -180,16 +183,20 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               as="ul"
               options={LOBBY_CONDENSE}
               moreNoun="players"
-              className="mt-4 flex max-h-[42vh] flex-1 flex-wrap content-start gap-2 overflow-y-auto p-1"
+              className="mt-2 grid max-h-[42vh] flex-1 grid-cols-2 content-start gap-x-6 overflow-y-auto sm:grid-cols-3"
               gapClassName="font-editorial text-sm italic text-ink-muted hover:text-ink"
               toggleClassName="mt-2 font-editorial text-sm italic text-ink-muted hover:text-ink"
               renderItem={(p, i) => (
-                <li
-                  className={`flex max-w-full animate-pop-in items-center gap-1 rounded-full border-2 border-ink py-1 pl-3.5 pr-1.5 font-semibold text-ink ${
-                    ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-surface"][i % 4]
-                  }`}
-                >
-                  <span className="min-w-0 truncate">{p.display_name}</span>
+                // A printed roster: a colour mark and a name on a ruled line,
+                // not a pill per student.
+                <li className="flex min-w-0 animate-pop-in items-center gap-2 border-b-[1.5px] border-ink/10 py-1 font-semibold text-ink">
+                  <span
+                    aria-hidden="true"
+                    className={`h-2.5 w-2.5 shrink-0 rounded-[2px] ${
+                      ["bg-brand", "bg-play", "bg-gain", "bg-loss"][i % 4]
+                    }`}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{p.display_name}</span>
                   <ManagePlayerButton supabase={supabase} session={session} player={p} />
                 </li>
               )}
@@ -237,21 +244,22 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               </Button>
             </div>
           </div>
-        </Card>
+        </section>
       </div>
 
       {isManager(session.config) ? (
-        <div className="mt-8">
+        <section className={`mt-12 ${SECTION}`}>
           <SectionTitle
-            className="mb-3"
+            className="mb-4"
             info="What your students see before they hire. Regenerated for every session."
             infoLabel="About the manager line-up"
           >
             The manager line-up
           </SectionTitle>
           <ManagerProspectus config={session.config} />
-        </div>
+        </section>
       ) : null}
+      </div>
     </main>
   );
 }

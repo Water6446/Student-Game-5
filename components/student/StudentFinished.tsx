@@ -17,7 +17,7 @@ import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { sumFees } from "@/components/FeeCounter";
 import { money, ordinal, sharpeText, signedMoney, signedPct } from "@/lib/game/format";
-import { Card, CountUp, InfoTip } from "@/components/ui";
+import { CountUp, InfoTip } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { Trophy, ArrowDown, ArrowLeft, ArrowUp, Clover } from "@/components/icons";
@@ -117,13 +117,14 @@ export function StudentFinished({
     : null;
 
   return (
-    <main
-      className={`mx-auto flex min-h-dvh flex-col justify-center px-6 py-8 ${
-        manager ? "max-w-2xl" : "max-w-lg"
-      }`}
-    >
+    // No card: the result sheet itself, with the final wealth as a full-width
+    // band and the comparisons as ruled lists (DESIGN.md §4).
+    <main className="min-h-dvh bg-surface">
       {topThree ? <Confetti /> : null}
-      <Card className="animate-pop-in text-center">
+      <div
+        className={`mx-auto flex flex-col px-5 pb-10 pt-8 ${manager ? "max-w-2xl" : "max-w-lg"}`}
+      >
+      <div className="animate-pop-in text-center">
         <div className="mx-auto flex h-16 w-16 animate-stamp items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Trophy />
         </div>
@@ -134,7 +135,7 @@ export function StudentFinished({
         {/* Green only if the game made money: a red block for a student who
             finished below where they started, instead of congratulating a loss. */}
         <div
-          className={`mt-6 rounded-xl border-2 border-ink p-5 text-white ${
+          className={`-mx-5 mt-6 border-y-[3px] border-ink px-5 py-6 text-white ${
             me.current_wealth >= session.config.starting_wealth ? "bg-gain" : "bg-loss"
           }`}
         >
@@ -314,7 +315,8 @@ export function StudentFinished({
         >
           <ArrowLeft /> Home
         </Link>
-      </Card>
+      </div>
+      </div>
     </main>
   );
 }

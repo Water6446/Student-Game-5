@@ -24,7 +24,7 @@ export const metadata: Metadata = { title: "Join a game" };
 export default function JoinPage() {
   return (
     <>
-      <main className="min-h-dvh">
+      <main className="min-h-dvh bg-surface">
         <div className="mx-auto w-full max-w-xl px-5 py-10 sm:px-8 sm:py-14">
           <header>
             <Eyebrow className="text-ink-muted">{JOIN.eyebrow}</Eyebrow>
@@ -42,7 +42,7 @@ export default function JoinPage() {
           <div className="mt-8">
             <Suspense
               fallback={
-                <div role="status" className="rounded-2xl border-2 border-ink/15 p-6">
+                <div role="status" className="border-t-[3px] border-ink/15 pt-4">
                   <span className="sr-only">Loading…</span>
                   <Skeleton className="h-6 w-40" />
                   <Skeleton className="mt-6 h-16 w-full" />

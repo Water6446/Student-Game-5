@@ -71,7 +71,7 @@ export default function HostPage() {
   if (loading || !allowed) {
     return (
       <>
-        <main className="min-h-dvh">
+        <main className="min-h-dvh bg-surface">
           <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
             <SkeletonCards label={loading ? "Loading your dashboard" : "Taking you to sign-in"} />
           </div>
@@ -84,7 +84,7 @@ export default function HostPage() {
 
   return (
     <>
-      <main className="min-h-dvh">
+      <main className="min-h-dvh bg-surface">
         <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
           <header>
             <div className="flex flex-wrap items-center justify-between gap-3">

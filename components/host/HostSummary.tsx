@@ -23,9 +23,9 @@ import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/port
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
-import { Button, Card, SectionTitle, buttonClasses } from "@/components/ui";
+import { Button, SectionTitle, buttonClasses } from "@/components/ui";
 import { RankBadge } from "@/components/RankBadge";
-import { LEDGER, LEDGER_ROW } from "@/components/ledger";
+import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { FeeCounter, sumFees } from "@/components/FeeCounter";
@@ -201,8 +201,10 @@ export function HostSummary({
   const sigma = totalDraws > 0 ? Math.sqrt((expected * (1 - expected)) / totalDraws) : 0;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    // One cream sheet, no cards: sections sit on the page (DESIGN.md §4).
+    <main className="min-h-dvh bg-surface">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <header className="mb-10 flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link
             href="/host"
@@ -259,7 +261,7 @@ export function HostSummary({
           here — it replays good/bad draws, and a manager game has none, so every
           card came out at the starting wealth. This is what replaces it. */}
       {managerGame ? (
-        <Card className="mb-6">
+        <section className={`mb-12 ${SECTION}`}>
           <SectionTitle
             className="mb-4"
             infoLabel="About the index comparison"
@@ -272,7 +274,7 @@ export function HostSummary({
           >
             How the class did against the index
           </SectionTitle>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 border-y-[1.5px] border-ink/15 sm:grid-cols-4 [&>*]:border-ink/15 [&>*:nth-child(even)]:border-l-[1.5px] sm:[&>*:not(:first-child)]:border-l-[1.5px] [&>*:nth-child(n+3)]:border-t-[1.5px] sm:[&>*:nth-child(n+3)]:border-t-0">
             <StrategyCard
               label="The Index"
               desc="passive, no fees"
@@ -304,12 +306,12 @@ export function HostSummary({
             {humanResults.length === 1 ? "player" : "players"} beat the index
             {indexFinal != null ? ` of ${money(indexFinal)}` : ""}.
           </p>
-        </Card>
+        </section>
       ) : null}
 
       {/* Counterfactual */}
       {managerGame ? null : (
-      <Card className="mb-6">
+      <section className={`mb-12 ${SECTION}`}>
         <SectionTitle
           className="mb-4"
           infoLabel="About the strategy comparison"
@@ -324,7 +326,7 @@ export function HostSummary({
         >
           If everyone had picked one strategy
         </SectionTitle>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-5 pt-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 border-y-[1.5px] border-ink/15 sm:grid-cols-4 [&>*]:border-ink/15 [&>*:nth-child(even)]:border-l-[1.5px] sm:[&>*:not(:first-child)]:border-l-[1.5px] [&>*:nth-child(n+3)]:border-t-[1.5px] sm:[&>*:nth-child(n+3)]:border-t-0">
           {portfolio ? (
             <>
               <StrategyCard
@@ -393,12 +395,12 @@ export function HostSummary({
           <span className="font-bold text-gain">{cf.beatAllSafe}</span> of {cf.total}{" "}
           players beat the all-safe baseline of {money(cf.strategy.all_safe)}.
         </p>
-      </Card>
+      </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-x-12 gap-y-12 lg:grid-cols-2">
         {/* Final standings — click a player to see their whole-match outcomes */}
-        <Card>
+        <section className={SECTION}>
           <SectionTitle
             className="mb-1"
             infoLabel="About the final standings"
@@ -528,13 +530,13 @@ export function HostSummary({
               );
             }}
           />
-        </Card>
+        </section>
 
         {/* Round history — collapsed shows a bounded, scrollable window; "Show
             all" expands to full height. The bound is a plain max-h at every
             breakpoint, and print variants unbind it so every round makes it
             onto paper regardless of collapse state. */}
-        <Card>
+        <section className={SECTION}>
           {/* The heading sits outside the toggle so its InfoTip is not a
               button nested inside another button. */}
           <SectionTitle
@@ -566,14 +568,14 @@ export function HostSummary({
               }
             />
           </div>
-        </Card>
+        </section>
       </div>
 
       {/* Luck — who drew the best markets (independent outcomes). Suppressed for
           manager games: there are no good/bad draws to be lucky in, so every row
           would read "no draws". */}
       {managerGame ? null : (
-      <Card className="mt-6">
+      <section className={`mt-12 ${SECTION}`}>
         <SectionTitle
           className="mb-3"
           icon={<Clover className="text-gain" />}
@@ -638,11 +640,11 @@ export function HostSummary({
             </li>
           )}
         />
-      </Card>
+      </section>
       )}
 
       {/* Wealth chart */}
-      <Card className="mt-6">
+      <section className={`mt-12 ${SECTION}`}>
         <SectionTitle className="mb-3">Wealth over {managerGame ? "years" : "rounds"}</SectionTitle>
         <WealthChart
           players={visiblePlayers}
@@ -652,7 +654,8 @@ export function HostSummary({
           benchmark={benchmark}
           unitLabel={managerGame ? "Year" : "Round"}
         />
-      </Card>
+      </section>
+      </div>
     </main>
   );
 }
@@ -682,16 +685,13 @@ function StrategyCard({
 }) {
   const up = !cost && value > start + 0.005;
   const down = cost || value < start - 0.005;
-  const bg = up ? "bg-gain-soft" : down ? "bg-loss-soft" : "bg-paper-2";
   const fg = up ? "text-gain" : down ? "text-loss" : "text-ink";
+  // A column in a ruled strip, not a tinted card: the value's colour and arrow
+  // carry the verdict, and only the winner gets a band.
   return (
-    <div
-      className={`relative flex flex-col rounded-xl border-2 border-ink p-4 text-center ${bg} ${
-        best ? "shadow-card" : ""
-      }`}
-    >
+    <div className={`flex flex-col px-4 py-4 text-center ${best ? "bg-brand-soft" : ""}`}>
       {best ? (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-ink bg-brand px-2 py-px font-display text-[10px] font-extrabold uppercase tracking-wide text-ink">
+        <span className="mx-auto mb-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink">
           Came out on top
         </span>
       ) : null}

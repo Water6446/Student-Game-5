@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { ClaimAccount } from "@/components/account/ClaimAccount";
-import { Banner } from "@/components/ui";
+import { Banner, buttonClasses } from "@/components/ui";
 import { X } from "@/components/icons";
 
 /**
@@ -76,7 +76,7 @@ export function SaveResultsPrompt({
   }
 
   return (
-    <div className="mt-8 rounded-2xl border-2 border-ink bg-paper-2 p-5 text-left">
+    <div className="mt-10 border-t-[3px] border-ink pt-3 text-left">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-base font-extrabold uppercase tracking-tight text-ink">
@@ -112,7 +112,7 @@ export function SaveResultsPrompt({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="mt-4 w-full rounded-xl border-2 border-ink bg-brand px-5 py-3 font-display font-extrabold text-ink shadow-card transition hover:bg-brand-strong active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          className={buttonClasses("gold", "md", "mt-4 w-full")}
         >
           Save my results
         </button>

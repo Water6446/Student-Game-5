@@ -5,8 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RoundRow, SessionRow } from "@/lib/game/db";
 import { managerName, numManagers } from "@/lib/game/manager";
 import { signedPct } from "@/lib/game/format";
-import { Card, SectionTitle } from "@/components/ui";
-import { LEDGER, LEDGER_ROW } from "@/components/ledger";
+import { SectionTitle } from "@/components/ui";
+import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
 import { CondensedList } from "@/components/CondensedList";
 import { useManagerTruth } from "@/components/use-manager-truth";
 
@@ -64,9 +64,9 @@ export function ManagerReveal({
 
   if (loading) {
     return (
-      <Card className={className}>
+      <section className={`${SECTION} ${className ?? ""}`}>
         <p className="font-editorial italic text-ink-muted">Revealing the managers…</p>
-      </Card>
+      </section>
     );
   }
   if (!truth) return null;
@@ -96,7 +96,7 @@ export function ManagerReveal({
       : null;
 
   return (
-    <Card className={className}>
+    <section className={`${SECTION} ${className ?? ""}`}>
       {/* The tip is derived from THIS line-up and THIS many years — the
           numbers were once hardcoded to the default preset and a 25-year game,
           and quietly lied whenever the host changed either. */}
@@ -168,7 +168,7 @@ export function ManagerReveal({
           </li>
         )}
       />
-    </Card>
+    </section>
   );
 }
 

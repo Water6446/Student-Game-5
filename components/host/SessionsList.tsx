@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionOverviewRow } from "@/lib/game/db";
 import { configForRerun, createSession } from "@/lib/game/create-session";
 import { clsx } from "@/components/clsx";
+import { LEDGER } from "@/components/ledger";
 import { Banner, Button, Skeleton, TextInput } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { Pencil, Search, Shuffle, Trash, Users } from "@/components/icons";
@@ -128,7 +129,7 @@ export function SessionsList({
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-ink/30 px-6 py-10 text-center">
+      <div className="border-y-[1.5px] border-ink/15 px-6 py-10 text-center">
         <p className="font-display text-base font-extrabold uppercase tracking-tight text-ink">
           No sessions yet
         </p>
@@ -194,7 +195,7 @@ export function SessionsList({
           No sessions match.
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className={LEDGER}>
           {visible.slice(0, limit).map((s) => {
             const confirming = pendingDelete === s.id;
             const editing = renaming === s.id;
@@ -204,9 +205,9 @@ export function SessionsList({
             return (
               <li
                 key={s.id}
-                className="rounded-xl border-2 border-ink bg-surface transition hover:bg-paper-2"
+                className="transition-colors hover:bg-brand-soft/60"
               >
-                <div className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
+                <div className="flex flex-wrap items-center gap-3 px-2 py-3">
                   {editing ? (
                     <form
                       noValidate

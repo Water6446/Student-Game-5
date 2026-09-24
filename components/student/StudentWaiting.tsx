@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlayerRow, SessionRow } from "@/lib/game/db";
-import { Banner, Button, Card, InfoTip, TextInput } from "@/components/ui";
+import { Banner, Button, Section, TextInput } from "@/components/ui";
 import { money } from "@/lib/game/format";
 import { Pencil, Sparkle } from "@/components/icons";
 import { isManager } from "@/lib/game/types";
@@ -39,12 +39,15 @@ export function StudentWaiting({
   const manager = isManager(session.config);
 
   return (
-    <main
-      className={`mx-auto flex min-h-dvh flex-col justify-center px-6 ${
-        manager ? "max-w-2xl py-8" : "max-w-lg"
-      }`}
-    >
-      <Card className="animate-pop-in text-center">
+    // No card: centred on the cream sheet, with the starting wealth as a
+    // full-width band (DESIGN.md §4).
+    <main className="min-h-dvh bg-surface">
+      <div
+        className={`mx-auto flex min-h-dvh flex-col justify-center px-5 py-8 ${
+          manager ? "max-w-2xl" : "max-w-lg"
+        }`}
+      >
+      <div className="animate-pop-in text-center">
         <div className="mx-auto flex h-16 w-16 animate-bob items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Sparkle />
         </div>
@@ -99,11 +102,11 @@ export function StudentWaiting({
           </div>
         ) : null}
 
-        <div className="mt-6 rounded-xl border-2 border-ink bg-gain p-4 text-white">
+        <div className="-mx-5 mt-6 border-y-[3px] border-ink bg-gain px-5 py-5 text-white">
           <div className="font-display text-xs font-extrabold uppercase tracking-wide text-white/85">
             Starting wealth
           </div>
-          <div className="font-mono text-3xl font-bold">{money(me.current_wealth)}</div>
+          <div className="font-mono text-4xl font-bold">{money(me.current_wealth)}</div>
         </div>
 
         <p className="mt-6 font-editorial italic text-ink-muted">
@@ -126,23 +129,21 @@ export function StudentWaiting({
             ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`
             : ""}
         </p>
-      </Card>
+      </div>
 
       {/* The lobby is the "read the prospectuses before the game starts" moment
           — it is the only time a student can study the line-up unhurried. */}
       {manager ? (
-        <div className="mt-6">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
-              Who will you hire?
-            </h2>
-            <InfoTip label="About the prospectuses">
-              Read the prospectuses before the game starts. Every figure is net of fees.
-            </InfoTip>
-          </div>
+        <Section
+          className="mt-10"
+          title="Who will you hire?"
+          info="Read the prospectuses before the game starts. Every figure is net of fees."
+          infoLabel="About the prospectuses"
+        >
           <ManagerProspectus config={session.config} />
-        </div>
+        </Section>
       ) : null}
+      </div>
     </main>
   );
 }

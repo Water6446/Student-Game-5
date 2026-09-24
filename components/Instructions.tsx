@@ -66,7 +66,7 @@ export function Instructions({ role, className }: { role: Role; className?: stri
 
   return (
     <div
-      className={`rounded-2xl border-2 border-ink bg-surface p-6 text-left shadow-card ${className ?? ""}`}
+      className={`border-t-[3px] border-ink pt-3 text-left ${className ?? ""}`}
     >
       <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
         {content.heading}

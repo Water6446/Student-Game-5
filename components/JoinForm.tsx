@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { PlayerRow } from "@/lib/game/db";
 import { friendlyJoinError } from "@/lib/game/join-errors";
-import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
+import { Banner, Button, Field, TextInput } from "@/components/ui";
+import { SECTION } from "@/components/ledger";
 import { StudentResumeStrip } from "@/components/StudentResumeStrip";
 import { ArrowRight } from "@/components/icons";
 
@@ -91,7 +92,8 @@ export function JoinForm() {
   }
 
   return (
-    <Card className="animate-pop-in">
+    // An open section on the page, not a card (DESIGN.md §4).
+    <section className={`animate-pop-in ${SECTION}`}>
       <h2 className="font-display text-xl font-black uppercase tracking-tight text-ink">
         Who&apos;s playing?
       </h2>
@@ -175,7 +177,7 @@ export function JoinForm() {
           </Button>
         )}
       </form>
-    </Card>
+    </section>
   );
 }
 
