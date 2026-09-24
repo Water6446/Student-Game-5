@@ -127,7 +127,7 @@ export function AllocationsBreakdown({
         items={rows}
         keyOf={(r) => r.id}
         as="ul"
-        className="divide-y divide-line"
+        className="divide-y divide-ink/10"
         gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         renderItem={(r) => {
@@ -166,12 +166,12 @@ export function AllocationsBreakdown({
 
               {/* Risk meter — instant read of how aggressive each player is */}
               <div className="flex shrink-0 items-center gap-1">
-                <div className="flex h-2.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24">
-                  <div className="bg-loss" style={{ width: `${barPct}%` }} />
+                <div className="flex h-3 w-16 shrink-0 overflow-hidden rounded-full border-[1.5px] border-ink sm:w-24">
+                  <div className="bg-loss transition-[width] duration-500" style={{ width: `${barPct}%` }} />
                   <div className="bg-gain" style={{ width: `${100 - barPct}%` }} />
                 </div>
                 {isLevered ? (
-                  <span className="rounded-full border border-ink bg-ink px-1.5 py-0.5 font-mono text-[10px] font-bold text-paper">
+                  <span className="rounded-full border border-ink bg-ink px-1.5 py-0.5 font-mono text-[10px] font-bold text-paper-inverse">
                     {((pct ?? 0) / 100).toFixed(1)}×
                   </span>
                 ) : null}

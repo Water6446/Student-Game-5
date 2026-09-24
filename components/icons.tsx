@@ -337,6 +337,25 @@ export function Trash(props: IconProps) {
   );
 }
 
+export function AlertTriangle(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M10.3 3.9 2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </Base>
+  );
+}
+
+/** Hollow ring: "not yet" — a pending row in a checklist, beside a Check. */
+export function CircleDashed(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M10.1 2.2a10 10 0 0 1 3.8 0M17.6 4.1a10 10 0 0 1 2.3 2.3M21.8 10.1a10 10 0 0 1 0 3.8M19.9 17.6a10 10 0 0 1-2.3 2.3M13.9 21.8a10 10 0 0 1-3.8 0M6.4 19.9a10 10 0 0 1-2.3-2.3M2.2 13.9a10 10 0 0 1 0-3.8M4.1 6.4a10 10 0 0 1 2.3-2.3" />
+    </Base>
+  );
+}
+
 /**
  * The Google "G". The only icon here that is not a monochrome line mark: brand
  * marks have to keep their own colours, so this one opts out of `Base` and

@@ -86,7 +86,6 @@ export const JOIN = {
   eyebrow: "Student",
   heading: "Join a game.",
   sub: "Enter the code your professor is showing.",
-  howEyebrow: "How to play",
   hostPrompt: "Running the class rather than playing?",
   hostCta: "Host a session",
 } as const;

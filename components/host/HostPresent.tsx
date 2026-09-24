@@ -17,20 +17,20 @@ import {
   bustRoundByPlayer,
   classLuckSoFar,
   compareStandings,
-  playerDeltaChipsMap,
-  playerOutcomesMap,
   submittedHumanCount,
 } from "@/lib/game/results";
+import type { AllocationRow, RoundRow } from "@/lib/game/db";
 import { CondensedList } from "@/components/CondensedList";
 import { COLOR } from "@/lib/design/colors";
 import { assetName } from "@/lib/game/portfolio";
 import { indexSeries } from "@/lib/game/manager";
 import { isManager, isPortfolio, type MarketOutcome, type SessionConfig } from "@/lib/game/types";
-import { money, signedPct } from "@/lib/game/format";
+import { money, signedMoney, signedPct } from "@/lib/game/format";
+import { CountUp } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { ManagerReveal } from "@/components/ManagerReveal";
-import { ArrowUp, ArrowDown, Coins, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
+import { ArrowUp, ArrowDown, Coins, Lock, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
 
 /**
  * Read-only, projector-optimized view of a session. The host keeps the real
@@ -124,15 +124,24 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
 
   return (
     <div className="grid flex-1 items-center gap-8 py-4 lg:grid-cols-2">
-      {/* Dark ink panel: giant game code + join caption */}
-      <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-ink bg-ink p-10 text-center text-paper-inverse shadow-lift">
+      {/* Dark ink panel: giant game code + join caption. shadow-lift-brand:
+          an ink offset under an ink panel reads as a glitch (DESIGN.md §4). */}
+      <div className="flex animate-pop-in flex-col items-center justify-center rounded-3xl border-2 border-ink bg-ink p-10 text-center text-paper-inverse shadow-lift-brand">
         <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
           Game code
         </p>
-        <p className="font-mono text-7xl font-black tracking-[0.3em] text-paper-inverse sm:text-8xl">
-          {session.join_code}
+        <p className="flex font-mono text-7xl font-black text-paper-inverse sm:text-8xl">
+          {session.join_code.split("").map((ch, i) => (
+            <span
+              key={i}
+              className="stagger inline-block w-[0.9em] animate-count-pop text-center"
+              style={{ "--i": i + 3 } as React.CSSProperties}
+            >
+              {ch}
+            </span>
+          ))}
         </p>
-        <div className="mt-8 rounded-3xl border-2 border-ink bg-white p-6 shadow-card">
+        <div className="mt-8 rounded-3xl border-2 border-ink bg-white p-6 shadow-[5px_5px_0_rgb(var(--brand))]">
           <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} />
         </div>
         <p className="mt-6 break-all font-editorial text-2xl italic text-paper-inverse/80">
@@ -145,7 +154,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
         <div className="flex flex-col justify-center">
           <p className="mb-3 flex items-center gap-3 font-display text-2xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
             <Users className="text-[0.8em]" />
-            {players.length} in the room
+            <CountUp value={players.length} duration={400} /> in the room
           </p>
           <ManagerProspectus config={session.config} />
         </div>
@@ -154,13 +163,32 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
           <p className="font-display text-2xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
             In the room
           </p>
-          <p className="flex items-center gap-4 font-mono text-[clamp(5rem,16vw,11rem)] font-black leading-none text-ink">
+          <p
+            key={players.length}
+            className="animate-count-pop font-mono text-[clamp(5rem,16vw,11rem)] font-black leading-none text-ink"
+          >
             {players.length}
           </p>
           <p className="flex items-center gap-3 text-3xl font-bold text-ink">
             <Users className="text-[0.8em] text-ink-muted" />
             {players.length === 1 ? "player" : "players"} in
           </p>
+          {/* The newest names pop in as they join — the room sees itself arrive.
+              Only the latest few dozen: this is a welcome, not the roster. */}
+          {players.length > 0 ? (
+            <ul className="mt-4 flex max-h-[30vh] max-w-2xl flex-wrap content-start justify-center gap-2 overflow-hidden">
+              {players.slice(-36).map((p, i) => (
+                <li
+                  key={p.id}
+                  className={`animate-pop-in rounded-full border-2 border-ink px-4 py-1.5 font-display text-xl font-extrabold text-ink shadow-card ${
+                    ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-surface"][i % 4]
+                  }`}
+                >
+                  {p.display_name}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       )}
     </div>
@@ -219,13 +247,12 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     };
   }, [manager, history.rounds, session.config.starting_wealth]);
 
-  // basic: each player's market draws; portfolio: gained/lost chips per round
-  const outcomesByPlayer = useMemo(
-    () =>
-      portfolio || manager
-        ? playerDeltaChipsMap(history.rounds, history.allocations)
-        : playerOutcomesMap(session, players, history.rounds, history.allocations),
-    [portfolio, manager, session, players, history.rounds, history.allocations],
+  // What each player's balance did in the latest revealed round. The row used
+  // to show the MARKET's arrow, so in a shared up-market an all-safe player who
+  // gained nothing — or a player who lost money — still read "up" in green.
+  const lastDelta = useMemo(
+    () => lastRoundDeltas(history.rounds, history.allocations),
+    [history.rounds, history.allocations],
   );
 
   // $0-tied players order by when they busted (first to bust sits last)
@@ -264,7 +291,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     <div className="grid flex-1 gap-6 py-4 lg:grid-cols-[1fr_1.1fr]">
       {/* Left column: status panel on top, wealth chart below */}
       <div className="flex min-h-0 flex-col gap-6">
-        <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border-2 border-ink bg-play-soft p-8 text-center shadow-card">
+        <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border-2 border-ink bg-play-soft bg-dots p-8 text-center shadow-card">
           <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-ink-muted">
             {manager ? "Year" : "Round"} {session.current_round} /{" "}
             {session.config.num_rounds}
@@ -284,17 +311,25 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
               <div className="mt-8 font-mono text-[clamp(4rem,12vw,9rem)] font-black leading-none text-ink">
                 {/* "—" while the fetch is in flight: an unknown numerator is
                     honest, a stale one is a lie. */}
-                {allocsLoading ? "—" : submitted}
+                {allocsLoading ? "—" : <CountUp value={submitted} duration={400} />}
                 <span className="text-ink-muted">/{humanCount}</span>
               </div>
-              <p className="mt-2 font-display text-2xl font-extrabold uppercase tracking-wide text-ink-muted">
-                locked in
+              <div className="mt-6 h-6 w-full max-w-md overflow-hidden rounded-full border-[3px] border-ink bg-surface shadow-card">
+                <div
+                  className="h-full bg-gain transition-[width] duration-700 ease-out"
+                  style={{
+                    width: `${humanCount > 0 && !allocsLoading ? Math.min(submitted / humanCount, 1) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-3 font-display text-2xl font-extrabold uppercase tracking-wide text-ink-muted">
+                {humanCount > 0 && submitted === humanCount && !allocsLoading ? "Everyone's in" : "locked in"}
               </p>
             </>
           ) : phase === "locked" ? (
             <>
-              <p className="mt-6 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
-                Bets are locked
+              <p className="mt-8 inline-flex animate-stamp items-center gap-4 rounded-2xl border-[3px] border-ink bg-brand px-8 py-3 font-display text-4xl font-black uppercase tracking-tight text-ink shadow-lift sm:text-5xl">
+                <Lock /> Bets are locked
               </p>
               <p className="mt-4 animate-pulse-soft font-editorial text-2xl italic text-ink-muted">
                 Revealing the market…
@@ -325,7 +360,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
         </section>
 
         <section className="rounded-3xl border-2 border-ink bg-surface p-5 shadow-card">
-          <h2 className="mb-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+          <h2 className="mb-2 font-display text-xl font-extrabold uppercase tracking-tight text-ink">
             Wealth over {manager ? "years" : "rounds"}
           </h2>
           <WealthChart
@@ -360,7 +395,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
         ) : (
           <div className="mb-4" />
         )}
-        <Leaderboard ranked={ranked} outcomesByPlayer={outcomesByPlayer} />
+        <Leaderboard ranked={ranked} lastDelta={lastDelta} />
       </section>
 
       {revealFor ? (
@@ -416,14 +451,14 @@ function PortfolioOutcomeBig({
 function RoundOutcomeBig({ good, pct }: { good: boolean; pct?: number }) {
   return (
     <div
-      className={`mt-6 flex flex-col items-center gap-3 rounded-2xl border-2 border-ink px-8 py-6 text-white shadow-card ${
+      className={`mt-6 flex animate-pop-in flex-col items-center gap-3 rounded-2xl border-2 border-ink bg-dots-light px-8 py-6 text-white shadow-lift ${
         good ? "bg-gain" : "bg-loss"
       }`}
     >
       <span className="text-[clamp(3rem,9vw,7rem)] leading-none">
         {good ? <ArrowUp /> : <ArrowDown />}
       </span>
-      <span className="font-display text-4xl font-black uppercase tracking-tight sm:text-5xl">
+      <span className="animate-stamp font-display text-4xl font-black uppercase tracking-tight sm:text-5xl">
         {good ? "Market up!" : "Market down!"}
       </span>
       {pct != null ? (
@@ -460,30 +495,32 @@ function RevealTakeover({
   if (assetOutcomes && assetOutcomes.length > 0) {
     const allGood = assetOutcomes.every((o) => o === "good");
     const allBad = assetOutcomes.every((o) => o === "bad");
-    const cls = allGood ? "bg-gain text-white" : allBad ? "bg-loss text-white" : "bg-ink text-paper";
+    const cls = allGood ? "bg-gain text-white" : allBad ? "bg-loss text-white" : "bg-ink text-paper-inverse";
     return (
       <button
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss reveal"
-        className={`animate-pop-in fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-6 px-6 ${cls}`}
+        className={`animate-pop-in fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-6 overflow-hidden px-6 ${cls}`}
       >
+        <Sunburst />
         {allGood ? <Confetti /> : null}
-        <span className="font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
+        <span className="relative font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
           Round {roundNumber}
         </span>
-        <span className="font-display text-[clamp(2rem,7vw,5rem)] font-black uppercase leading-none tracking-tight">
+        <span className="relative animate-stamp font-display text-[clamp(2rem,7vw,5rem)] font-black uppercase leading-none tracking-tight">
           {allGood ? "Everything up!" : allBad ? "Everything down!" : "The markets moved"}
         </span>
         <ul
-          className={`grid w-full max-w-3xl gap-3 ${
+          className={`relative grid w-full max-w-3xl gap-3 ${
             assetOutcomes.length > 4 ? "grid-cols-2" : "grid-cols-1"
           }`}
         >
           {assetOutcomes.map((o, i) => (
             <li
               key={i}
-              className={`flex items-center justify-between rounded-2xl border-2 px-5 py-3 ${
+              style={{ "--i": i + 4 } as React.CSSProperties}
+              className={`stagger flex animate-rise items-center justify-between rounded-2xl border-2 px-5 py-3 ${
                 o === "good"
                   ? "border-white/60 bg-gain text-white"
                   : "border-white/60 bg-loss text-white"
@@ -507,35 +544,87 @@ function RevealTakeover({
   // drives the colour and the number itself is the headline detail.
   const isGood = marketReturn != null ? marketReturn >= 0 : good;
   const neutral = !shared && marketReturn == null;
-  const cls = neutral ? "bg-ink text-paper" : isGood ? "bg-gain text-white" : "bg-loss text-white";
+  const cls = neutral
+    ? "bg-ink text-paper-inverse"
+    : isGood
+      ? "bg-gain text-white"
+      : "bg-loss text-white";
   return (
     <button
       type="button"
       onClick={onDismiss}
       aria-label="Dismiss reveal"
-      className={`animate-pop-in fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-6 ${cls}`}
+      className={`animate-pop-in fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-6 overflow-hidden ${cls}`}
     >
+      <Sunburst />
       {!neutral && isGood ? <Confetti /> : null}
-      <span className="font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
+      <span className="relative font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
         {marketReturn != null ? "Year" : "Round"} {roundNumber}
       </span>
-      <span className="text-[clamp(5rem,22vw,16rem)] leading-none">
+      {/* The arrow flies in from the direction it points. */}
+      <span
+        className={`relative text-[clamp(5rem,22vw,16rem)] leading-none ${
+          neutral ? "animate-pop-in" : isGood ? "animate-rise-tall" : "animate-drop-in"
+        }`}
+      >
         {neutral ? <Shuffle /> : isGood ? <ArrowUp /> : <ArrowDown />}
       </span>
-      <span className="font-display text-[clamp(2.5rem,9vw,7rem)] font-black uppercase leading-none tracking-tight">
+      <span className="relative animate-stamp font-display text-[clamp(2.5rem,9vw,7rem)] font-black uppercase leading-none tracking-tight [animation-delay:0.15s]">
         {neutral ? "Results are in" : isGood ? "Market up!" : "Market down!"}
       </span>
       {marketReturn != null ? (
-        <span className="font-mono text-[clamp(2rem,6vw,4rem)] font-black">
+        <span className="relative animate-count-pop font-mono text-[clamp(2rem,6vw,4rem)] font-black [animation-delay:0.4s]">
           {signedPct(marketReturn * 100, 1)}
         </span>
       ) : !neutral ? (
-        <span className="font-editorial text-2xl italic opacity-90">
+        <span className="relative animate-rise font-editorial text-2xl italic opacity-90 [animation-delay:0.45s]">
           Risky bets {isGood ? "paid off" : "took a hit"}
         </span>
       ) : null}
     </button>
   );
+}
+
+/**
+ * Slow-turning rays behind a takeover — the game-show sunburst. Faint white on
+ * the flood colour, so the verdict stays the only thing that shouts. Reduced
+ * motion freezes it (globals.css).
+ */
+function Sunburst() {
+  return (
+    <span
+      aria-hidden="true"
+      className="sunburst pointer-events-none absolute left-1/2 top-1/2 h-[220vmax] w-[220vmax] -translate-x-1/2 -translate-y-1/2"
+    >
+      <span
+        className="block h-full w-full animate-spin-slow rounded-full"
+        style={{
+          background:
+            "repeating-conic-gradient(from 0deg, rgb(255 255 255 / 0.07) 0deg 9deg, transparent 9deg 18deg)",
+        }}
+      />
+    </span>
+  );
+}
+
+/**
+ * Each player's change in the latest revealed round (resulting − stake). A
+ * player with no row that round (joined late, removed) is absent.
+ */
+function lastRoundDeltas(rounds: RoundRow[], allocations: AllocationRow[]): Map<string, number> {
+  const last = rounds
+    .filter((r) => r.status === "revealed")
+    .reduce<RoundRow | null>((a, r) => (!a || r.round_number > a.round_number ? r : a), null);
+  const out = new Map<string, number>();
+  if (!last) return out;
+  for (const a of allocations) {
+    if (a.round_id !== last.id || a.resulting_wealth == null) continue;
+    out.set(
+      a.player_id,
+      Number(a.resulting_wealth) - (Number(a.risky_amount) + Number(a.safe_amount)),
+    );
+  }
+  return out;
 }
 
 /* ── Finished: final standings, projector-sized ────────────────────────────── */
@@ -544,13 +633,6 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
   const history = useSessionHistory(supabase, session.id);
   // Mirrors the control screen's show/hide-bots toggle, like PresentActive.
   const [showBots] = useShowBots(session.id);
-  const outcomesByPlayer = useMemo(
-    () =>
-      isPortfolio(session.config)
-        ? playerDeltaChipsMap(history.rounds, history.allocations)
-        : playerOutcomesMap(session, players, history.rounds, history.allocations),
-    [session, players, history.rounds, history.allocations],
-  );
   const bust = useMemo(
     () => bustRoundByPlayer(history.rounds, history.allocations),
     [history.rounds, history.allocations],
@@ -562,11 +644,13 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
       ),
     [players, showBots, bust],
   );
+  const podium = ranked.slice(0, 3);
+  const rest = ranked.slice(3);
 
   return (
     <div className="flex flex-1 flex-col py-4">
-      <div className="mb-6 text-center">
-        <h2 className="flex items-center justify-center gap-3 font-display text-5xl font-black uppercase tracking-tight text-ink">
+      <div className="mb-8 text-center">
+        <h2 className="flex animate-rise items-center justify-center gap-3 font-display text-5xl font-black uppercase tracking-tight text-ink">
           <Trophy className="text-ink" /> Final standings
         </h2>
         <p className="mt-1 font-editorial text-xl italic text-ink-muted">
@@ -574,9 +658,16 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
           over
         </p>
       </div>
-      <div className="mx-auto w-full max-w-3xl">
-        <Leaderboard ranked={ranked} outcomesByPlayer={outcomesByPlayer} />
-      </div>
+
+      {podium.length > 0 ? (
+        <Podium players={podium} startingWealth={session.config.starting_wealth} />
+      ) : null}
+
+      {rest.length > 0 ? (
+        <div className="mx-auto mt-8 w-full max-w-3xl">
+          <Leaderboard ranked={rest} rankOffset={3} />
+        </div>
+      ) : null}
 
       {/* The reveal belongs on the projector too — it is the moment the class
           finds out whether the fund they trusted ever had an edge. */}
@@ -589,13 +680,64 @@ function PresentFinished({ supabase, session }: { supabase: SupabaseClient; sess
   );
 }
 
+/**
+ * The top three on blocks of 1st/2nd/3rd height, 2-1-3 order. The blocks rise
+ * from the floor in reverse order — third, second, then the winner — each
+ * balance rolling up from the starting wealth, and confetti for the winner.
+ */
+function Podium({ players, startingWealth }: { players: PlayerRow[]; startingWealth: number }) {
+  // visual order: 2nd, 1st, 3rd
+  const slots = [1, 0, 2].filter((i) => players[i]);
+  const height = ["h-[34vh]", "h-[24vh]", "h-[17vh]"];
+  const fill = ["bg-brand", "bg-surface", "bg-paper-2"];
+  const delay = [0.9, 0.45, 0];
+  return (
+    <div className="mx-auto flex w-full max-w-4xl items-end justify-center gap-4">
+      <Confetti count={90} />
+      {slots.map((i) => {
+        const p = players[i];
+        return (
+          <div
+            key={p.id}
+            className="flex w-1/3 max-w-[18rem] animate-rise-tall flex-col items-center"
+            style={{ animationDelay: `${delay[i]}s` }}
+          >
+            <span className="mb-2 max-w-full truncate px-2 font-display text-[clamp(1.4rem,2.6vw,2.4rem)] font-black text-ink">
+              {p.display_name}
+            </span>
+            <CountUp
+              value={p.current_wealth}
+              from={startingWealth}
+              duration={1600}
+              format={money}
+              className="mb-3 font-mono text-[clamp(1.2rem,2.2vw,2rem)] font-bold text-ink"
+            />
+            <div
+              className={`flex w-full flex-col items-center justify-start rounded-t-3xl border-[3px] border-b-0 border-ink pt-4 shadow-lift ${height[i]} ${fill[i]}`}
+            >
+              <span className="font-mono text-[clamp(3rem,7vw,6rem)] font-black leading-none text-ink">
+                {i + 1}
+              </span>
+              {i === 0 ? <Trophy className="mt-2 text-[clamp(2rem,4vw,3.5rem)] text-ink" /> : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ── Shared big leaderboard ─────────────────────────────────────────────────── */
 function Leaderboard({
   ranked,
-  outcomesByPlayer,
+  lastDelta,
+  rankOffset = 0,
 }: {
   ranked: PlayerRow[];
-  outcomesByPlayer: Map<string, ("good" | "bad")[]>;
+  /** each player's change in the latest round; omit to show balances only */
+  lastDelta?: Map<string, number>;
+  /** the final screen lists places 4+ under the podium */
+  rankOffset?: number;
 }) {
   // >10 players: top 5 + bottom 3, with the middle behind an expander.
   if (ranked.length === 0) {
@@ -609,38 +751,49 @@ function Leaderboard({
         keyOf={(p) => p.id}
         moreNoun="players"
         className="space-y-2"
-        gapClassName="font-editorial text-lg italic text-ink-subtle hover:text-ink"
-        toggleClassName="mt-3 font-editorial text-lg italic text-ink-subtle hover:text-ink"
+        gapClassName="font-editorial text-lg italic text-ink-muted hover:text-ink"
+        toggleClassName="mt-3 font-editorial text-lg italic text-ink-muted hover:text-ink"
         renderItem={(p, i) => {
-          const last = outcomesByPlayer.get(p.id)?.at(-1) ?? null;
-          const top = i < 3;
+          const rank = i + 1 + rankOffset;
+          const d = lastDelta?.get(p.id);
           return (
             <li
-              className={`flex items-center justify-between gap-3 rounded-2xl border-2 border-ink px-5 py-3 shadow-card ${
-                i === 0 ? "bg-brand-soft" : top ? "bg-surface" : "bg-paper-2"
-              }`}
+              style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
+              className="stagger flex animate-rise items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-surface px-5 py-3 shadow-card"
             >
               <span className="flex min-w-0 items-center gap-4">
-                <span className="w-9 shrink-0 text-center font-mono text-2xl font-bold text-ink-muted">
-                  {i + 1}
+                <span
+                  className={`flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border-2 px-1 font-mono text-2xl font-bold ${
+                    rank === 1
+                      ? "border-ink bg-brand text-ink"
+                      : rank <= 3
+                        ? "border-ink bg-paper-2 text-ink"
+                        : "border-transparent text-ink-muted"
+                  }`}
+                >
+                  {rank}
                 </span>
                 <span className="truncate font-display text-2xl font-extrabold text-ink sm:text-3xl">
                   {p.display_name}
                 </span>
               </span>
-              <span className="flex shrink-0 items-center gap-2">
-                {last === "good" ? (
-                  <ArrowUp className="text-xl text-gain" />
-                ) : last === "bad" ? (
-                  <ArrowDown className="text-xl text-loss" />
+              <span className="flex shrink-0 items-center gap-3">
+                {d != null && Math.abs(d) >= 0.005 ? (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border-2 border-ink px-2.5 py-0.5 font-mono text-lg font-bold text-white ${
+                      d > 0 ? "bg-gain" : "bg-loss"
+                    }`}
+                  >
+                    {d > 0 ? <ArrowUp /> : <ArrowDown />}
+                    {signedMoney(d)}
+                  </span>
                 ) : null}
-                <span
-                  className={`font-mono text-2xl font-bold sm:text-3xl ${
-                    last === "good" ? "text-gain" : last === "bad" ? "text-loss" : "text-ink"
-                  }`}
-                >
-                  {money(p.current_wealth)}
-                </span>
+                {/* Ink: a balance is not a gain. The chip says which way it moved. */}
+                <CountUp
+                  value={p.current_wealth}
+                  format={money}
+                  className="font-mono text-2xl font-bold text-ink sm:text-3xl"
+                />
               </span>
             </li>
           );

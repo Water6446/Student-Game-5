@@ -91,10 +91,12 @@ function ModeTabs({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void 
             aria-selected={active}
             onClick={() => onChange(t.id)}
             className={clsx(
-              "rounded-lg px-3 py-2 font-display text-sm font-extrabold transition",
+              "whitespace-nowrap rounded-lg px-3 py-2 font-display text-sm font-extrabold transition",
+              // Active tab: ink fill, cream text, no offset (DESIGN.md §8) — an
+              // ink shadow under an ink tab shows only as a corner notch.
               active
-                ? "border-2 border-ink bg-ink text-paper-inverse shadow-card"
-                : "border-2 border-transparent text-ink-muted hover:text-ink",
+                ? "border-2 border-ink bg-ink text-paper-inverse"
+                : "border-2 border-transparent text-ink-muted hover:bg-brand-soft hover:text-ink",
             )}
           >
             {t.label}

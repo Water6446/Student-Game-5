@@ -3,10 +3,16 @@
 import { Fragment, useMemo, useState } from "react";
 import { condenseRanked, type CondenseOptions } from "@/lib/game/condense";
 import { clsx } from "@/components/clsx";
+import { ChevronDown } from "@/components/icons";
+
+// The expander and "Show fewer" share one shape everywhere; callers only set
+// type size and colour.
+const TOGGLE_BASE =
+  "inline-flex min-h-[36px] items-center gap-1 rounded-full px-3 transition hover:bg-ink/[0.06]";
 
 /**
- * Renders a long, ranked list as top-N + "+N more ▾" + bottom-M, with a
- * "Show fewer ▴" toggle. The single home for the collapse pattern used on every
+ * Renders a long, ranked list as top-N + "+N more" + bottom-M, with a
+ * "Show fewer" toggle. The single home for the collapse pattern used on every
  * surface that lists players (see lib/game/condense.ts for the pure split).
  *
  * `renderItem` returns the row element itself — an `<li>` with whatever classes
@@ -38,7 +44,7 @@ export function CondensedList<T>({
   /** styling hook so the projector can use bigger type than the control panel */
   gapClassName?: string;
   toggleClassName?: string;
-  /** appended to the expander label: "+92 more players ▾". Omit for "+92 more ▾". */
+  /** appended to the expander label: "+92 more players". Omit for "+92 more". */
   moreNoun?: string;
 }): JSX.Element {
   const [showAll, setShowAll] = useState(false);
@@ -66,15 +72,15 @@ export function CondensedList<T>({
             // Keyed per gap: keepIndices can produce more than one.
             // col-span-full matters when the list is a grid (the host's
             // submitted checklist); it is inert everywhere else.
-            <li key={`gap-${i}`} className="col-span-full text-center">
+            <li key={`gap-${i}`} className="col-span-full basis-full text-center">
               <button
                 type="button"
                 onClick={() => setShowAll(true)}
                 aria-expanded={false}
                 aria-label={`Show ${c.hidden} more ${moreNoun ?? "players"}`}
-                className={clsx("transition", gapClassName)}
+                className={clsx(TOGGLE_BASE, gapClassName)}
               >
-                +{c.hidden} more{noun} ▾
+                +{c.hidden} more{noun} <ChevronDown />
               </button>
             </li>
           ) : (
@@ -88,9 +94,9 @@ export function CondensedList<T>({
             type="button"
             onClick={() => setShowAll(false)}
             aria-expanded={true}
-            className={clsx("transition", toggleClassName)}
+            className={clsx(TOGGLE_BASE, toggleClassName)}
           >
-            Show fewer ▴
+            Show fewer <ChevronDown className="rotate-180" />
           </button>
         </p>
       ) : null}

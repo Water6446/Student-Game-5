@@ -8,8 +8,8 @@ import type { SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
 import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
-import { Banner, Button, Card, InfoTip } from "@/components/ui";
-import { Users, Monitor } from "@/components/icons";
+import { Banner, Button, Card, SectionTitle, buttonClasses } from "@/components/ui";
+import { ArrowRight, Check, Monitor, Trash, Users } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
@@ -21,6 +21,9 @@ import { COLOR } from "@/lib/design/colors";
 // The lobby is a live roster, not a ranking, so every name stays visible until
 // the list is long enough that ~100 animated rows become a real jank source.
 const LOBBY_CONDENSE = { threshold: 24 };
+
+const ON_INK =
+  "shadow-[3px_3px_0_rgb(var(--brand))] hover:shadow-[4px_4px_0_rgb(var(--brand))]";
 
 export function HostLobby({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
   const router = useRouter();
@@ -84,12 +87,23 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Projectable join panel — dark ink block */}
-        <div className="flex flex-col items-center rounded-2xl border-2 border-ink bg-ink p-6 text-center text-paper-inverse shadow-lift">
+        {/* shadow-lift-brand, never shadow-lift: an ink offset under an ink
+            panel shows only as a notch at two corners (DESIGN.md §4). */}
+        <div className="flex animate-pop-in flex-col items-center rounded-2xl border-2 border-ink bg-ink p-6 text-center text-paper-inverse shadow-lift-brand">
           <p className="font-display text-sm font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
             Game code
           </p>
-          <p className="font-mono text-6xl font-black tracking-[0.3em] text-paper-inverse sm:text-7xl">
-            {session.join_code}
+          <p className="flex font-mono text-6xl font-black text-paper-inverse sm:text-7xl">
+            {/* One tile per character lands in turn — the code reads as a code. */}
+            {session.join_code.split("").map((ch, i) => (
+              <span
+                key={i}
+                className="stagger inline-block w-[0.9em] animate-count-pop text-center"
+                style={{ "--i": i + 2 } as React.CSSProperties}
+              >
+                {ch}
+              </span>
+            ))}
           </p>
 
           {/* The SVG scales to its wrapper, so the card interior still fits at
@@ -102,14 +116,22 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
 
           <p className="break-all font-editorial italic text-paper-inverse/75">join at {link}</p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <Button variant="gold" onClick={copyLink}>
-              {copied ? "Copied!" : "Copy link"}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            {/* On the ink panel an ink offset would vanish, so these two
+                carry the same amber offset as the panel itself. */}
+            <Button variant="secondary" onClick={copyLink} className={`min-w-[9.5rem] ${ON_INK}`}>
+              {copied ? (
+                <>
+                  <Check /> Copied
+                </>
+              ) : (
+                "Copy link"
+              )}
             </Button>
             <Link
               href={`/host/${session.id}/present`}
               target="_blank"
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-surface px-5 py-3 text-base font-display font-extrabold text-ink shadow-card transition hover:bg-paper-2 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className={buttonClasses("secondary", "md", ON_INK)}
               title="Open the projector view in a new tab"
             >
               <Monitor /> Present
@@ -119,33 +141,52 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
 
         {/* Roster + controls */}
         <Card className="flex flex-col">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-2xl font-extrabold uppercase tracking-tight text-ink">
-              Players joined
-            </h2>
-            <span className="flex items-center gap-2 rounded-full border-2 border-ink bg-play-soft px-3 py-1 font-mono text-2xl font-bold text-ink shadow-card">
-              <Users className="text-[0.8em] text-ink-muted" />
-              {players.length}
-            </span>
-          </div>
+          <SectionTitle
+            action={
+              <span
+                key={players.length}
+                className="flex animate-count-pop items-center gap-2 rounded-full border-2 border-ink bg-play-soft px-3 py-1 font-mono text-2xl font-bold text-ink shadow-card"
+                aria-label={`${players.length} joined`}
+              >
+                <Users className="text-[0.8em] text-ink-muted" />
+                {players.length}
+              </span>
+            }
+          >
+            Players joined
+          </SectionTitle>
 
+          {/* Name chips that wrap, not a column of rows: a hundred students fit
+              on one screen, and each one pops in as they join. */}
           {players.length === 0 ? (
-            <ul className="mt-4 max-h-[42vh] flex-1 space-y-2 overflow-y-auto pr-1">
-              <li className="font-editorial italic text-ink-subtle">Waiting for players to join…</li>
-            </ul>
+            <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-ink/30 px-4 py-10 text-center">
+              <span className="flex gap-1.5" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="h-2.5 w-2.5 animate-pulse-soft rounded-full bg-ink-muted"
+                    style={{ animationDelay: `${i * 0.25}s` }}
+                  />
+                ))}
+              </span>
+              <p className="font-editorial italic text-ink-muted">
+                Waiting for players — share the code or the QR.
+              </p>
+            </div>
           ) : (
             <CondensedList
               items={players}
               keyOf={(p) => p.id}
               as="ul"
               options={LOBBY_CONDENSE}
-              className="mt-4 max-h-[42vh] flex-1 space-y-2 overflow-y-auto pr-1"
-              gapClassName="font-editorial text-sm italic text-ink-subtle hover:text-ink"
-              toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+              moreNoun="players"
+              className="mt-4 flex max-h-[42vh] flex-1 flex-wrap content-start gap-2 overflow-y-auto p-1"
+              gapClassName="font-editorial text-sm italic text-ink-muted hover:text-ink"
+              toggleClassName="mt-2 font-editorial text-sm italic text-ink-muted hover:text-ink"
               renderItem={(p, i) => (
                 <li
-                  className={`flex animate-pop-in items-center justify-between gap-2 rounded-lg border-2 border-ink px-4 py-2 text-lg font-semibold text-ink shadow-card ${
-                    ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-loss-soft"][i % 4]
+                  className={`flex max-w-full animate-pop-in items-center gap-1 rounded-full border-2 border-ink py-1 pl-3.5 pr-1.5 font-semibold text-ink shadow-card ${
+                    ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-surface"][i % 4]
                   }`}
                 >
                   <span className="min-w-0 truncate">{p.display_name}</span>
@@ -162,41 +203,52 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
           ) : null}
 
           <div className="mt-6">
+            {/* The headline "start" CTA is gold (DESIGN.md §7). */}
             <Button
-              variant="success"
+              variant="gold"
               onClick={start}
               disabled={busy || players.length === 0}
-              className="w-full text-lg"
+              className="w-full text-lg shadow-pop"
             >
-              {busy ? "Starting…" : `Start the game (${session.config.num_rounds} rounds)`}
+              {busy ? (
+                "Starting…"
+              ) : (
+                <>
+                  Start the game <ArrowRight />
+                </>
+              )}
             </Button>
-            {players.length === 0 ? (
-              <p className="mt-2 text-center font-editorial text-xs italic text-ink-subtle">
-                Need at least one player to start.
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={deleteSession}
-              disabled={busy}
-              className="mt-3 w-full rounded-lg py-2 text-sm font-semibold text-loss transition hover:bg-loss-soft disabled:opacity-50"
-            >
-              Delete session
-            </button>
+            <p className="mt-2 text-center font-editorial text-sm italic text-ink-muted">
+              {players.length === 0
+                ? "Needs at least one player to start."
+                : `${session.config.num_rounds} ${isManager(session.config) ? "years" : "rounds"} · late joiners ${
+                    session.config.allow_late_join ? "can still get in" : "are locked out once it starts"
+                  }`}
+            </p>
+            <div className="mt-3 flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={deleteSession}
+                disabled={busy}
+                className="text-loss hover:bg-loss-soft hover:text-loss"
+              >
+                <Trash /> Delete session
+              </Button>
+            </div>
           </div>
         </Card>
       </div>
 
       {isManager(session.config) ? (
         <div className="mt-8">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
-              The manager line-up
-            </h2>
-            <InfoTip label="About the manager line-up">
-              What your students see before they hire. Regenerated for every session.
-            </InfoTip>
-          </div>
+          <SectionTitle
+            className="mb-3"
+            info="What your students see before they hire. Regenerated for every session."
+            infoLabel="About the manager line-up"
+          >
+            The manager line-up
+          </SectionTitle>
           <ManagerProspectus config={session.config} />
         </div>
       ) : null}

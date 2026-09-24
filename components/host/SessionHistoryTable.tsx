@@ -126,20 +126,20 @@ export function SessionHistoryTable({
             container instead of squashing them or widening the page. */}
         <table className="w-full min-w-[32rem] text-sm">
         <thead>
-          <tr className="sticky top-0 z-10 bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper">
-            <th className="px-2 py-2">{manager ? "Year" : "Round"}</th>
-            <th className="px-2 py-2">{manager ? "Index" : "Market"}</th>
-            <th className="px-2 py-2 text-right">Avg</th>
-            <th className="px-2 py-2 text-right">Median</th>
-            <th className="px-2 py-2 text-right">High</th>
-            <th className="px-2 py-2 text-right">Low</th>
+          <tr className="sticky top-0 z-10 bg-ink text-left font-display text-xs font-extrabold uppercase tracking-wide text-paper-inverse">
+            <th className="px-3 py-2.5">{manager ? "Year" : "Round"}</th>
+            <th className="px-3 py-2.5">{manager ? "Index" : "Market"}</th>
+            <th className="px-3 py-2.5 text-right">Avg</th>
+            <th className="px-3 py-2.5 text-right">Median</th>
+            <th className="px-3 py-2.5 text-right">High</th>
+            <th className="px-3 py-2.5 text-right">Low</th>
           </tr>
         </thead>
         <tbody>
           {history.map((h) => (
-            <tr key={h.round} className="border-t border-line">
-              <td className="px-2 py-2 font-mono text-ink">{h.round}</td>
-              <td className="px-2 py-2">
+            <tr key={h.round} className="border-t border-ink/10 transition-colors odd:bg-paper-2/40 hover:bg-brand-soft">
+              <td className="px-3 py-2 font-mono text-ink">{h.round}</td>
+              <td className="px-3 py-2">
                 {h.marketReturn != null ? (
                   // Manager years have no good/bad flag — the index return IS
                   // the market column.
@@ -207,7 +207,7 @@ function DeltaCell({ value, percentFirst }: { value: Delta | null; percentFirst?
           ? "text-loss"
           : "text-ink-muted";
   return (
-    <td className={`px-2 py-2 text-right font-mono ${cls}`}>
+    <td className={`px-3 py-2 text-right font-mono ${cls}`}>
       {value == null ? (
         "—"
       ) : percentFirst ? (

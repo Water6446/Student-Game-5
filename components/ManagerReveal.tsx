@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RoundRow, SessionRow } from "@/lib/game/db";
 import { managerName, numManagers } from "@/lib/game/manager";
 import { signedPct } from "@/lib/game/format";
-import { Card, InfoTip } from "@/components/ui";
+import { Card, SectionTitle } from "@/components/ui";
 import { CondensedList } from "@/components/CondensedList";
 import { useManagerTruth } from "@/components/use-manager-truth";
 
@@ -96,12 +96,13 @@ export function ManagerReveal({
 
   return (
     <Card className={className}>
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-xl font-bold text-ink">Who was actually skilled</h2>
-        {/* Derived from THIS line-up and THIS many years — the numbers were once
-            hardcoded to the default preset and a 25-year game, and quietly lied
-            whenever the host changed either. */}
-        <InfoTip label="About who was actually skilled">
+      {/* The tip is derived from THIS line-up and THIS many years — the
+          numbers were once hardcoded to the default preset and a 25-year game,
+          and quietly lied whenever the host changed either. */}
+      <SectionTitle
+        className="mb-3"
+        infoLabel="About who was actually skilled"
+        info={<>
           <p>
             The true parameters, hidden until now. <span className="font-semibold">Delivered</span>{" "}
             is what each manager actually produced over these {years} year
@@ -124,10 +125,12 @@ export function ManagerReveal({
               </>
             )}
           </p>
-        </InfoTip>
-      </div>
+        </>}
+      >
+        Who was actually skilled
+      </SectionTitle>
 
-      <div className="mb-2 hidden gap-3 px-3 text-xs font-bold uppercase tracking-wide text-ink-subtle sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
+      <div className="mb-2 hidden gap-3 px-3 font-display text-[11px] font-extrabold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
         <span>Manager</span>
         <span className="text-right">True alpha</span>
         <span className="text-right">Delivered</span>
@@ -144,7 +147,7 @@ export function ManagerReveal({
         gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         renderItem={(r) => (
-          <li className="grid grid-cols-2 items-baseline gap-x-3 gap-y-1 rounded-lg border border-line bg-paper-2 px-3 py-2 sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
+          <li className="grid grid-cols-2 items-baseline gap-x-3 gap-y-1 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2 sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
             {/* `truncate` needs a block box — on the inline span it used to sit
                 on it did nothing, so a long name ran straight into its verdict
                 with no separation. Flex gives a real gap and lets the verdict

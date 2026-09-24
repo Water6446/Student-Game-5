@@ -123,14 +123,54 @@ body {
   }
 }
 
-/* Lightweight confetti for celebratory moments (GOOD reveal / finish). */
+/* Lightweight confetti for celebratory moments (GOOD reveal / finish). Each
+   piece carries a thin ink outline — paper cut-outs in the Academy Arcade style,
+   and it keeps the cream pieces visible on a cream page. */
 .confetti-piece {
   position: absolute;
   top: -10vh;
-  width: 9px;
-  height: 14px;
+  width: 10px;
+  height: 15px;
   border-radius: 2px;
+  border: 1.5px solid rgb(var(--ink));
   will-change: transform, opacity;
+}
+.confetti-piece.is-round {
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+}
+
+@layer utilities {
+  /* Staggered entrances: set --i on each item (style={{ "--i": n }}) and give it
+     an entrance animation. Capped by the caller so a 100-row list never waits
+     seconds for its last row. Reduced motion zeroes the delay (below). */
+  .stagger {
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+
+  /* Number fields keep the arrow keys but lose the native spinner, which sits
+     on top of the digits at phone widths. */
+  .no-spinner {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .no-spinner::-webkit-inner-spin-button,
+  .no-spinner::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* The dot grid the page wears, for a panel that should read as "stage":
+     the projector's status panel, the reveal takeover. */
+  .bg-dots {
+    background-image: radial-gradient(rgb(var(--ink) / 0.09) 1.3px, transparent 1.4px);
+    background-size: 22px 22px;
+  }
+  .bg-dots-light {
+    background-image: radial-gradient(rgb(255 255 255 / 0.14) 1.4px, transparent 1.5px);
+    background-size: 26px 26px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

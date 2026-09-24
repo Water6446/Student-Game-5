@@ -7,6 +7,7 @@ import type { PlayerRow } from "@/lib/game/db";
 import { friendlyJoinError } from "@/lib/game/join-errors";
 import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
 import { StudentResumeStrip } from "@/components/StudentResumeStrip";
+import { ArrowRight } from "@/components/icons";
 
 /** The name a student last joined with, so the next class is one field, not two. */
 const LAST_NAME_KEY = "join.lastName";
@@ -110,13 +111,24 @@ export function JoinForm() {
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             autoCapitalize="characters"
             autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="go"
+            placeholder="ABC12"
             maxLength={6}
-            className="bg-brand-soft text-center font-mono text-3xl font-bold tracking-[0.4em]"
+            className="bg-brand-soft py-4 text-center font-mono text-3xl font-bold uppercase tracking-[0.4em] placeholder:tracking-[0.4em] placeholder:text-ink/20"
           />
         </Field>
 
         <Field label="Your name" hint="Shown on the leaderboard">
-          <TextInput value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
+          <TextInput
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={40}
+            autoComplete="nickname"
+            enterKeyHint="go"
+            placeholder="First name is fine"
+          />
         </Field>
 
         {error ? <Banner kind="error">{error}</Banner> : null}
@@ -151,9 +163,15 @@ export function JoinForm() {
             type="submit"
             variant="gold"
             disabled={busy || code.trim().length < 4}
-            className="w-full text-lg"
+            className="w-full text-lg shadow-pop"
           >
-            {busy ? "Joining…" : "Enter the market →"}
+            {busy ? (
+              "Joining…"
+            ) : (
+              <>
+                Enter the market <ArrowRight />
+              </>
+            )}
           </Button>
         )}
       </form>

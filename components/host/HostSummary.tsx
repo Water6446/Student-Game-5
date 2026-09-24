@@ -23,14 +23,15 @@ import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/port
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
-import { Button, Card, InfoTip } from "@/components/ui";
+import { Button, Card, SectionTitle, buttonClasses } from "@/components/ui";
+import { RankBadge } from "@/components/RankBadge";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { FeeCounter, sumFees } from "@/components/FeeCounter";
 import { LuckChip } from "@/components/LuckChip";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
-import { ArrowLeft, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
+import { ArrowDown, ArrowLeft, ArrowUp, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
 
 export function HostSummary({
   supabase,
@@ -184,6 +185,11 @@ export function HostSummary({
   const cardValue = (k: StrategyKey | PortfolioStrategyKey) =>
     botByStrategy.get(k) ?? (cf.strategy as Record<string, number>)[k];
   const avgLabel = cf.isAverage ? "class avg" : "everyone";
+  // The strategy that finished highest gets the "came out on top" tag.
+  const shownKeys: (StrategyKey | PortfolioStrategyKey)[] = portfolio
+    ? ["all_safe", "concentrated", "half_diversified", "diversified"]
+    : ["all_safe", "edge", "fifty_fifty", "all_risky"];
+  const bestKey = shownKeys.reduce((a, k) => (cardValue(k) > cardValue(a) ? k : a), shownKeys[0]);
 
   // expected number of good draws (luck baseline): benchmark rate × draws made —
   // one per round (basic) or one per round × asset (portfolio)
@@ -199,12 +205,15 @@ export function HostSummary({
         <div>
           <Link
             href="/host"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
+            className="inline-flex min-h-[32px] items-center gap-1 text-sm font-semibold text-ink-muted transition hover:text-ink"
           >
             <ArrowLeft /> Dashboard
           </Link>
-          <h1 className="flex items-center gap-2 text-3xl font-black uppercase tracking-tight text-ink">
-            <Trophy className="text-ink" /> Game finished
+          <h1 className="flex items-center gap-3 font-display text-3xl font-black uppercase tracking-tight text-ink sm:text-4xl">
+            <span className="flex h-11 w-11 animate-stamp items-center justify-center rounded-xl border-2 border-ink bg-brand text-2xl shadow-card">
+              <Trophy />
+            </span>
+            Game finished
           </h1>
           <p className="font-editorial italic text-ink-muted">
             {session.config.num_rounds} {managerGame ? "years" : "rounds"} ·{" "}
@@ -227,12 +236,12 @@ export function HostSummary({
           <Link
             href={`/host/${session.id}/present`}
             target="_blank"
-            className="inline-flex items-center gap-1.5 rounded-xl border-2 border-ink bg-surface px-4 py-2.5 text-sm font-display font-extrabold text-ink shadow-card transition hover:bg-paper-2 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            className={buttonClasses("secondary", "sm")}
             title="Open the projector view in a new tab"
           >
             <Monitor /> Present
           </Link>
-          <Button onClick={downloadCsv} variant="secondary" disabled={results.length === 0}>
+          <Button onClick={downloadCsv} variant="secondary" size="sm" disabled={results.length === 0}>
             <Download /> Download CSV
           </Button>
         </div>
@@ -250,37 +259,43 @@ export function HostSummary({
           card came out at the starting wealth. This is what replaces it. */}
       {managerGame ? (
         <Card className="mb-6">
-          <div className="mb-4 flex items-center gap-2">
-            <h2 className="text-xl font-bold text-ink">How the class did against the index</h2>
-            <InfoTip label="About the index comparison">
-              The index charges no fees and nobody could buy it. Starting wealth was{" "}
-              {money(session.config.starting_wealth)}.
-            </InfoTip>
-          </div>
+          <SectionTitle
+            className="mb-4"
+            infoLabel="About the index comparison"
+            info={
+              <>
+                The index charges no fees and nobody could buy it. Starting wealth was{" "}
+                {money(session.config.starting_wealth)}.
+              </>
+            }
+          >
+            How the class did against the index
+          </SectionTitle>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StrategyCard
               label="The Index"
               desc="passive, no fees"
               value={indexFinal ?? session.config.starting_wealth}
-              tone="slate"
+              start={session.config.starting_wealth}
             />
             <StrategyCard
               label="Best student"
               desc="highest final wealth"
               value={humanResults[0]?.finalWealth ?? session.config.starting_wealth}
-              tone="emerald"
+              start={session.config.starting_wealth}
             />
             <StrategyCard
               label="Class median"
               desc="the middle student"
               value={medianWealth}
-              tone="play"
+              start={session.config.starting_wealth}
             />
             <StrategyCard
               label="Fees paid"
               desc="to the managers, in total"
               value={classFees}
-              tone="loss"
+              start={session.config.starting_wealth}
+              cost
             />
           </div>
           <p className="mt-4 text-sm text-ink">
@@ -294,41 +309,50 @@ export function HostSummary({
       {/* Counterfactual */}
       {managerGame ? null : (
       <Card className="mb-6">
-        <div className="mb-4 flex items-center gap-2">
-          <h2 className="text-xl font-bold text-ink">If everyone had picked one strategy…</h2>
-          <InfoTip label="About the strategy comparison">
-            {hasBots
-              ? "Your 4 benchmark students' actual final wealth."
-              : `Final wealth under the actual market outcomes (${avgLabel}).`}{" "}
-            Starting wealth was {money(cf.startWealth)}.
-          </InfoTip>
-        </div>
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+        <SectionTitle
+          className="mb-4"
+          infoLabel="About the strategy comparison"
+          info={
+            <>
+              {hasBots
+                ? "Your 4 benchmark students' actual final wealth."
+                : `Final wealth under the actual market outcomes (${avgLabel}).`}{" "}
+              Starting wealth was {money(cf.startWealth)}. Green finished above it, red below.
+            </>
+          }
+        >
+          If everyone had picked one strategy
+        </SectionTitle>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-5 pt-2 sm:grid-cols-4">
           {portfolio ? (
             <>
               <StrategyCard
                 label="All safe"
                 desc="nothing invested, ever"
                 value={cardValue("all_safe")}
-                tone="slate"
+                start={cf.startWealth}
+                best={bestKey === "all_safe"}
               />
               <StrategyCard
                 label="One basket"
                 desc={`everything on ${assetName(session.config, 0)} every round`}
                 value={cardValue("concentrated")}
-                tone="loss"
+                start={cf.startWealth}
+                best={bestKey === "concentrated"}
               />
               <StrategyCard
                 label="Half & half"
                 desc="half safe, half split evenly"
                 value={cardValue("half_diversified")}
-                tone="play"
+                start={cf.startWealth}
+                best={bestKey === "half_diversified"}
               />
               <StrategyCard
                 label="Diversified"
                 desc="everything invested, split evenly"
                 value={cardValue("diversified")}
-                tone="emerald"
+                start={cf.startWealth}
+                best={bestKey === "diversified"}
               />
             </>
           ) : (
@@ -337,25 +361,29 @@ export function HostSummary({
                 label="All safe"
                 desc="0% at risk every round"
                 value={cardValue("all_safe")}
-                tone="slate"
+                start={cf.startWealth}
+                best={bestKey === "all_safe"}
               />
               <StrategyCard
                 label={`${edgePct}% Edge`}
                 desc="market edge percent every round"
                 value={cardValue("edge")}
-                tone="emerald"
+                start={cf.startWealth}
+                best={bestKey === "edge"}
               />
               <StrategyCard
                 label="50 / 50"
                 desc="half your wealth at risk every round"
                 value={cardValue("fifty_fifty")}
-                tone="play"
+                start={cf.startWealth}
+                best={bestKey === "fifty_fifty"}
               />
               <StrategyCard
                 label="All risky"
                 desc="everything at risk every round"
                 value={cardValue("all_risky")}
-                tone="loss"
+                start={cf.startWealth}
+                best={bestKey === "all_risky"}
               />
             </>
           )}
@@ -370,16 +398,21 @@ export function HostSummary({
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Final standings — click a player to see their whole-match outcomes */}
         <Card>
-          <div className="mb-1 flex items-center gap-2">
-            <h2 className="text-xl font-bold text-ink">Final standings</h2>
-            <InfoTip label="About the final standings">
-              S = Sharpe Ratio (return per unit of risk).
-              {independent ? " The clover is each player's luck vs the expected odds." : ""}
-            </InfoTip>
-          </div>
+          <SectionTitle
+            className="mb-1"
+            infoLabel="About the final standings"
+            info={
+              <>
+                S = Sharpe Ratio (return per unit of risk).
+                {independent ? " The clover is each player's luck vs the expected odds." : ""}
+              </>
+            }
+          >
+            Final standings
+          </SectionTitle>
           {/* Kept on screen: it is how the rows work, not background. A manager
               game has no market outcomes to list, so it names what opens. */}
-          <p className="mb-3 text-xs text-ink-subtle">
+          <p className="mb-3 font-editorial text-sm italic text-ink-muted">
             Click a player to see{" "}
             {managerGame ? "their full record" : "every market outcome they faced"}.
           </p>
@@ -390,25 +423,29 @@ export function HostSummary({
             className="space-y-1"
             gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
-            renderItem={(r) => {
+            renderItem={(r, i) => {
               const open = openId === r.player.id;
               const good = goodCount(r.outcomes);
               const rowLuck = luckStats(good, r.outcomes.length, expected);
               return (
-                <li className="overflow-hidden rounded-lg border border-line bg-paper-2">
+                <li
+                  style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
+                  className={`stagger animate-rise overflow-hidden rounded-xl border-2 border-ink transition-colors ${
+                    open ? "bg-surface" : "bg-paper-2"
+                  }`}
+                >
                   {/* Below sm this wraps to two lines — rank + name + final
                       wealth, then the stats — instead of overflowing a 375px
                       viewport with six items on one row. */}
                   <button
                     type="button"
                     onClick={() => setOpenId(open ? null : r.player.id)}
-                    className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2 text-left transition hover:bg-line/40"
+                    aria-expanded={open}
+                    className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-left transition hover:bg-brand-soft"
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
-                      <span className="w-7 shrink-0 text-center font-mono font-bold text-ink-subtle">
-                        {r.rank}
-                      </span>
-                      <span className="truncate">{r.player.display_name}</span>
+                      <RankBadge rank={r.rank} />
+                      <span className="truncate font-semibold">{r.player.display_name}</span>
                       <ChevronDown
                         className={`shrink-0 text-ink-subtle transition-transform ${open ? "rotate-180" : ""}`}
                       />
@@ -442,7 +479,7 @@ export function HostSummary({
                     </span>
                   </button>
                   {open ? (
-                    <div className="border-t border-line px-4 py-2">
+                    <div className="animate-rise border-t-2 border-ink/15 px-4 py-2.5">
                       <div className="mb-1 text-xs text-ink-subtle">
                         {/* A manager game has no good/bad draws, so this read
                             "0/0 good markets" under a chip row saying "no
@@ -501,26 +538,26 @@ export function HostSummary({
         <Card>
           {/* The heading sits outside the toggle so its InfoTip is not a
               button nested inside another button. */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-ink">
-                {managerGame ? "Year" : "Round"} history
-              </h2>
-              <InfoTip label="About the history table">{historyInfo(managerGame)}</InfoTip>
-            </div>
-            <button
-              type="button"
-              onClick={() => setHistoryOpen((v) => !v)}
-              aria-expanded={historyOpen}
-              className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-ink"
-            >
-              {historyOpen ? "Collapse" : "Show all"}
-              <ChevronDown
-                className={`text-ink transition-transform ${historyOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-          </div>
-          <div className="mt-3 border-t border-line-strong pt-3">
+          <SectionTitle
+            info={historyInfo(managerGame)}
+            infoLabel="About the history table"
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setHistoryOpen((v) => !v)}
+                aria-expanded={historyOpen}
+              >
+                {historyOpen ? "Collapse" : "Show all"}
+                <ChevronDown
+                  className={`transition-transform duration-200 ${historyOpen ? "rotate-180" : ""}`}
+                />
+              </Button>
+            }
+          >
+            {managerGame ? "Year" : "Round"} history
+          </SectionTitle>
+          <div className="mt-3">
             <SessionHistoryTable
               rounds={rounds}
               allocations={allocations}
@@ -538,11 +575,12 @@ export function HostSummary({
           would read "no draws". */}
       {managerGame ? null : (
       <Card className="mt-6">
-        <div className="mb-3 flex items-center gap-2">
-          <h2 className="flex items-center gap-2 text-xl font-bold text-ink">
-            <Clover className="text-gain" /> Luck
-          </h2>
-          <InfoTip label="About luck">
+        <SectionTitle
+          className="mb-3"
+          icon={<Clover className="text-gain" />}
+          infoLabel="About luck"
+          info={
+            <>
             ± = GOOD-draw rate vs the expected {Math.round(expected * 100)}%. Expected{" "}
             <span className="font-semibold text-gain">
               ~{expectedGood.toFixed(1)} of {totalDraws}
@@ -556,8 +594,11 @@ export function HostSummary({
               </>
             ) : null}
             .{!independent ? " Everyone faced the same draws." : ""}
-          </InfoTip>
-        </div>
+            </>
+          }
+        >
+          Luck
+        </SectionTitle>
         <CondensedList
           items={luck}
           keyOf={(l) => l.id}
@@ -565,13 +606,16 @@ export function HostSummary({
           gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           renderItem={(l, i) => (
-            <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-paper-2 px-4 py-2">
+            <li
+              style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
+              className="stagger flex animate-rise flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2"
+            >
               <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
                 <span className="flex w-7 shrink-0 justify-center">
                   {i === 0 ? (
-                    <Clover className="text-gain" />
+                    <Clover className="text-lg text-gain" aria-label="Luckiest" />
                   ) : (
-                    <span className="font-mono text-ink-subtle">{i + 1}</span>
+                    <span className="font-mono text-sm font-bold text-ink-subtle">{i + 1}</span>
                   )}
                 </span>
                 <span className="truncate">{l.name}</span>
@@ -600,9 +644,7 @@ export function HostSummary({
 
       {/* Wealth chart */}
       <Card className="mt-6">
-        <h2 className="mb-3 text-xl font-bold text-ink">
-          Wealth over {managerGame ? "years" : "rounds"}
-        </h2>
+        <SectionTitle className="mb-3">Wealth over {managerGame ? "years" : "rounds"}</SectionTitle>
         <WealthChart
           players={visiblePlayers}
           rounds={rounds}
@@ -616,28 +658,50 @@ export function HostSummary({
   );
 }
 
+/**
+ * One "what if everyone had done X" result. Coloured by what it did to the
+ * starting wealth — green above, red below — never by which strategy it is:
+ * colour here is a verdict (DESIGN.md §1.3), and the arrow says it too.
+ */
 function StrategyCard({
   label,
   desc,
   value,
-  tone,
+  start,
+  best,
+  cost,
 }: {
   label: string;
   desc?: string;
   value: number;
-  tone: "slate" | "emerald" | "play" | "loss";
+  /** starting wealth — the line between a gain and a loss */
+  start: number;
+  /** the top result among the cards on show */
+  best?: boolean;
+  /** money paid out (fees), not a balance: always the loss tone, no arrow */
+  cost?: boolean;
 }) {
-  const tones = {
-    slate: "bg-paper-2 text-ink",
-    emerald: "bg-gain-soft text-gain",
-    play: "bg-play-soft text-play",
-    loss: "bg-loss-soft text-loss",
-  };
+  const up = !cost && value > start + 0.005;
+  const down = cost || value < start - 0.005;
+  const bg = up ? "bg-gain-soft" : down ? "bg-loss-soft" : "bg-paper-2";
+  const fg = up ? "text-gain" : down ? "text-loss" : "text-ink";
   return (
-    <div className={`flex flex-col rounded-xl border-2 border-ink p-4 text-center shadow-card ${tones[tone]}`}>
-      <div className="font-display text-base font-extrabold">{label}</div>
-      {desc ? <div className="font-editorial text-xs italic opacity-80">{desc}</div> : null}
-      <div className="mt-auto pt-2 font-mono text-2xl font-black">{money(value)}</div>
+    <div
+      className={`relative flex flex-col rounded-xl border-2 border-ink p-4 text-center ${bg} ${
+        best ? "shadow-pop" : "shadow-card"
+      }`}
+    >
+      {best ? (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-ink bg-brand px-2 py-px font-display text-[10px] font-extrabold uppercase tracking-wide text-ink">
+          Came out on top
+        </span>
+      ) : null}
+      <div className="font-display text-base font-extrabold text-ink">{label}</div>
+      {desc ? <div className="font-editorial text-xs italic text-ink-muted">{desc}</div> : null}
+      <div className={`mt-auto flex items-center justify-center gap-1 pt-2 font-mono text-2xl font-black ${fg}`}>
+        {up ? <ArrowUp className="text-lg" /> : down && !cost ? <ArrowDown className="text-lg" /> : null}
+        {money(value)}
+      </div>
     </div>
   );
 }

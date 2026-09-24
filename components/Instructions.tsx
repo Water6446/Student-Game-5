@@ -87,21 +87,21 @@ export function Instructions({ role, className }: { role: Role; className?: stri
         type="button"
         onClick={() => setShowMore((v) => !v)}
         aria-expanded={showMore}
-        className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-strong hover:text-brand"
+        className="mt-4 inline-flex min-h-[40px] items-center gap-1 rounded-xl px-2 -mx-2 text-sm font-semibold text-ink underline decoration-brand decoration-2 underline-offset-4 transition hover:bg-brand-soft"
       >
         {showMore ? "Show less" : "Read more"}
-        <ChevronDown className={`transition-transform ${showMore ? "rotate-180" : ""}`} />
+        <ChevronDown className={`transition-transform duration-200 ${showMore ? "rotate-180" : ""}`} />
       </button>
 
       {showMore ? (
-        <div className="mt-3 border-t border-line pt-4">
+        <div className="mt-3 animate-rise border-t-2 border-ink/10 pt-4">
           <h3 className="text-xs font-bold uppercase tracking-wide text-ink-subtle">
             Detailed instructions
           </h3>
           <ul className="mt-3 space-y-2.5">
             {content.detailed.map((line) => (
               <li key={line} className="flex gap-3 text-sm text-ink-muted">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-line-strong" />
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-ink" />
                 <span>{line}</span>
               </li>
             ))}

@@ -106,7 +106,7 @@ function Dialog({ opts, onClose }: { opts: ConfirmOptions; onClose: (ok: boolean
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-ink/40 p-4 sm:items-center"
+      className="fixed inset-0 z-[80] flex animate-fade-in items-end justify-center bg-ink/40 p-4 backdrop-blur-[2px] sm:items-center"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose(false);
       }}

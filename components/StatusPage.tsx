@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { FallbackSiteHeader } from "@/components/marketing/SiteHeaderGate";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Card } from "@/components/ui";
+import { buttonClasses } from "@/components/button-classes";
 
 export interface StatusAction {
   label: string;
@@ -49,10 +50,7 @@ export function StatusPage({
               {title}
             </h1>
             {body ? <p className="mt-2 text-sm leading-relaxed text-ink-muted">{body}</p> : null}
-            <Link
-              href={primary.href}
-              className="mt-6 inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border-2 border-ink bg-brand px-5 py-3 font-display font-extrabold text-ink shadow-card transition hover:bg-brand-strong active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-            >
+            <Link href={primary.href} className={buttonClasses("gold", "md", "mt-6 w-full")}>
               {primary.label}
             </Link>
             {children}

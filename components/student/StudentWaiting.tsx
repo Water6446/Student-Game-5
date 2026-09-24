@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlayerRow, SessionRow } from "@/lib/game/db";
 import { Banner, Button, Card, InfoTip, TextInput } from "@/components/ui";
 import { money } from "@/lib/game/format";
-import { Sparkle } from "@/components/icons";
+import { Pencil, Sparkle } from "@/components/icons";
 import { isManager } from "@/lib/game/types";
 import { managerCountLabel } from "@/lib/game/manager";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
@@ -45,10 +45,10 @@ export function StudentWaiting({
       }`}
     >
       <Card className="animate-pop-in text-center">
-        <div className="mx-auto flex h-16 w-16 animate-pulse-soft items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
+        <div className="mx-auto flex h-16 w-16 animate-bob items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Sparkle />
         </div>
-        <div className="mt-4 inline-flex items-center gap-1 rounded-full border-2 border-ink bg-gain-soft px-3 py-1 text-sm font-extrabold text-gain shadow-card">
+        <div className="mt-5 inline-flex animate-stamp items-center gap-1.5 rounded-full border-2 border-ink bg-gain px-3.5 py-1 font-display text-sm font-extrabold uppercase tracking-wide text-white shadow-card">
           You&apos;re in
         </div>
         <h1 className="mt-3 font-display text-3xl font-black uppercase tracking-tight text-ink">
@@ -60,11 +60,16 @@ export function StudentWaiting({
             <TextInput
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void saveName();
+              }}
               maxLength={40}
+              autoFocus
+              aria-label="Your name"
               className="text-center text-lg"
             />
             <div className="flex justify-center gap-2">
-              <Button onClick={saveName}>Save</Button>
+              <Button onClick={saveName}>Save name</Button>
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -78,10 +83,13 @@ export function StudentWaiting({
           </div>
         ) : (
           <button
+            type="button"
             onClick={() => setEditing(true)}
-            className="mt-3 text-lg font-semibold text-play underline-offset-4 hover:underline"
+            aria-label={`${me.display_name} — change your name`}
+            className="group mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 text-xl font-bold text-ink transition hover:bg-play-soft"
           >
-            {me.display_name} (edit)
+            {me.display_name}
+            <Pencil className="text-base text-play transition-transform group-hover:-rotate-12" />
           </button>
         )}
 
@@ -99,8 +107,17 @@ export function StudentWaiting({
         </div>
 
         <p className="mt-6 font-editorial italic text-ink-muted">
-          Waiting for the professor to start the game…
+          Waiting for the professor to start the game
         </p>
+        <span aria-hidden="true" className="mt-2 flex justify-center gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="h-2 w-2 animate-pulse-soft rounded-full border-2 border-ink bg-brand"
+              style={{ animationDelay: `${i * 0.25}s` }}
+            />
+          ))}
+        </span>
         <p className="mt-1 font-mono text-xs text-ink-subtle">
           {manager
             ? `${session.config.num_rounds} years · ${managerCountLabel(session.config)}`

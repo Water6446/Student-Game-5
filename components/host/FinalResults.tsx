@@ -44,7 +44,7 @@ export function FinalResults({
         items={results}
         keyOf={(r) => r.player.id}
         as="ul"
-        className="divide-y divide-line"
+        className="divide-y divide-ink/10"
         gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         renderItem={(r) => {

@@ -4,7 +4,7 @@ import type { SessionConfig } from "@/lib/game/types";
 import { borrowRate, managerMathConfig, managerName, numManagers } from "@/lib/game/manager";
 import { money } from "@/lib/game/format";
 import { roundCents } from "@/lib/game/math";
-import { InfoTip } from "@/components/ui";
+import { ChipButton, InfoTip, NumberField } from "@/components/ui";
 
 /**
  * Manager-game allocation: one percent-of-wealth field per manager, plus
@@ -61,44 +61,34 @@ export function ManagerAllocationInput({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
-        <span className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
-          Your wealth
-        </span>
-        <span className="font-mono text-xl font-bold text-ink">{money(wealth)}</span>
-      </div>
-
+      {/* Wealth itself sits in the round header right above this card. */}
       <ul className="space-y-2">
         {values.map((p, i) => {
           const dollars = p == null ? null : roundCents((p / 100) * wealth);
           return (
             <li key={i} className="flex items-center gap-2">
-              <span className="w-28 shrink-0 truncate text-sm font-bold text-ink">
+              <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">
                 {managerName(config, i)}
               </span>
               {/* Room for three digits (up to the leverage cap, e.g. 200) plus the
-                  % suffix. The native spinner is hidden: at this width it sat on
-                  top of the digits, and arrow keys still step the value. */}
-              <div className="relative flex w-20 shrink-0 items-center">
-                <input
-                  type="number"
-                  min={0}
-                  max={capPct}
-                  step={1}
-                  inputMode="numeric"
-                  value={p ?? ""}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    setPercent(i, e.target.value === "" ? null : Number(e.target.value))
-                  }
-                  aria-label={`Percent of wealth with ${managerName(config, i)}`}
-                  className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-2 pr-7 text-right font-mono text-base tabular-nums text-ink [appearance:textfield] focus:border-brand [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <span className="pointer-events-none absolute right-3 font-mono text-sm text-ink-muted">
-                  %
-                </span>
-              </div>
-              <span className="flex-1 truncate text-right font-mono text-sm text-ink-subtle">
+                  % suffix; NumberField hides the native spinner, which sat on
+                  top of the digits at this width. Arrow keys still step it. */}
+              <NumberField
+                suffix="%"
+                wrapperClassName="w-24 shrink-0"
+                min={0}
+                max={capPct}
+                step={1}
+                inputMode="numeric"
+                placeholder="0"
+                value={p ?? ""}
+                disabled={disabled}
+                onChange={(e) =>
+                  setPercent(i, e.target.value === "" ? null : Number(e.target.value))
+                }
+                aria-label={`Percent of wealth with ${managerName(config, i)}`}
+              />
+              <span className="w-[4.5rem] shrink-0 truncate text-right font-mono text-sm text-ink-muted">
                 {dollars == null || dollars === 0 ? "—" : money(dollars)}
               </span>
             </li>
@@ -110,9 +100,12 @@ export function ManagerAllocationInput({
           wealth is at work, and whether you have crossed into borrowing. */}
       <div>
         <div className="relative flex h-3 overflow-hidden rounded-full border-2 border-ink shadow-card">
-          <div className="bg-gain transition-all" style={{ width: pctOf(Math.min(total, 100)) }} />
           <div
-            className="bg-loss transition-all"
+            className="bg-gain transition-[width] duration-300 ease-out"
+            style={{ width: pctOf(Math.min(total, 100)) }}
+          />
+          <div
+            className="bg-loss transition-[width] duration-300 ease-out"
             style={{ width: pctOf(Math.max(total - 100, 0)) }}
           />
           <div className="flex-1 bg-paper-2" />
@@ -152,43 +145,25 @@ export function ManagerAllocationInput({
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        <QuickButton disabled={disabled} onClick={() => spread(0)} label="All cash" />
-        <QuickButton disabled={disabled} onClick={() => spread(100)} label="Equal split" />
-        <QuickButton
+      <div className="grid grid-cols-2 gap-2 sm:flex">
+        <ChipButton disabled={disabled} onClick={() => spread(0)} active={total === 0}>
+          All cash
+        </ChipButton>
+        <ChipButton disabled={disabled} onClick={() => spread(100)}>
+          Equal split
+        </ChipButton>
+        <ChipButton
           disabled={disabled}
           onClick={() => onChange(values.map((_, i) => (i === 0 ? 100 : 0)))}
-          label="100% first"
-        />
+        >
+          100% first
+        </ChipButton>
         {capPct > 100 ? (
-          <QuickButton
-            disabled={disabled}
-            onClick={() => spread(capPct)}
-            label={`Max (${cfg.leverageCap}×)`}
-          />
+          <ChipButton disabled={disabled} onClick={() => spread(capPct)} active={total === capPct}>
+            Max ({cfg.leverageCap}×)
+          </ChipButton>
         ) : null}
       </div>
     </div>
-  );
-}
-
-function QuickButton({
-  label,
-  onClick,
-  disabled,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="flex-1 rounded-lg border border-line-strong bg-paper py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:text-ink active:scale-95 disabled:opacity-50"
-    >
-      {label}
-    </button>
   );
 }

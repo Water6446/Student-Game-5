@@ -35,7 +35,7 @@ export function ManagePlayerButton({
         onClick={() => setOpen(true)}
         aria-label={`Rename or remove ${player.display_name}`}
         title="Rename or remove"
-        className="shrink-0 rounded-md p-1 text-ink-subtle transition hover:bg-paper-2 hover:text-ink"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-ink/10 hover:text-ink"
       >
         <Pencil />
       </button>
@@ -147,7 +147,7 @@ function ManagePlayerDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-ink/40 p-4 sm:items-center"
+      className="fixed inset-0 z-[80] flex animate-fade-in items-end justify-center bg-ink/40 p-4 backdrop-blur-[2px] sm:items-center"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

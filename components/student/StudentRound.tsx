@@ -19,9 +19,9 @@ import { managerRunningStats } from "@/lib/game/results";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { money, signedMoney, signedPct, ordinal, sharpeText } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
-import { Banner, Button, Card } from "@/components/ui";
+import { Banner, Button, Card, CountUp } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
-import { ArrowUp, ArrowDown, Lock, Check } from "@/components/icons";
+import { ArrowUp, ArrowDown, ChevronDown, Lock } from "@/components/icons";
 
 export function StudentRound({
   supabase,
@@ -217,8 +217,9 @@ export function StudentRound({
         {/* Reachable mid-game without pushing the allocation input off a phone. */}
         {manager ? (
           <details className="group">
-            <summary className="flex cursor-pointer list-none items-center justify-center gap-1 rounded-lg border border-line bg-paper-2 py-2 text-sm font-semibold text-ink-muted transition marker:content-none hover:text-ink [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between rounded-xl border-2 border-ink bg-paper-2 px-4 text-sm font-semibold text-ink transition marker:content-none hover:bg-brand-soft [&::-webkit-details-marker]:hidden">
               Manager prospectuses
+              <ChevronDown className="transition-transform duration-200 group-open:rotate-180" />
             </summary>
             <div className="mt-2">
               {/* Rolled forward every year: the class just watched these funds
@@ -282,16 +283,29 @@ export function StudentRound({
         session={session}
         sharpe={manager ? progress.sharpe : null}
       >
-        <div className="rounded-xl border-2 border-ink bg-brand-soft p-5 text-center shadow-card">
-          <div className="flex items-center justify-center gap-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
-            <Lock /> Nice. Now we wait.
-          </div>
-          <p className="mt-1 font-editorial text-sm italic text-ink-muted">Waiting for the reveal…</p>
+        <div className="overflow-hidden rounded-xl border-2 border-ink bg-brand-soft bg-dots px-5 pb-5 pt-7 text-center shadow-card">
+          {/* The stamp lands once per round (keyed), a small game-show beat for
+              "your choice is in". "Loading" keeps it quiet: nothing locked yet. */}
+          {phase === "loading" ? (
+            <p className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+              Getting the next round ready…
+            </p>
+          ) : (
+            <span
+              key={liveRound?.id ?? "locked"}
+              className="inline-flex animate-stamp items-center gap-2 rounded-xl border-[3px] border-ink bg-brand px-5 py-2 font-display text-2xl font-black uppercase tracking-tight text-ink shadow-card"
+            >
+              <Lock /> {mine ? "Locked in" : "Round locked"}
+            </span>
+          )}
+          <p className="mt-4 font-editorial text-base italic text-ink-muted">
+            {mine ? "Nice. Now we wait for the market…" : "Waiting for the reveal…"}
+          </p>
           {/* While the next round is still loading our allocations are empty,
               which is not the same thing as not having submitted — say nothing
               rather than accuse the student of missing the round. */}
           {phase === "loading" ? null : mine ? (
-            <p className="mt-3 font-mono text-ink">
+            <p className="mt-3 font-mono text-sm font-bold text-ink">
               {manager
                 ? // safe_amount goes NEGATIVE when levered, so "safe −$50" was
                   // both wrong and alarming — say borrowed and mean it.
@@ -361,6 +375,27 @@ function SharpeChip({ sharpe }: { sharpe: number }) {
   );
 }
 
+/**
+ * "Round 6 / 10" on an ink pill, with a thin amber track under the number that
+ * fills as the game goes. The same pill heads every phase — open, locked and
+ * the reveal — so the student never loses their place.
+ */
+function RoundPill({ session, roundNumber }: { session: SessionRow; roundNumber: number }) {
+  const total = session.config.num_rounds;
+  const pct = total > 0 ? Math.min(roundNumber / total, 1) * 100 : 0;
+  return (
+    <span className="relative inline-flex overflow-hidden rounded-full border-2 border-ink bg-ink px-3.5 pb-1.5 pt-1 font-mono text-sm font-bold uppercase text-paper-inverse">
+      {isManager(session.config) ? "Year" : "Round"} {roundNumber} / {total}
+      <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-paper-inverse/15">
+        <span
+          className="block h-full origin-left bg-brand transition-[width] duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+    </span>
+  );
+}
+
 function Shell({
   children,
   wealth,
@@ -397,15 +432,13 @@ function Shell({
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
       <div className="mb-4 flex items-center justify-between">
-        <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-sm font-bold uppercase text-paper">
-          {isManager(session.config) ? "Year" : "Round"} {roundNumber} /{" "}
-          {session.config.num_rounds}
-        </span>
+        <RoundPill session={session} roundNumber={roundNumber} />
         <span className="text-right">
           <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
             Your wealth
           </span>
-          <span className="font-mono text-xl font-bold text-ink">{money(wealth)}</span>
+          {/* Rolls to the new balance when the next round opens after a reveal. */}
+          <CountUp value={wealth} format={money} className="font-mono text-xl font-bold text-ink" />
         </span>
       </div>
       {sharpe != null ? (
@@ -422,7 +455,7 @@ function Shell({
             <span className="inline-flex items-center gap-0.5 text-gain">
               <ArrowUp /> {goodPct}%
             </span>
-            <span className="text-line-strong">·</span>
+            <span className="text-ink-subtle">·</span>
             <span className="inline-flex items-center gap-0.5 text-loss">
               <ArrowDown /> {100 - goodPct}%
             </span>
@@ -510,12 +543,12 @@ function Reveal({
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-8">
       {celebrate ? <Confetti /> : null}
-      <div className="mb-4 text-center text-sm font-semibold text-ink-muted">
-        {manager ? "Year" : "Round"} {round.round_number} / {session.config.num_rounds}
+      <div className="mb-4 flex justify-center">
+        <RoundPill session={session} roundNumber={round.round_number} />
       </div>
       <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
         <div
-          className={`-mx-6 -mt-6 mb-1 flex items-center justify-center gap-2 border-b-2 border-ink px-6 py-4 font-display text-3xl font-black uppercase tracking-tight text-white ${
+          className={`-mx-6 -mt-6 mb-1 flex items-center justify-center overflow-hidden rounded-t-[14px] border-b-2 border-ink bg-dots-light px-6 py-5 font-display text-3xl font-black uppercase tracking-tight text-white ${
             personal
               ? delta > 0
                 ? "bg-gain"
@@ -527,17 +560,19 @@ function Reveal({
                 : "bg-loss"
           }`}
         >
-          {personal ? (
-            <>
-              {delta > 0 ? <ArrowUp /> : delta < 0 ? <ArrowDown /> : null}
-              {delta > 0 ? "Up!" : delta < 0 ? "Down" : manager ? "Flat year" : "Flat round"}
-            </>
-          ) : (
-            <>
-              {good ? <ArrowUp /> : <ArrowDown />}
-              {good ? "Good!" : "Down"}
-            </>
-          )}
+          <span className="inline-flex animate-stamp items-center gap-2">
+            {personal ? (
+              <>
+                {delta > 0 ? <ArrowUp /> : delta < 0 ? <ArrowDown /> : null}
+                {delta > 0 ? "Up!" : delta < 0 ? "Down" : manager ? "Flat year" : "Flat round"}
+              </>
+            ) : (
+              <>
+                {good ? <ArrowUp /> : <ArrowDown />}
+                {good ? "Good!" : "Down"}
+              </>
+            )}
+          </span>
         </div>
 
         {manager ? (
@@ -599,11 +634,17 @@ function Reveal({
           <div className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
             New wealth
           </div>
-          <div className="animate-count-pop font-mono text-5xl font-black text-ink">
-            {money(resulting)}
-          </div>
+          {/* Rolls from the balance going into the round to the new one — the
+              moment the market's verdict turns into money. */}
+          <CountUp
+            value={resulting}
+            from={before}
+            duration={1100}
+            format={money}
+            className="block animate-count-pop font-mono text-5xl font-black text-ink"
+          />
           <div
-            className={`mt-2 inline-block rounded-full border-2 border-ink px-3 py-0.5 font-mono text-lg font-bold text-white ${
+            className={`mt-2 inline-block animate-pop-in rounded-full border-2 border-ink px-3 py-0.5 font-mono text-lg font-bold text-white [animation-delay:0.9s] ${
               delta > 0 ? "bg-gain" : delta < 0 ? "bg-loss" : "bg-ink-subtle"
             }`}
           >
@@ -616,16 +657,21 @@ function Reveal({
         </div>
 
         {rank ? (
-          <div className="rounded-xl border-2 border-ink bg-brand-soft py-3 text-lg font-semibold text-ink shadow-card">
-            You&apos;re <span className="font-display font-black">{ordinal(rank.rank)}</span> of{" "}
-            {rank.total}
+          <div className="flex animate-rise items-center justify-center gap-3 rounded-xl border-2 border-ink bg-brand-soft py-3 text-lg font-semibold text-ink shadow-card">
+            <span className="flex h-10 min-w-10 items-center justify-center rounded-lg border-2 border-ink bg-brand px-1.5 font-display text-xl font-black">
+              {ordinal(rank.rank)}
+            </span>
+            <span>
+              of {rank.total} {rank.rank === 1 ? "— top of the class" : "in the class"}
+            </span>
           </div>
         ) : null}
 
         {board ? <StudentBoard board={board} /> : null}
 
-        <p className="flex items-center justify-center gap-2 text-sm text-ink-subtle">
-          <Check className="text-gain" /> Waiting for the next round…
+        <p className="flex items-center justify-center gap-2 font-editorial text-sm italic text-ink-muted">
+          <span aria-hidden="true" className="h-2 w-2 animate-pulse-soft rounded-full bg-play" />
+          Waiting for the next round…
         </p>
       </Card>
     </main>
@@ -651,19 +697,25 @@ function StudentBoard({ board }: { board: LeaderboardRow[] }) {
         className="space-y-1 text-left"
         gapClassName="font-editorial text-xs italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-1 font-editorial text-xs italic text-ink-subtle hover:text-ink"
-        renderItem={(r) => (
+        renderItem={(r, i) => (
           <li
-            className={`flex justify-between rounded-lg px-3 py-1.5 text-sm ${
+            style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
+            className={`stagger flex animate-rise items-center justify-between gap-3 rounded-lg border-2 px-3 py-1.5 text-sm ${
               r.is_me
-                ? "bg-play-soft font-semibold text-ink ring-1 ring-play/30"
-                : "bg-paper-2 text-ink-muted"
+                ? "border-ink bg-play-soft font-bold text-ink"
+                : "border-transparent bg-paper-2 text-ink-muted"
             }`}
           >
-            <span>
-              {r.rank}. {r.display_name}
-              {r.is_me ? " (you)" : ""}
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="w-5 shrink-0 text-right font-mono text-xs text-ink-subtle">{r.rank}</span>
+              <span className="truncate">{r.display_name}</span>
+              {r.is_me ? (
+                <span className="shrink-0 rounded-full bg-play px-1.5 py-px font-display text-[10px] font-extrabold uppercase tracking-wide text-white">
+                  You
+                </span>
+              ) : null}
             </span>
-            <span className="font-mono">{money(Number(r.current_wealth))}</span>
+            <span className="shrink-0 font-mono">{money(Number(r.current_wealth))}</span>
           </li>
         )}
       />

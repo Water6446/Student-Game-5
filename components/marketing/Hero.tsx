@@ -189,7 +189,7 @@ function MiniAllocation() {
   return (
     <div className="rotate-[-1.2deg] rounded-2xl border-2 border-ink bg-surface p-5 shadow-lift">
       <div className="flex items-center justify-between">
-        <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-xs font-bold uppercase text-paper">
+        <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-xs font-bold uppercase text-paper-inverse">
           {prop.roundLabel}
         </span>
         <span className="text-right">
@@ -222,13 +222,16 @@ function MiniAllocation() {
           background: `linear-gradient(to right, rgb(var(--loss)) ${prop.riskyShare}%, rgb(var(--gain)) ${prop.riskyShare}%)`,
         }}
       />
-      <div className="mt-2 flex justify-between font-mono text-[10px] font-bold text-ink-muted">
+      <div className="mt-2 flex justify-between font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
         <span>{prop.scaleStart}</span>
         <span>{prop.scaleEnd}</span>
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-ink bg-brand-soft py-2.5 font-display text-sm font-extrabold uppercase tracking-tight text-ink">
-        <Lock /> {prop.lockedTitle}
+      {/* The "locked in" stamp from the real waiting screen. */}
+      <div className="mt-4 flex justify-center rounded-xl border-2 border-ink bg-brand-soft py-2.5">
+        <span className="inline-flex -rotate-2 items-center gap-2 rounded-lg border-2 border-ink bg-brand px-3 py-1 font-display text-sm font-black uppercase tracking-tight text-ink shadow-card">
+          <Lock /> {prop.lockedTitle}
+        </span>
       </div>
     </div>
   );
@@ -267,8 +270,12 @@ function MiniStandings() {
         {s.delta}
       </span>
 
-      <div className="mt-4 rounded-xl border-2 border-ink bg-brand-soft py-2 text-center text-sm font-semibold shadow-card">
-        {s.rankLead} <span className="font-display font-black">{s.rank}</span> {s.rankTail}
+      <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-ink bg-brand-soft py-2 text-center text-sm font-semibold shadow-card">
+        {s.rankLead}{" "}
+        <span className="rounded-md border-2 border-ink bg-brand px-1.5 font-display font-black">
+          {s.rank}
+        </span>{" "}
+        {s.rankTail}
       </div>
 
       <ol className="mt-3 space-y-1">
@@ -277,13 +284,18 @@ function MiniStandings() {
             key={r.rank}
             className={
               r.me
-                ? "flex justify-between rounded-lg bg-play-soft px-3 py-1.5 text-sm font-semibold ring-1 ring-play/30"
-                : "flex justify-between rounded-lg bg-paper-2 px-3 py-1.5 text-sm text-ink-muted"
+                ? "flex items-center justify-between gap-2 rounded-lg border-2 border-ink bg-play-soft px-3 py-1 text-sm font-bold"
+                : "flex items-center justify-between gap-2 rounded-lg border-2 border-transparent bg-paper-2 px-3 py-1 text-sm text-ink-muted"
             }
           >
-            <span>
-              {r.rank}. {r.name}
-              {r.me ? " (you)" : ""}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="font-mono text-xs text-ink-subtle">{r.rank}</span>
+              <span className="truncate">{r.name}</span>
+              {r.me ? (
+                <span className="rounded-full bg-play px-1.5 font-display text-[9px] font-extrabold uppercase tracking-wide text-white">
+                  You
+                </span>
+              ) : null}
             </span>
             <span className="font-mono">{r.wealth}</span>
           </li>

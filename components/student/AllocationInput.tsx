@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { clsx } from "@/components/clsx";
 import { useHotkeys } from "@/components/use-hotkeys";
+import { ChipButton, NumberField, Segmented } from "@/components/ui";
 import { money } from "@/lib/game/format";
 import { roundCents } from "@/lib/game/math";
 
@@ -94,74 +94,65 @@ export function AllocationInput({
         />
       </div>
 
-      <div className="flex justify-between font-mono text-xs font-bold text-ink-muted">
-        <span>ALL SAFE</span>
-        <span>ALL RISKY</span>
+      <div className="flex justify-between font-display text-[11px] font-extrabold uppercase tracking-wide text-ink-muted">
+        <span>All safe</span>
+        <span>All risky</span>
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="flex shrink-0 overflow-hidden rounded-lg border border-line-strong">
-          {(["dollar", "percent"] as const).map((u) => (
-            <button
-              key={u}
-              type="button"
-              onClick={() => setUnit(u)}
-              className={clsx(
-                "w-10 py-2 text-sm font-bold transition",
-                unit === u ? "bg-ink text-paper" : "bg-paper text-ink-muted hover:bg-paper-2",
-              )}
-            >
-              {u === "dollar" ? "$" : "%"}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Enter the amount in"
+          value={unit}
+          onChange={setUnit}
+          options={[
+            { value: "dollar", label: "$", ariaLabel: "Dollars" },
+            { value: "percent", label: "%", ariaLabel: "Percent of wealth" },
+          ]}
+        />
 
-        {/* Symbol prefix + flex-1/min-w-0 input so the value never clips the box. */}
-        <div className="relative flex min-w-0 flex-1 items-center">
-          <span className="pointer-events-none absolute left-3 font-mono text-base text-ink-subtle">
-            {unit === "dollar" ? "$" : "%"}
-          </span>
-          {unit === "dollar" ? (
-            <input
-              type="number"
-              min={0}
-              max={wealth}
-              step={0.01}
-              value={has ? r : ""}
-              disabled={disabled}
-              onChange={(e) =>
-                onChange(e.target.value === "" ? null : clamp(Number(e.target.value)))
-              }
-              className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-8 pr-3 text-right font-mono text-lg tabular-nums text-ink focus:border-brand"
-            />
-          ) : (
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={has ? Math.round(pct) : ""}
-              disabled={disabled}
-              onChange={(e) =>
-                onChange(e.target.value === "" ? null : clamp((Number(e.target.value) / 100) * wealth))
-              }
-              className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-8 pr-3 text-right font-mono text-lg tabular-nums text-ink focus:border-brand"
-            />
-          )}
-        </div>
+        {unit === "dollar" ? (
+          <NumberField
+            prefix="$"
+            min={0}
+            max={wealth}
+            step={0.01}
+            inputMode="decimal"
+            placeholder="0.00"
+            value={has ? r : ""}
+            disabled={disabled}
+            onChange={(e) =>
+              onChange(e.target.value === "" ? null : clamp(Number(e.target.value)))
+            }
+            aria-label="Dollars to put at risk"
+          />
+        ) : (
+          <NumberField
+            suffix="%"
+            min={0}
+            max={100}
+            step={1}
+            inputMode="numeric"
+            placeholder="0"
+            value={has ? Math.round(pct) : ""}
+            disabled={disabled}
+            onChange={(e) =>
+              onChange(e.target.value === "" ? null : clamp((Number(e.target.value) / 100) * wealth))
+            }
+            aria-label="Percent of wealth to put at risk"
+          />
+        )}
       </div>
 
       <div className="flex justify-between gap-2">
         {[0, 25, 50, 75, 100].map((p) => (
-          <button
+          <ChipButton
             key={p}
-            type="button"
             disabled={disabled}
+            active={has && riskyPct === p}
             onClick={() => onChange(clamp((p / 100) * wealth))}
-            className="flex-1 rounded-lg border border-line-strong bg-paper py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:text-ink active:scale-95 disabled:opacity-50"
           >
             {p}%
-          </button>
+          </ChipButton>
         ))}
       </div>
     </div>

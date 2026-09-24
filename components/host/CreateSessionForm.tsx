@@ -11,8 +11,20 @@ import {
 } from "@/lib/game/types";
 import { assetName, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
-import { Button, Banner, Card, Field, InfoTip, Select, TextInput, Toggle } from "@/components/ui";
-import { ArrowLeft, Coins, TrendUp, Trophy } from "@/components/icons";
+import {
+  Button,
+  Banner,
+  Card,
+  ChipButton,
+  Field,
+  InfoTip,
+  PRESSABLE,
+  SectionTitle,
+  Select,
+  TextInput,
+  Toggle,
+} from "@/components/ui";
+import { ArrowLeft, ArrowRight, Check, Coins, TrendUp, Trophy } from "@/components/icons";
 import { ManagerSetup } from "@/components/host/ManagerSetup";
 import { INDEX_FUND, MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
 import { createSession } from "@/lib/game/create-session";
@@ -84,15 +96,15 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
   if (gameType === null) {
     return (
       <Card>
-        <div className="flex items-center gap-2">
-          <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-ink">
-            Host a game
-          </h2>
-          <InfoTip label="About hosting a game">
-            Pick which simulation to run, then tune its settings.
-          </InfoTip>
-        </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <SectionTitle
+          info="Pick which simulation to run, then tune its settings."
+          infoLabel="About hosting a game"
+        >
+          Host a game
+        </SectionTitle>
+        {/* Three across on the dashboard's width; two-up left the manager
+            game alone on a row with an empty slot beside it. */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <GameCard
             title="Basic Risk Game"
             tagline="One risky bet vs. the safe pot"
@@ -153,9 +165,9 @@ function GameCard({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col rounded-2xl border-2 border-ink bg-paper-2 p-5 text-left shadow-card transition hover:bg-brand-soft active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+      className={`group flex flex-col rounded-2xl border-2 border-ink bg-paper-2 p-5 text-left shadow-card hover:bg-brand-soft ${PRESSABLE}`}
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-ink bg-brand text-xl text-ink">
+      <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-ink bg-brand text-xl text-ink transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-105">
         {icon}
       </span>
       <span className="mt-3 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
@@ -165,11 +177,15 @@ function GameCard({
       <ul className="mt-3 space-y-1 text-sm text-ink-muted">
         {lines.map((l) => (
           <li key={l} className="flex gap-2">
-            <span className="text-ink">•</span>
+            <Check className="mt-[3px] shrink-0 text-ink" />
             <span>{l}</span>
           </li>
         ))}
       </ul>
+      <span className="mt-auto inline-flex items-center gap-1 pt-4 font-display text-sm font-extrabold text-ink">
+        Set it up
+        <ArrowRight className="transition-transform duration-200 group-hover:translate-x-1" />
+      </span>
     </button>
   );
 }
@@ -364,7 +380,7 @@ export function CreateSessionForm({
         <button
           type="button"
           onClick={onBack}
-          className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
+          className="mb-2 inline-flex min-h-[32px] items-center gap-1 text-sm font-semibold text-ink-muted transition hover:text-ink"
         >
           <ArrowLeft /> Change game
         </button>
@@ -495,20 +511,16 @@ export function CreateSessionForm({
                     aria-label="Asset correlation"
                   />
                 </div>
-                <div className="mt-1.5 flex gap-1.5">
+                <div className="mt-2 flex gap-1.5">
                   {[0, 0.25, 0.5, 0.75, 1].map((v) => (
-                    <button
+                    <ChipButton
                       key={v}
-                      type="button"
                       onClick={() => set("correlation", v)}
-                      className={`rounded-full border px-2.5 py-0.5 font-mono text-xs font-semibold transition ${
-                        (cfg.correlation ?? 0) === v
-                          ? "border-play/30 bg-play-soft text-play"
-                          : "border-line-strong bg-paper text-ink-muted hover:border-ink-subtle"
-                      }`}
+                      active={(cfg.correlation ?? 0) === v}
+                      className="font-mono"
                     >
                       {v}
-                    </button>
+                    </ChipButton>
                   ))}
                 </div>
               </Field>
@@ -671,7 +683,7 @@ export function CreateSessionForm({
           <ul className="mt-2 space-y-1.5 text-sm text-ink-muted">
             {summary.map((line) => (
               <li key={line} className="flex gap-2">
-                <span className="text-ink">•</span>
+                <Check className="mt-[3px] shrink-0 text-ink" />
                 <span>{line}</span>
               </li>
             ))}
@@ -694,8 +706,14 @@ export function CreateSessionForm({
       ) : null}
 
       <div className="mt-6">
-        <Button variant="gold" onClick={submit} disabled={busy}>
-          {busy ? "Creating…" : "Create session"}
+        <Button variant="gold" onClick={submit} disabled={busy} className="w-full text-lg shadow-pop">
+          {busy ? (
+            "Creating…"
+          ) : (
+            <>
+              Create session <ArrowRight />
+            </>
+          )}
         </Button>
       </div>
     </Card>

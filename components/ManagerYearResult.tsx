@@ -5,7 +5,7 @@ import type { SessionConfig } from "@/lib/game/types";
 import { borrowRate, managerMathConfig, managerName, numManagers } from "@/lib/game/manager";
 import { cost, money, signedPct } from "@/lib/game/format";
 import type { ReturnSummary } from "@/lib/game/results";
-import { ArrowDown, ArrowUp } from "@/components/icons";
+import { ArrowDown, ArrowRight, ArrowUp } from "@/components/icons";
 
 /**
  * One year's result for one player.
@@ -94,7 +94,7 @@ export function ManagerYearResult({
         {allocation ? <span className="w-24 shrink-0 text-right">You held</span> : null}
       </div>
 
-      <ul className="divide-y divide-line">
+      <ul className="divide-y divide-ink/10">
         {Array.from({ length: n }, (_, i) => {
           const r = returns[i];
           const amount = Number(held[i] ?? 0);
@@ -139,7 +139,9 @@ export function ManagerYearResult({
           Your year
         </span>
         <span className="text-right font-mono text-sm text-ink">
-          {money(startWealth)} → <span className="font-black">{money(endWealth)}</span>{" "}
+          {money(startWealth)} <ArrowRight className="inline align-[-2px]" />
+          <span className="sr-only">to</span>{" "}
+          <span className="font-black">{money(endWealth)}</span>{" "}
           <span className={delta >= 0 ? "text-gain" : "text-loss"}>
             ({signedPct(yourPct, 1)})
           </span>

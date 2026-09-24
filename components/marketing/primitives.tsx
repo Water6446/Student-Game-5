@@ -98,7 +98,8 @@ const PILL_BASE =
   "group inline-flex items-center gap-3 rounded-full border-2 py-2 pl-2 pr-6 font-display font-extrabold transition active:translate-x-[2px] active:translate-y-[2px] active:shadow-none";
 
 const PILL_TONE = {
-  ink: "border-ink bg-ink text-paper shadow-pop hover:bg-ink/90",
+  // an ink pill carries an AMBER offset: an ink one vanishes into it (DESIGN.md §4)
+  ink: "border-ink bg-ink text-paper-inverse shadow-[5px_5px_0_rgb(var(--brand))] hover:bg-ink/90",
   brand: "border-ink bg-brand text-ink shadow-pop hover:bg-brand-strong",
   outline: "border-ink bg-surface text-ink shadow-card hover:bg-paper-2",
   // On a dark stage: cream fill, ink badge. The border matches the fill so the
@@ -108,9 +109,9 @@ const PILL_TONE = {
 
 const BADGE_TONE = {
   ink: "bg-brand text-ink",
-  brand: "bg-ink text-paper",
+  brand: "bg-ink text-paper-inverse",
   outline: "bg-brand text-ink",
-  cream: "bg-ink text-paper",
+  cream: "bg-ink text-paper-inverse",
 } as const;
 
 /**

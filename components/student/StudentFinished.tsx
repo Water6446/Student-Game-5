@@ -17,10 +17,10 @@ import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { sumFees } from "@/components/FeeCounter";
 import { money, ordinal, sharpeText, signedMoney, signedPct } from "@/lib/game/format";
-import { Card, InfoTip } from "@/components/ui";
+import { Card, CountUp, InfoTip } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ManagerReveal } from "@/components/ManagerReveal";
-import { Trophy, ArrowLeft, Clover } from "@/components/icons";
+import { Trophy, ArrowDown, ArrowLeft, ArrowUp, Clover } from "@/components/icons";
 import { SaveResultsPrompt } from "@/components/student/SaveResultsPrompt";
 
 export function StudentFinished({
@@ -123,61 +123,78 @@ export function StudentFinished({
     >
       {topThree ? <Confetti /> : null}
       <Card className="animate-pop-in text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
+        <div className="mx-auto flex h-16 w-16 animate-stamp items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Trophy />
         </div>
         <h1 className="mt-3 font-display text-3xl font-black uppercase tracking-tight text-ink">
           Game over
         </h1>
 
-        <div className="mt-6 rounded-xl border-2 border-ink bg-gain p-5 text-white shadow-card">
+        {/* Green only if the game made money: a red block for a student who
+            finished below where they started, instead of congratulating a loss. */}
+        <div
+          className={`mt-6 rounded-xl border-2 border-ink p-5 text-white shadow-card ${
+            me.current_wealth >= session.config.starting_wealth ? "bg-gain" : "bg-loss"
+          }`}
+        >
           <div className="font-display text-xs font-extrabold uppercase tracking-wide text-white/85">
             Final wealth
           </div>
-          <div className="font-mono text-4xl font-black">{money(me.current_wealth)}</div>
+          <CountUp
+            value={me.current_wealth}
+            from={session.config.starting_wealth}
+            duration={1400}
+            format={money}
+            className="block font-mono text-4xl font-black"
+          />
           {result?.totalReturn != null ? (
             <div className="mt-1 font-mono text-sm font-bold text-white/90">
               {signedPct(result.totalReturn * 100)} total
               {result.perRoundReturn != null
-                ? ` · ${signedPct(result.perRoundReturn * 100, 1)}/round`
+                ? ` · ${signedPct(result.perRoundReturn * 100, 1)}/${manager ? "yr" : "round"}`
                 : ""}
             </div>
           ) : null}
         </div>
 
-        {result ? (
-          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
-            Sharpe ratio:{" "}
-            <span className="font-mono font-bold text-ink">
-              {sharpeText(result.sharpe)}
-            </span>
-            <InfoTip label="About the Sharpe ratio">
-              Return per unit of risk taken — higher is better.
-              {result.sharpe == null ? " A dash (—) means you took no risk." : ""}
-            </InfoTip>
-          </div>
-        ) : null}
-
-        {rank ? (
-          <div className="mt-4 text-lg text-ink">
-            You finished <span className="font-bold text-play">{ordinal(rank.rank)}</span> of{" "}
-            {rank.total}
-          </div>
-        ) : null}
-
-        {myLuck ? (
-          <div className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
-            <Clover className={myLuck.delta >= 0 ? "text-gain" : "text-loss"} />
-            You drew {myLuck.good}/{myLuck.total} good ·{" "}
-            <span
-              className={`font-bold ${
-                myLuck.delta > 0 ? "text-gain" : myLuck.delta < 0 ? "text-loss" : "text-ink-muted"
-              }`}
-              title={`GOOD-draw rate vs the expected ${Math.round(expected * 100)}%`}
+        {/* Rank, Sharpe and luck as three tiles: the old sentence-per-line
+            layout broke mid-phrase on a phone. */}
+        {rank || result ? (
+          <dl className={`mt-4 grid gap-2 ${myLuck ? "grid-cols-3" : "grid-cols-2"}`}>
+            <StatTile label="Rank" tone={topThree ? "brand" : undefined}>
+              {rank ? (
+                <>
+                  {ordinal(rank.rank)}
+                  <span className="text-xs font-bold text-ink-muted"> /{rank.total}</span>
+                </>
+              ) : (
+                "—"
+              )}
+            </StatTile>
+            <StatTile
+              label="Sharpe"
+              info={
+                <>
+                  Return per unit of risk taken — higher is better.
+                  {result?.sharpe == null ? " A dash (—) means you took no risk." : ""}
+                </>
+              }
             >
-              {signedPct(myLuck.delta * 100)} vs {Math.round(expected * 100)}% expected
-            </span>
-          </div>
+              {result ? sharpeText(result.sharpe) : "—"}
+            </StatTile>
+            {myLuck ? (
+              <StatTile
+                label="Luck"
+                tone={myLuck.delta > 0 ? "gain" : myLuck.delta < 0 ? "loss" : undefined}
+                info={`You drew ${myLuck.good} good markets out of ${myLuck.total}. At ${Math.round(expected * 100)}% odds you'd expect ${Math.round(expected * myLuck.total)}.`}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <Clover className="text-base" />
+                  {signedPct(myLuck.delta * 100)}
+                </span>
+              </StatTile>
+            ) : null}
+          </dl>
         ) : null}
 
         {/* The punchline: your wealth, the index (no fees at all), and the
@@ -288,7 +305,7 @@ export function StudentFinished({
 
         <Link
           href="/"
-          className="mt-8 inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
+          className="mt-8 inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-sm font-semibold text-ink-muted transition hover:bg-ink/[0.06] hover:text-ink"
         >
           <ArrowLeft /> Home
         </Link>
@@ -299,8 +316,8 @@ export function StudentFinished({
 
 function StrategiesHeading({ outcomes }: { outcomes: string }) {
   return (
-    <div className="mb-2 flex items-center justify-center gap-1.5">
-      <h2 className="text-xs font-bold uppercase tracking-wide text-ink-subtle">
+    <div className="mb-2.5 flex items-center justify-center gap-1.5">
+      <h2 className="font-display text-sm font-extrabold uppercase tracking-tight text-ink">
         How other strategies would have done
       </h2>
       <InfoTip label="About the strategy comparison">
@@ -349,22 +366,52 @@ function CfRow({
 }) {
   const diff = actual - value;
   return (
-    <li className="flex items-center justify-between rounded-lg border-2 border-ink bg-paper-2 px-4 py-2">
-      <span className="flex flex-col">
-        <span className="font-semibold text-ink">{label}</span>
-        {desc ? <span className="font-editorial text-xs italic text-ink-subtle">{desc}</span> : null}
+    <li className="flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-paper-2 px-4 py-2.5">
+      <span className="flex min-w-0 flex-col">
+        <span className="font-display font-extrabold text-ink">{label}</span>
+        {desc ? (
+          <span className="font-editorial text-xs italic leading-snug text-ink-muted">{desc}</span>
+        ) : null}
       </span>
-      <span className="flex items-baseline gap-2">
-        <span className="font-mono text-ink">{money(value)}</span>
+      <span className="flex shrink-0 flex-col items-end gap-0.5">
+        <span className="font-mono font-bold text-ink">{money(value)}</span>
+        {/* Your result against this strategy, with an arrow so it isn't colour alone. */}
         <span
-          className={`font-mono text-xs ${
-            diff > 0 ? "text-gain" : diff < 0 ? "text-loss" : "text-ink-subtle"
+          className={`inline-flex items-center gap-0.5 rounded-full px-1.5 font-mono text-[11px] font-bold ${
+            diff > 0 ? "bg-gain-soft text-gain" : diff < 0 ? "bg-loss-soft text-loss" : "bg-ink/5 text-ink-muted"
           }`}
           title="your actual result vs this strategy"
         >
-          (you {signedMoney(diff)})
+          {diff > 0 ? <ArrowUp /> : diff < 0 ? <ArrowDown /> : null}
+          you {signedMoney(diff)}
         </span>
       </span>
     </li>
+  );
+}
+
+/** One of the three result tiles under the final wealth. */
+function StatTile({
+  label,
+  info,
+  tone,
+  children,
+}: {
+  label: string;
+  info?: React.ReactNode;
+  tone?: "gain" | "loss" | "brand";
+  children: React.ReactNode;
+}) {
+  const bg =
+    tone === "brand" ? "bg-brand-soft" : tone === "gain" ? "bg-gain-soft" : tone === "loss" ? "bg-loss-soft" : "bg-surface";
+  const fg = tone === "gain" ? "text-gain" : tone === "loss" ? "text-loss" : "text-ink";
+  return (
+    <div className={`flex flex-col items-center justify-center rounded-xl border-2 border-ink px-2 py-2.5 shadow-card ${bg}`}>
+      <dt className="flex items-center gap-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+        {label}
+        {info ? <InfoTip label={`About ${label.toLowerCase()}`}>{info}</InfoTip> : null}
+      </dt>
+      <dd className={`mt-0.5 font-mono text-lg font-black leading-tight ${fg}`}>{children}</dd>
+    </div>
   );
 }

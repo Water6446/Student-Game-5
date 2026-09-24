@@ -114,7 +114,7 @@ export function ProspectusCard({
       {/* mt-auto pins the row to the card's foot, so a grid of cards with
           strategy lines of different lengths still lines up. */}
       <div className="mt-auto pt-2">
-        <div className="flex items-baseline justify-between border-t border-line pt-2">
+        <div className="flex items-baseline justify-between border-t-2 border-ink/10 pt-2">
           <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
             Volatility
           </span>

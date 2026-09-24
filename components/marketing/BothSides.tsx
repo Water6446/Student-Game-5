@@ -1,4 +1,5 @@
 import { ArrowUp, Lock, Users } from "@/components/icons";
+import { RankBadge } from "@/components/RankBadge";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Eyebrow, SectionHead, Shell } from "@/components/marketing/primitives";
 import { BOTH_SIDES } from "@/lib/marketing/content";
@@ -65,34 +66,47 @@ export function BothSides() {
               </p>
 
               <div className="mt-6 space-y-5 rounded-2xl border-2 border-ink bg-surface p-5 sm:p-6">
-                <p className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-ink bg-play px-5 py-3 font-display text-lg font-extrabold text-white shadow-card">
-                  <Lock />
+                {/* Mirrors the real control panel (HostRoundControl): the gold
+                    headline action, the counter and its meter, ranked rows. */}
+                <p className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-ink bg-brand px-5 py-3 font-display text-lg font-extrabold text-ink shadow-pop">
                   {BOTH_SIDES.host.action}
+                  <Lock />
                 </p>
                 <p className="text-center">
-                  <span className="font-mono text-5xl font-black text-gain sm:text-6xl">
+                  <span className="font-mono text-5xl font-black text-ink sm:text-6xl">
                     {BOTH_SIDES.host.submitted}
-                    <span className="text-line-strong"> / {BOTH_SIDES.host.total}</span>
+                    <span className="text-ink-subtle"> / {BOTH_SIDES.host.total}</span>
                   </span>
-                  <span className="mt-1 block text-sm font-medium text-ink-muted">
+                  <span
+                    aria-hidden="true"
+                    className="mx-auto mt-3 block h-4 w-full max-w-xs overflow-hidden rounded-full border-2 border-ink bg-paper-2 shadow-card"
+                  >
+                    <span
+                      className="block h-full border-r-2 border-ink bg-gain"
+                      style={{
+                        width: `${(Number(BOTH_SIDES.host.submitted) / Number(BOTH_SIDES.host.total)) * 100}%`,
+                      }}
+                    />
+                  </span>
+                  <span className="mt-1.5 block font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
                     {BOTH_SIDES.host.submittedLabel}
                   </span>
                 </p>
                 <div>
-                  <h3 className="mb-2 font-display text-lg font-bold text-ink">
+                  <h3 className="mb-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
                     {BOTH_SIDES.host.standingsLabel}
                   </h3>
                   <ul className="space-y-1">
                     {BOTH_SIDES.host.rows.map((row) => (
                       <li
                         key={row.rank}
-                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-paper-2 px-4 py-2"
+                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2"
                       >
-                        <span className="min-w-0 flex-1 truncate text-ink">
-                          <span className="mr-2 font-mono text-ink-subtle">{row.rank}</span>
-                          {row.name}
+                        <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
+                          <RankBadge rank={Number(row.rank)} />
+                          <span className="truncate font-semibold">{row.name}</span>
                         </span>
-                        <span className="font-mono text-xl font-bold text-gain">{row.wealth}</span>
+                        <span className="font-mono text-xl font-bold text-ink">{row.wealth}</span>
                       </li>
                     ))}
                   </ul>

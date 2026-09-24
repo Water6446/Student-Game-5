@@ -55,13 +55,10 @@ export default function JoinPage() {
             </Suspense>
           </div>
 
-          <section className="mt-14">
-            <div className="border-t border-ink/15 pt-5">
-              <Eyebrow className="text-ink-muted">{JOIN.howEyebrow}</Eyebrow>
-            </div>
-            <div className="mt-5">
-              <Instructions role="student" />
-            </div>
+          {/* The card carries its own "How to play" heading; an eyebrow saying
+              the same thing above it read as a stutter. */}
+          <section className="mt-12">
+            <Instructions role="student" />
           </section>
 
           <p className="mt-10 border-t border-ink/15 pt-6 text-center text-sm text-ink-muted">

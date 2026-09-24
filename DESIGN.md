@@ -177,6 +177,7 @@ fontFamily: {
     card: "3px 3px 0 rgb(var(--ink))",   // standard card / button
     lift: "6px 6px 0 rgb(var(--ink))",   // hero card, modal, big CTA
     pop:  "5px 5px 0 rgb(var(--ink))",   // primary CTA emphasis
+    "card-hover": "4px 4px 0 rgb(var(--ink))", // hover half of the press affordance
     "lift-brand": "6px 6px 0 rgb(var(--brand)), 6px 6px 0 2px rgb(var(--ink))",
   }
   ```
@@ -185,9 +186,18 @@ fontFamily: {
   `shadow-lift`**: an ink offset under an ink panel is invisible except as a
   jagged notch at two corners, which reads as a rendering glitch. The amber block
   keeps the offset legible, and its ink outline ties it back to the system.
-- **Press affordance:** interactive elements shift down-right and drop their
-  shadow on `:active` — `active:translate-x-[2px] active:translate-y-[2px]
-  active:shadow-none`. Apply per interactive element.
+- **Press affordance:** interactive elements **rise toward the pointer on hover**
+  (up-left 1px, shadow grows to `card-hover`) and **press flat on `:active`**
+  (down-right 2px, shadow gone). It lives in one string, `PRESSABLE` in
+  `ui.tsx`; `Button`, `ChipButton` and `buttonClasses()` (the same styling for a
+  `<Link>`) all use it, so a link and a button side by side behave alike.
+  Disabled controls neither lift nor press.
+- **Ink on ink:** nothing ink-filled carries an ink offset — not a panel, a pill,
+  an active tab or an active chip. An ink offset under an ink block only shows
+  as a notch at two corners. Panels and pills use an **amber** offset
+  (`shadow-lift-brand`, or `shadow-[3px_3px_0_rgb(var(--brand))]` for buttons
+  sitting on an ink panel); active tabs and chips use the pressed state (no
+  shadow, shifted 2px) per the active-nav pattern in §8.
 - **Texture:** the page body carries a faint **ink** tiled-dot grid (no gold glow):
   ```css
   body {
@@ -206,13 +216,24 @@ Tailwind keyframes/animations; everything below is gated by a global
 
 | Name | Use |
 |------|-----|
-| `animate-pop-in` | Card / panel / reveal-banner entrance (scale+fade, ~0.32s). |
-| `animate-rise` | Hero / section entrance (translateY+fade). |
-| `animate-count-pop` | A result number landing. |
-| `animate-confetti` | Celebratory burst (`Confetti.tsx`, retinted amber/blue/white) — wins, reveals. |
-| `animate-shake` | A negative result (BAD outcome card). |
-| `animate-pulse-soft` | "Waiting…" idle states (medallion, lock dots). |
-| `active:scale-[0.98]` / press shift | Press feedback on buttons/cards. |
+| `animate-pop-in` | Card / panel / banner entrance (scale+fade, ~0.32s). |
+| `animate-rise` | Section entrance; with `.stagger` + `--i`, list rows arriving in turn. |
+| `animate-count-pop` | A result number landing; the newest outcome tile; a count that changed. |
+| `animate-stamp` | **A verdict landing** — "LOCKED IN", "MARKET UP!", "You're in": oversized and tilted, it slams down and settles at −2°. The game-show beat; one per moment. |
+| `animate-rise-tall` / `animate-drop-in` | Podium blocks rising; the reveal arrow flying in from the direction it points. |
+| `animate-confetti` | Celebratory burst (`Confetti.tsx`): ink-outlined paper pieces that sway (`--drift`) and tumble (`--spin`). Wins, GOOD reveals, the podium. |
+| `animate-shake` | A negative result (the student's BAD reveal card). |
+| `animate-pulse-soft` / `animate-bob` | Idle "waiting" states: dots pulse, the lobby medallion bobs. |
+| `animate-ping` | The live dot on the host's "Open" status pill. |
+| `animate-spin-slow` | The sunburst rays behind a projector reveal takeover. |
+| `animate-fade-in` | Dialog backdrops. |
+| `CountUp` / `useCountUp` | **Numbers roll, they don't jump.** A student's new wealth rolls from the pre-round balance; the final wealth from the starting wealth; the projector's balances and the submitted counters roll on every change. Display only — screen readers get the final value once. |
+
+- **Stagger** long lists with `className="stagger animate-rise"` and
+  `style={{ "--i": Math.min(i, 12) }}` — capped so row 100 doesn't wait five
+  seconds. Rows animate on mount only; realtime re-sorts move them without replay.
+- **Budget:** at most one `stamp` and one roll per screen state. Motion marks a
+  beat (a lock, a reveal, a finish), never a hover on a static card.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -223,6 +244,9 @@ Tailwind keyframes/animations; everything below is gated by a global
   .confetti-piece { display:none; }
 }
 ```
+
+The reset also zeroes `animation-delay`, so staggered and delayed entrances land
+instantly instead of staying hidden; `useCountUp` snaps straight to the value.
 
 ---
 
@@ -245,11 +269,35 @@ gets `border-2 border-ink` + `shadow-card` + the press shift.
 - **`Card`** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
 - **`Button`** — `variant`: `primary` (electric blue, navigational CTAs),
   `gold` (amber fill, **ink** text — the headline "lock in / start" CTA),
-  `secondary` (`bg-surface` outline → `hover:bg-paper-2`), `success` (`bg-gain`),
-  `danger` (`bg-loss`). Base: `border-2 border-ink ... shadow-card font-display
-  font-extrabold active:translate-x-[2px] active:translate-y-[2px]
-  active:shadow-none`. Full-width in panels (`className="w-full text-lg"`), shows
-  a busy label while async.
+  `secondary` (`bg-surface` outline → `hover:bg-paper-2`), `ghost` (borderless,
+  for toolbar actions like "Finish early" / "Delete"; add `text-loss
+  hover:bg-loss-soft` for a destructive one), `success` (`bg-gain`), `danger`
+  (`bg-loss`). `size`: `md` (48px, everything a player acts on) or `sm` (toolbars
+  and header rows: 40px from `sm` up, 44px on phones for the touch target). Base: `border-2 border-ink ... shadow-card
+  font-display font-extrabold` + `PRESSABLE`. Full-width in panels
+  (`className="w-full text-lg shadow-pop"` for the headline one), shows a busy
+  label while async. A `<Link>` that looks like a button uses
+  `buttonClasses(variant, size, extra)`.
+- **Which colour is which CTA** (the host's pinned action included): **gold** for
+  the beats — Start the game, Lock & reveal, Lock allocations, Reveal results,
+  Finish game, Create session, Lock in my bet, Enter the market. **Blue** for
+  moving on — Next round / Next year, Sign in. `danger` only for irreversible
+  destruction, and those sit behind a confirm; ending a game after its last round
+  is the natural end, not a destructive act.
+- **`SectionTitle`** — every card heading: Archivo extra-bold, upper case,
+  `text-lg sm:text-xl`, with an optional `info` (renders the `InfoTip` beside
+  it), `icon`, and `action` slot on the right (a `BotToggle`, a "Show all").
+  Don't hand-roll `<h2>` styles inside cards.
+- **`NumberField`** — money/percent input: 48px, mono, tabular, right-aligned,
+  `prefix="$"` or `suffix="%"` pinned so it never overlaps the digits, native
+  spinner hidden (`.no-spinner`). The only number input in the student screens.
+- **`Segmented`** — mutually exclusive options ($ / %): ink-bordered pill whose
+  active option sits on an ink block that **slides** between positions;
+  `aria-pressed` per option, `label` names the group.
+- **`ChipButton`** — a preset ("25%", "Split evenly", "All cash", "2×"): 44px,
+  ink border, `PRESSABLE`. `active` marks the preset matching the current value
+  (ink fill, cream text, pressed), so the row doubles as a readout.
+- **`CountUp`** — see §5.
 - **`Field` / `TextInput` / `Select`** — visible bold label, optional hint,
   `border-2 border-ink bg-surface shadow-card font-semibold`, focus → brand/ink
   ring. Use semantic input `type`/`inputMode`. `hint` stays on screen (format
@@ -263,10 +311,15 @@ gets `border-2 border-ink` + `shadow-card` + the press shift.
   Place it **beside** a heading (a flex row with the `h2`), never inside the
   `h2`, a `<label>`, or another button.
 - **`Toggle`** — switch with `role="switch"`; ink `border-2`, track on = `bg-play`
-  (blue), knob white with a thin ink border.
+  (blue), knob white with a thin ink border, slides. The **label names the
+  setting and never changes with state** ("Students can see the odds", not
+  "Odds shown" / "Odds hidden"); the switch carries the state. `BotToggle` is
+  the compact pill version for a card header.
 - **`Banner`** — `kind`: `error` (loss), `info` (play/blue), `success` (gain);
   `rounded-xl border-2 border-ink shadow-card`, soft-tint fill + matching text,
-  `role="alert"`. For something the person must read or act on in place.
+  **a leading icon per kind** (alert / info / check) so the kind never rests on
+  colour, pops in, `role="alert"`. For something the person must read or act on
+  in place.
 - **`Skeleton` / `SkeletonCards` / `PageSkeleton`** — `animate-pulse-soft` blocks
   in `bg-ink/10`. `PageSkeleton` is a whole loading page (its own `<main>`, at
   the page's width); `SkeletonCards` is the same body for pages that already
@@ -308,6 +361,28 @@ state machine so sequential actions are clickable in place (e.g. host control
 panel: `Lock & reveal` while open and `Next round` after reveal occupy the same
 top position). Put the button first; supporting context flows below it.
 
+**Balances are ink; changes are coloured.** A wealth figure in a standings row,
+leaderboard or header is `text-ink` — green says "gained", and a $30 balance
+after a wipe-out did not gain. The colour goes on the *change* beside it: a
+this-round delta chip (`bg-gain`/`bg-loss` + arrow), outcome tiles, a signed %.
+Result blocks that are verdicts (the student's "Final wealth", the host's "If
+everyone had picked one strategy" cards) are toned by the outcome against the
+starting wealth — green above, red below, neutral level — never by which
+strategy or player they are.
+
+**Standings rows.** `rounded-xl border-2 border-ink bg-paper-2 px-3 py-2`, a
+`RankBadge` first (amber block for 1st, cream blocks for 2nd–3rd, a plain
+number after), name, then stats, then the balance. Outcome history renders as
+`OutcomeChips`: 18px ink-edged tiles, green-up / red-down, newest pops in.
+Inner dividers in lists and tables are hairlines (`divide-ink/10`,
+`border-ink/10`), not 2px ink — the ink border belongs to the container.
+
+**Where the game is.** Every live screen says the round: the student's ink pill
+carries a thin amber progress track under "Round 6 / 10"; the host's header
+carries the **round track** — one segment per round, green/red once a shared
+basic market resolves (ink otherwise), amber for the round in play (a single
+bar past 40 rounds).
+
 **Money & data.** Format via a single `money()` helper (`$1,234.56`,
 `maximumFractionDigits: 2`) and a `signedMoney()` with ± and `−`. Render in
 `font-mono` (tabular). For "X vs Y" splits (safe/risky), prefer a **risk-meter
@@ -329,8 +404,9 @@ rules and warnings. On the projector a tip opens only when the host hovers it,
 so the room sees the tip only when the host chooses to show it.
 
 **Collapse the rarely-used.** Tuck infrequent controls behind a styled native
-`<details>` disclosure (chevron rotates with `group-open:rotate-180`) to keep
-panels compact.
+`<details>` disclosure — summary `min-h-[44px] rounded-xl border-2 border-ink
+bg-paper-2 hover:bg-brand-soft`, chevron on the right rotating with
+`group-open:rotate-180` — to keep panels compact.
 
 **Long lists stay usable.** Any roster/list that can grow (lobbies, ticks) gets a
 bounded `max-h-[…] overflow-y-auto` so primary actions never get pushed off-screen
@@ -377,12 +453,20 @@ route `app/host/[sessionId]/present/page.tsx`): the stage is an ink-bordered
   control screen, and the summary.
 - Read-only; auto-updates via the same realtime hooks as the control screen.
   Header = wordmark + a join-code chip (latecomers) + fullscreen toggle + exit.
-- Covers all states: **lobby** (giant mono join code/URL + QR + live count, often
-  a dark ink panel `bg-ink` with cream text), **in-progress open** ("Place your
-  bets" + huge mono submitted/total), **locked** ("Revealing…"), **revealed**
-  (full-bleed GOOD/BAD `RevealTakeover` with confetti on good; a neutral "Results
-  are in" when outcomes are per-player), **finished** (final standings). Big type
-  throughout (`clamp()` sizes), medal podium for top 3.
+- Covers all states: **lobby** (giant mono join code — one tile per character,
+  landing in turn — + QR + live count on an ink panel with `shadow-lift-brand`,
+  and the newest ~36 names popping in as chips), **in-progress open** ("Place
+  your bets" + huge rolling submitted/total + a chunky meter; "Everyone's in"
+  when it fills), **locked** (a "Bets are locked" stamp), **revealed**
+  (full-bleed GOOD/BAD `RevealTakeover` — slow-turning sunburst rays, the arrow
+  flying in from its direction, the headline stamping down, confetti on good; a
+  neutral "Results are in" when outcomes are per-player), **finished** (a
+  **podium** — 2-1-3 blocks rising third-first, balances rolling up from the
+  starting wealth, confetti — then places 4+ as a list). Big type throughout
+  (`clamp()` sizes).
+- The live leaderboard shows each player's **change this round** (a delta chip),
+  not the market's arrow: in a shared up-market an all-safe player gained
+  nothing, and a player can lose money in a good round.
 - **Projector legibility rules:** minimum on-screen text ~24px; use `ink-muted`
   (#6B5C40), never lighter, for secondary text; keep solid fills behind all text;
   maintain ink borders for hard edges that survive projector blur.
@@ -406,16 +490,19 @@ route `app/host/[sessionId]/present/page.tsx`): the stage is an ink-bordered
 ## 11. File map (where the system lives)
 
 ```
-app/globals.css          tokens, base type, focus rings, body dot texture, motion reset, slider/confetti CSS
+app/globals.css          tokens, base type, focus rings, body dot texture, motion reset, slider/confetti CSS, .stagger / .no-spinner / .bg-dots utilities
 tailwind.config.ts       color tokens, font families, hard-offset shadows, keyframes/animations
 app/layout.tsx           next/font wiring (Archivo / Hanken Grotesk / Fraunces italic / JetBrains Mono)
-components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner, InfoTip, Skeleton/SkeletonCards/PageSkeleton
+components/ui.tsx         Card, Button (+ buttonClasses, PRESSABLE), SectionTitle, Field, TextInput, NumberField, Select, Segmented, ChipButton, Toggle, Banner, InfoTip, CountUp, Skeleton/SkeletonCards/PageSkeleton
 components/Toast.tsx      useToast() — action confirmations
 components/ConfirmDialog.tsx  useConfirm() — the styled replacement for window.confirm
 components/StatusPage.tsx 404 / error / not-found dead ends, in site chrome
 components/marketing/SiteHeader.tsx   the site header (see §8); SiteHeaderGate.tsx mounts it; header-account.tsx is its lazy account menu
 lib/site-chrome.ts        which routes show the header; current-page matching
 components/ConnectionBanner.tsx  offline / realtime-down pill for live screens
+components/use-count-up.ts       useCountUp() — the rolling-number hook behind ui.tsx's CountUp
+components/RankBadge.tsx         the standings rank block (amber 1st, cream 2nd–3rd)
+components/OutcomeChips.tsx      outcome history as ink-edged up/down tiles
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti
 lib/design/colors.ts      the tokens as literal colour strings, for Recharts and inline styles
@@ -435,7 +522,7 @@ components/use-hotkeys.ts         window keyboard shortcuts, guarded against typ
 ```
 
 **Starting a new game:** copy `globals.css`, `tailwind.config.ts`, the
-`next/font` block in `layout.tsx`, `components/ui.tsx`, `components/icons.tsx`,
-and `components/Confetti.tsx`. Build screens from `ui.tsx` primitives using the
+`next/font` block in `layout.tsx`, `components/ui.tsx`, `components/use-count-up.ts`,
+`components/icons.tsx`, and `components/Confetti.tsx`. Build screens from `ui.tsx` primitives using the
 semantic tokens, follow the patterns in §8–§9, and run the §10 checklist before
 shipping.

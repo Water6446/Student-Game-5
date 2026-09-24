@@ -15,7 +15,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "./clsx";
-import { Info } from "./icons";
+import { AlertTriangle, Check, Info } from "./icons";
+import { useCountUp } from "./use-count-up";
+import { PRESSABLE, buttonClasses } from "./button-classes";
 
 // React 18 warns when useLayoutEffect runs during SSR; the tip never opens on
 // the server anyway, so the server gets the no-op flavour.
@@ -94,30 +96,46 @@ export function PageSkeleton({
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "gold" | "secondary" | "success" | "danger";
+  variant?: "primary" | "gold" | "secondary" | "ghost" | "success" | "danger";
+  /** `sm` is for toolbars and header rows; everything a player acts on is `md`. */
+  size?: "sm" | "md";
 };
+
+// The press affordance and button classes live in a plain module so server
+// components (StatusPage) can call buttonClasses() too; re-exported here.
+export { PRESSABLE, buttonClasses } from "./button-classes";
 
 // forwardRef so a dialog can put focus on a specific button.
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { children, variant = "primary", className, ...props },
+  { children, variant = "primary", size = "md", className, ...props },
   ref,
 ) {
-  const variants = {
-    primary: "bg-play text-white shadow-card hover:brightness-110", // electric blue
-    gold: "bg-brand text-ink shadow-card hover:bg-brand-strong", // amber, INK text
-    secondary: "bg-surface text-ink shadow-card hover:bg-paper-2",
-    success: "bg-gain text-white shadow-card hover:brightness-110",
-    danger: "bg-loss text-white shadow-card hover:brightness-110",
-  };
+  if (variant === "ghost") {
+    // Quiet, borderless: for secondary actions in a toolbar ("Finish early").
+    return (
+      <button
+        ref={ref}
+        className={clsx(
+          "inline-flex items-center justify-center gap-1.5 rounded-xl font-semibold text-ink-muted transition",
+          "hover:bg-ink/[0.06] hover:text-ink active:bg-ink/10 disabled:cursor-not-allowed disabled:opacity-50",
+          size === "sm" ? "min-h-[44px] px-3 text-sm sm:min-h-[40px]" : "min-h-[48px] px-4 text-base",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
   return (
     <button
       ref={ref}
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-xl border-2 border-ink px-5 py-3 text-base",
-        "font-display font-extrabold transition active:translate-x-[2px] active:translate-y-[2px]",
-        "active:shadow-none disabled:cursor-not-allowed disabled:opacity-60",
-        "disabled:active:translate-x-0 disabled:active:translate-y-0",
-        variants[variant],
+        buttonClasses(variant, size),
+        "disabled:cursor-not-allowed disabled:opacity-60 disabled:brightness-100",
+        // a disabled button neither lifts nor presses
+        "disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-card",
+        "disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-card",
         className,
       )}
       {...props}
@@ -126,6 +144,170 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     </button>
   );
 });
+
+/**
+ * A card's heading, with an optional InfoTip beside it and an optional action
+ * on the right (a toggle, a "Show all"). One style for every card on every
+ * screen: Archivo, extra-bold, upper case — the arcade voice.
+ */
+export function SectionTitle({
+  children,
+  info,
+  infoLabel,
+  action,
+  icon,
+  as: Tag = "h2",
+  className,
+}: {
+  children: ReactNode;
+  info?: ReactNode;
+  infoLabel?: string;
+  action?: ReactNode;
+  icon?: ReactNode;
+  as?: "h1" | "h2" | "h3";
+  className?: string;
+}) {
+  return (
+    <div className={clsx("flex items-center justify-between gap-3", className)}>
+      <div className="flex min-w-0 items-center gap-2">
+        {icon ? <span className="shrink-0 text-lg text-ink">{icon}</span> : null}
+        <Tag className="font-display text-lg font-extrabold uppercase leading-tight tracking-tight text-ink sm:text-xl">
+          {children}
+        </Tag>
+        {info ? (
+          <InfoTip label={infoLabel ?? `About ${typeof children === "string" ? children.toLowerCase() : "this"}`}>
+            {info}
+          </InfoTip>
+        ) : null}
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+/**
+ * A number that rolls to its value (see useCountUp). Assistive tech reads the
+ * final value once, not every frame.
+ */
+export function CountUp({
+  value,
+  from,
+  format = (n) => String(Math.round(n)),
+  duration,
+  className,
+}: {
+  value: number;
+  /** where the first roll starts; defaults to `value` (no roll on mount) */
+  from?: number;
+  format?: (n: number) => string;
+  duration?: number;
+  className?: string;
+}) {
+  const shown = useCountUp(value, { from, duration });
+  return (
+    <span className={className}>
+      <span aria-hidden="true">{format(shown)}</span>
+      <span className="sr-only">{format(value)}</span>
+    </span>
+  );
+}
+
+/**
+ * A pill of mutually exclusive options ($ / %, Sign in / Create account). The
+ * active option sits on an ink block that slides between positions.
+ */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  className,
+  size = "md",
+}: {
+  options: readonly { value: T; label: ReactNode; ariaLabel?: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  /** names the group for screen readers ("Enter the amount in") */
+  label: string;
+  className?: string;
+  size?: "sm" | "md";
+}) {
+  const idx = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className={clsx(
+        "relative inline-grid shrink-0 rounded-xl border-2 border-ink bg-surface p-1 shadow-card",
+        className,
+      )}
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      <span
+        aria-hidden="true"
+        className="absolute bottom-1 top-1 rounded-lg bg-ink transition-transform duration-200 ease-out"
+        style={{
+          left: 4,
+          width: `calc((100% - 8px) / ${options.length})`,
+          transform: `translateX(${idx * 100}%)`,
+        }}
+      />
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={on}
+            aria-label={o.ariaLabel}
+            onClick={() => onChange(o.value)}
+            className={clsx(
+              "relative z-10 rounded-lg px-3 font-display font-extrabold transition-colors duration-200",
+              size === "sm" ? "min-h-[32px] text-sm" : "min-h-[40px] text-base",
+              on ? "text-paper-inverse" : "text-ink-muted hover:text-ink",
+            )}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * A small preset button — "25%", "Split evenly", "All cash". `active` marks
+ * the preset that matches the current value, so the row doubles as a readout.
+ */
+export function ChipButton({
+  active,
+  className,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      className={clsx(
+        "min-h-[44px] flex-1 whitespace-nowrap rounded-xl border-2 border-ink px-2 text-sm font-display font-bold",
+        // Active = the active-nav pattern (DESIGN.md §8): ink fill, cream text,
+        // pressed flat. An ink offset under an ink chip would read as a notch.
+        active
+          ? "translate-x-[2px] translate-y-[2px] bg-ink text-paper-inverse transition-colors"
+          : clsx("bg-surface text-ink shadow-card hover:bg-paper-2", PRESSABLE),
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-card",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function Field({
   label,
@@ -350,28 +532,74 @@ export function InfoTip({
   );
 }
 
+// Tailwind cannot tell which of two bg-* classes should win, so a caller's
+// background replaces the default rather than competing with it.
+const hasBg = (c?: string) => !!c && /(^|\s)bg-/.test(c);
+
+const FIELD =
+  "w-full rounded-xl border-2 border-ink px-4 py-3 text-base font-semibold text-ink shadow-card " +
+  "transition focus:border-ink focus:shadow-card-hover disabled:opacity-60";
+
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
       className={clsx(
-        "w-full rounded-xl border-2 border-ink bg-surface px-4 py-3 text-base font-semibold text-ink shadow-card",
-        "placeholder:font-normal placeholder:text-ink-subtle transition focus:border-brand",
+        FIELD,
+        !hasBg(props.className) && "bg-surface",
+        "placeholder:font-normal placeholder:text-ink-subtle",
         props.className,
       )}
     />
   );
 }
 
+/**
+ * A money / percent field: mono, tabular, right-aligned, with a fixed prefix
+ * ("$") or suffix ("%") that never overlaps the digits. 48px tall — thumbs.
+ */
+export const NumberField = forwardRef<
+  HTMLInputElement,
+  Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+    prefix?: string;
+    suffix?: string;
+    /** classes for the wrapper (width, flex) */
+    wrapperClassName?: string;
+  }
+>(function NumberField({ prefix, suffix, wrapperClassName, className, ...props }, ref) {
+  return (
+    <div className={clsx("relative flex min-w-0 items-center", wrapperClassName ?? "flex-1")}>
+      {prefix ? (
+        <span className="pointer-events-none absolute left-3.5 font-mono text-base font-bold text-ink-muted">
+          {prefix}
+        </span>
+      ) : null}
+      <input
+        ref={ref}
+        type="number"
+        {...props}
+        className={clsx(
+          "no-spinner h-12 w-full min-w-0 rounded-xl border-2 border-ink bg-surface text-right font-mono text-lg font-bold tabular-nums text-ink shadow-card",
+          "transition placeholder:font-normal placeholder:text-ink-subtle/70 focus:shadow-card-hover disabled:opacity-60",
+          prefix ? "pl-8" : "pl-3",
+          suffix ? "pr-8" : "pr-3.5",
+          className,
+        )}
+      />
+      {suffix ? (
+        <span className="pointer-events-none absolute right-3.5 font-mono text-base font-bold text-ink-muted">
+          {suffix}
+        </span>
+      ) : null}
+    </div>
+  );
+});
+
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={clsx(
-        "w-full rounded-xl border-2 border-ink bg-surface px-4 py-3 text-base font-semibold text-ink shadow-card",
-        "transition focus:border-brand",
-        props.className,
-      )}
+      className={clsx(FIELD, !hasBg(props.className) && "bg-surface", props.className)}
     />
   );
 }
@@ -381,20 +609,23 @@ export function Toggle({
   onChange,
   label,
   className,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={clsx(
-        "flex items-center justify-between rounded-xl border-2 border-ink bg-surface px-4 py-3 shadow-card transition hover:bg-paper-2",
+        "flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-surface px-4 py-3 shadow-card transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-60",
         className ? className : "w-full"
       )}
     >
@@ -407,7 +638,7 @@ export function Toggle({
       >
         <span
           className={clsx(
-            "absolute top-[1px] h-[18px] w-[18px] rounded-full border border-ink bg-white transition-all",
+            "absolute top-[1px] h-[18px] w-[18px] rounded-full border border-ink bg-white transition-[left] duration-200 ease-out",
             checked ? "left-[20px]" : "left-[1px]",
           )}
         />
@@ -422,15 +653,22 @@ export function Banner({ kind, children }: { kind: "error" | "info" | "success";
     info: "bg-play-soft text-play",
     success: "bg-gain-soft text-gain",
   };
+  // An icon as well as a colour, so the kind never rests on colour alone.
+  const icon = {
+    error: <AlertTriangle />,
+    info: <Info />,
+    success: <Check />,
+  };
   return (
     <div
       className={clsx(
-        "rounded-xl border-2 border-ink px-4 py-3 text-sm font-semibold shadow-card",
+        "flex animate-pop-in items-start gap-2.5 rounded-xl border-2 border-ink px-4 py-3 text-sm font-semibold shadow-card",
         styles[kind],
       )}
       role="alert"
     >
-      {children}
+      <span className="mt-0.5 shrink-0 text-base">{icon[kind]}</span>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }

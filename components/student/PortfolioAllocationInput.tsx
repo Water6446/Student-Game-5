@@ -5,7 +5,7 @@ import { assetName, equalSplitAmounts, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { ArrowDown, ArrowUp } from "@/components/icons";
 import { roundCents } from "@/lib/game/math";
-import { InfoTip } from "@/components/ui";
+import { ChipButton, InfoTip, NumberField } from "@/components/ui";
 
 /**
  * Per-asset allocation for the portfolio game: one $ field per risky asset,
@@ -94,9 +94,16 @@ export function PortfolioAllocationInput({
       </div>
 
       {/* Split meter: red = invested share, green = safe share */}
-      <div className="flex h-3 overflow-hidden rounded-full border-2 border-ink shadow-card">
-        <div className="bg-loss transition-all" style={{ width: `${investedPct}%` }} />
-        <div className="flex-1 bg-gain transition-all" />
+      <div className="flex h-3 overflow-hidden rounded-full border-2 border-ink bg-paper-2 shadow-card">
+        {touched ? (
+          <>
+            <div
+              className="bg-loss transition-[width] duration-300 ease-out"
+              style={{ width: `${investedPct}%` }}
+            />
+            <div className="flex-1 bg-gain" />
+          </>
+        ) : null}
       </div>
 
       {/* One $ field per asset; whatever isn't allocated stays safe */}
@@ -117,32 +124,27 @@ export function PortfolioAllocationInput({
                     <span className="inline-flex items-center text-gain">
                       <ArrowUp /> {goodPct}%
                     </span>
-                    <span className="text-line-strong">·</span>
+                    <span className="text-ink-subtle">·</span>
                     <span className="inline-flex items-center text-loss">
                       <ArrowDown /> {100 - goodPct}%
                     </span>
                   </span>
                 )}
               </div>
-              <div className="relative flex min-w-0 flex-1 items-center">
-                <span className="pointer-events-none absolute left-3 font-mono text-base text-ink-subtle">
-                  $
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={wealth}
-                  step={0.01}
-                  inputMode="decimal"
-                  value={v ?? ""}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    setAmount(i, e.target.value === "" ? null : Number(e.target.value))
-                  }
-                  aria-label={`Amount to invest in ${assetName(config, i)}`}
-                  className="w-full min-w-0 rounded-lg border border-line-strong bg-paper py-2 pl-8 pr-3 text-right font-mono text-lg tabular-nums text-ink focus:border-brand"
-                />
-              </div>
+              <NumberField
+                prefix="$"
+                min={0}
+                max={wealth}
+                step={0.01}
+                inputMode="decimal"
+                placeholder="0"
+                value={v ?? ""}
+                disabled={disabled}
+                onChange={(e) =>
+                  setAmount(i, e.target.value === "" ? null : Number(e.target.value))
+                }
+                aria-label={`Amount to invest in ${assetName(config, i)}`}
+              />
               <span className="w-11 shrink-0 text-right font-mono text-sm font-semibold text-ink-muted">
                 {pct == null ? "—" : `${pct}%`}
               </span>
@@ -152,22 +154,12 @@ export function PortfolioAllocationInput({
       </ul>
 
       <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={disabled || wealth <= 0}
-          onClick={equalSplit}
-          className="flex-1 rounded-lg border border-line-strong bg-paper py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:text-ink active:scale-95 disabled:opacity-50"
-        >
+        <ChipButton disabled={disabled || wealth <= 0} onClick={equalSplit}>
           Split evenly
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={allSafe}
-          className="flex-1 rounded-lg border border-line-strong bg-paper py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:text-ink active:scale-95 disabled:opacity-50"
-        >
+        </ChipButton>
+        <ChipButton disabled={disabled} onClick={allSafe} active={touched && invested === 0}>
           All safe
-        </button>
+        </ChipButton>
       </div>
     </div>
   );
