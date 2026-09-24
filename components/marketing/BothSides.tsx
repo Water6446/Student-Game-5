@@ -1,5 +1,6 @@
 import { ArrowUp, Lock, Users } from "@/components/icons";
 import { RankBadge } from "@/components/RankBadge";
+import { LEDGER } from "@/components/ledger";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Eyebrow, SectionHead, Shell } from "@/components/marketing/primitives";
 import { BOTH_SIDES } from "@/lib/marketing/content";
@@ -79,7 +80,7 @@ export function BothSides() {
                   </span>
                   <span
                     aria-hidden="true"
-                    className="mx-auto mt-3 block h-4 w-full max-w-xs overflow-hidden rounded-full border-2 border-ink bg-paper-2 shadow-card"
+                    className="mx-auto mt-3 block h-4 w-full max-w-xs overflow-hidden rounded-full border-2 border-ink bg-paper-2"
                   >
                     <span
                       className="block h-full border-r-2 border-ink bg-gain"
@@ -96,11 +97,11 @@ export function BothSides() {
                   <h3 className="mb-2 font-display text-lg font-extrabold uppercase tracking-tight text-ink">
                     {BOTH_SIDES.host.standingsLabel}
                   </h3>
-                  <ul className="space-y-1">
+                  <ul className={LEDGER}>
                     {BOTH_SIDES.host.rows.map((row) => (
                       <li
                         key={row.rank}
-                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2"
+                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-2"
                       >
                         <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
                           <RankBadge rank={Number(row.rank)} />

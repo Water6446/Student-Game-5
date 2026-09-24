@@ -49,6 +49,7 @@ import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
 import { ManagePlayerButton } from "@/components/host/ManagePlayer";
 import { RankBadge } from "@/components/RankBadge";
+import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 import {
   ArrowDown,
   ArrowLeft,
@@ -664,7 +665,7 @@ export function HostRoundControl({
                   startWealth={0}
                 />
               ) : portfolioGame && round?.market_outcomes ? (
-                <div className="rounded-xl border-2 border-ink bg-paper-2 p-3 shadow-card">
+                <div className="rounded-xl border-2 border-ink bg-paper-2 p-3">
                   <ul className="grid grid-cols-2 gap-1.5">
                     {round.market_outcomes.map((o, i) => (
                       <li
@@ -684,7 +685,7 @@ export function HostRoundControl({
                   </ul>
                 </div>
               ) : session.config.market_scope === "independent" ? (
-                <div className="flex animate-pop-in items-center gap-2 rounded-xl border-2 border-ink bg-paper-2 px-4 py-2.5 text-sm text-ink-muted shadow-card">
+                <div className="flex animate-pop-in items-center gap-2 rounded-xl border-2 border-ink bg-paper-2 px-4 py-2.5 text-sm text-ink-muted">
                   <Shuffle className="shrink-0 text-ink" />
                   Independent market — each player drew their own outcome
                   {portfolioGame ? "s" : ""}.
@@ -773,7 +774,7 @@ export function HostRoundControl({
           <CondensedList
             items={standings}
             keyOf={(p) => p.id}
-            className="space-y-1"
+            className={LEDGER}
             gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             renderItem={(p, index) => {
@@ -789,7 +790,7 @@ export function HostRoundControl({
                 // the market chips — instead of overflowing a 375px viewport.
                 <li
                   style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
-                  className="stagger flex animate-rise flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2"
+                  className={`stagger flex animate-rise flex-wrap items-center justify-between gap-x-3 gap-y-1 ${LEDGER_ROW}`}
                 >
                   <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
                     <RankBadge rank={index + 1} />
@@ -998,7 +999,7 @@ function RoundTrack({
 function SubmitMeter({ submitted, total }: { submitted: number; total: number }) {
   const pct = total > 0 ? Math.min(submitted / total, 1) * 100 : 0;
   return (
-    <div className="mx-auto mt-3 h-4 w-full max-w-xs overflow-hidden rounded-full border-2 border-ink bg-paper-2 shadow-card">
+    <div className="mx-auto mt-3 h-4 w-full max-w-xs overflow-hidden rounded-full border-2 border-ink bg-paper-2">
       <div
         className="h-full rounded-r-full border-r-2 border-ink bg-gain transition-[width] duration-500 ease-out"
         style={{ width: `${pct}%`, borderRightWidth: pct > 0 && pct < 100 ? 2 : 0 }}
@@ -1026,7 +1027,7 @@ function AssetPickButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex min-h-[40px] flex-1 items-center justify-center gap-1 rounded-xl border-2 border-ink text-sm font-bold shadow-card transition active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
+      className={`flex min-h-[40px] flex-1 items-center justify-center gap-1 rounded-xl border-2 border-ink text-sm font-bold transition ${
         active ? activeCls : idleCls
       }`}
     >
@@ -1048,14 +1049,14 @@ function OutcomeButton({
   good?: boolean;
 }) {
   // Static class strings (Tailwind JIT can't see interpolated class names).
-  const activeCls = good ? "bg-gain text-white shadow-card" : "bg-loss text-white shadow-card";
-  const idleCls = "bg-surface text-ink-muted shadow-card hover:bg-paper-2";
+  const activeCls = good ? "bg-gain text-white" : "bg-loss text-white";
+  const idleCls = "bg-surface text-ink-muted hover:bg-paper-2";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border-2 border-ink py-4 font-display text-lg font-extrabold uppercase tracking-tight transition active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border-2 border-ink py-4 font-display text-lg font-extrabold uppercase tracking-tight transition-colors ${
         active ? activeCls : idleCls
       }`}
     >

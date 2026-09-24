@@ -76,7 +76,7 @@ export function SaveResultsPrompt({
   }
 
   return (
-    <div className="mt-8 rounded-2xl border-2 border-ink bg-paper-2 p-5 text-left shadow-card">
+    <div className="mt-8 rounded-2xl border-2 border-ink bg-paper-2 p-5 text-left">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-base font-extrabold uppercase tracking-tight text-ink">

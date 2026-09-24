@@ -86,7 +86,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
 
       <div className="flex items-center gap-3">
         {session.status !== "finished" ? (
-          <span className="hidden items-baseline gap-2 rounded-full border-2 border-ink bg-surface px-4 py-1.5 shadow-card sm:flex">
+          <span className="hidden items-baseline gap-2 rounded-full border-2 border-ink bg-surface px-4 py-1.5 sm:flex">
             <span className="font-display text-sm font-extrabold uppercase tracking-wide text-ink-muted">
               join code
             </span>
@@ -100,7 +100,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
           onClick={toggleFs}
           aria-label={fs ? "Exit fullscreen" : "Go fullscreen"}
           title={fs ? "Exit fullscreen" : "Go fullscreen"}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-ink bg-surface text-ink-muted shadow-card transition hover:text-ink"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-ink bg-surface text-ink-muted transition hover:bg-paper-2 hover:text-ink"
         >
           <Maximize />
         </button>
@@ -108,7 +108,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
           href={`/host/${session.id}`}
           aria-label="Exit present mode"
           title="Exit present mode"
-          className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-ink bg-surface text-ink-muted shadow-card transition hover:text-ink"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-ink bg-surface text-ink-muted transition hover:bg-paper-2 hover:text-ink"
         >
           <X />
         </Link>
@@ -180,7 +180,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
               {players.slice(-36).map((p, i) => (
                 <li
                   key={p.id}
-                  className={`animate-pop-in rounded-full border-2 border-ink px-4 py-1.5 font-display text-xl font-extrabold text-ink shadow-card ${
+                  className={`animate-pop-in rounded-full border-2 border-ink px-4 py-1.5 font-display text-xl font-extrabold text-ink ${
                     ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-surface"][i % 4]
                   }`}
                 >
@@ -314,7 +314,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
                 {allocsLoading ? "—" : <CountUp value={submitted} duration={400} />}
                 <span className="text-ink-muted">/{humanCount}</span>
               </div>
-              <div className="mt-6 h-6 w-full max-w-md overflow-hidden rounded-full border-[3px] border-ink bg-surface shadow-card">
+              <div className="mt-6 h-6 w-full max-w-md overflow-hidden rounded-full border-[3px] border-ink bg-surface">
                 <div
                   className="h-full bg-gain transition-[width] duration-700 ease-out"
                   style={{
@@ -430,7 +430,7 @@ function PortfolioOutcomeBig({
         {outcomes.map((o, i) => (
           <li
             key={i}
-            className={`flex items-center justify-between rounded-xl border-2 border-ink px-4 py-2.5 text-white shadow-card ${
+            className={`flex items-center justify-between rounded-xl border-2 border-ink px-4 py-2.5 text-white ${
               o === "good" ? "bg-gain" : "bg-loss"
             }`}
           >
@@ -750,7 +750,7 @@ function Leaderboard({
         items={ranked}
         keyOf={(p) => p.id}
         moreNoun="players"
-        className="space-y-2"
+        className="divide-y-2 divide-ink/15 border-y-[3px] border-ink"
         gapClassName="font-editorial text-lg italic text-ink-muted hover:text-ink"
         toggleClassName="mt-3 font-editorial text-lg italic text-ink-muted hover:text-ink"
         renderItem={(p, i) => {
@@ -759,7 +759,9 @@ function Leaderboard({
           return (
             <li
               style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
-              className="stagger flex animate-rise items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-surface px-5 py-3 shadow-card"
+              className={`stagger flex animate-rise items-center justify-between gap-3 px-3 py-3 ${
+                rank === 1 ? "bg-brand-soft" : ""
+              }`}
             >
               <span className="flex min-w-0 items-center gap-4">
                 <span
@@ -780,8 +782,8 @@ function Leaderboard({
               <span className="flex shrink-0 items-center gap-3">
                 {d != null && Math.abs(d) >= 0.005 ? (
                   <span
-                    className={`inline-flex items-center gap-1 rounded-full border-2 border-ink px-2.5 py-0.5 font-mono text-lg font-bold text-white ${
-                      d > 0 ? "bg-gain" : "bg-loss"
+                    className={`inline-flex items-center gap-1 font-mono text-xl font-bold ${
+                      d > 0 ? "text-gain" : "text-loss"
                     }`}
                   >
                     {d > 0 ? <ArrowUp /> : <ArrowDown />}

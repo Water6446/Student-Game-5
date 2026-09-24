@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
-import { Banner, Button, ChipButton, Toggle } from "@/components/ui";
+import { Banner, Button, ChipButton, ChipRow, Toggle } from "@/components/ui";
 
 /**
  * Host control to tune the probability of a GOOD market, live, mid-game. Writes
@@ -65,7 +65,7 @@ export function MarketOddsControl({
           <span className="text-loss">{100 - pct}% bad</span>
         </span>
       </div>
-      <div className="rounded-full border-2 border-ink shadow-card"
+      <div className="rounded-full border-2 border-ink"
         style={{
           background: `linear-gradient(to right, rgb(var(--gain)) ${pct}%, rgb(var(--loss)) ${pct}%)`,
         }}
@@ -83,13 +83,13 @@ export function MarketOddsControl({
         />
       </div>
       <div className="flex items-center gap-2">
-        <div className="flex flex-1 gap-1.5">
+        <ChipRow className="flex-1" label="Preset odds">
           {[25, 50, 60, 75].map((p) => (
             <ChipButton key={p} onClick={() => setPct(p)} disabled={busy} active={pct === p}>
               {p}%
             </ChipButton>
           ))}
-        </div>
+        </ChipRow>
         <Button variant="gold" size="sm" onClick={save} disabled={busy || !dirty}>
           {busy ? "Saving…" : dirty ? "Apply" : "Saved"}
         </Button>

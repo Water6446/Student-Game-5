@@ -17,7 +17,7 @@ import { createPortal } from "react-dom";
 import { clsx } from "./clsx";
 import { AlertTriangle, Check, Info } from "./icons";
 import { useCountUp } from "./use-count-up";
-import { PRESSABLE, buttonClasses } from "./button-classes";
+import { buttonClasses } from "./button-classes";
 
 // React 18 warns when useLayoutEffect runs during SSR; the tip never opens on
 // the server anyway, so the server gets the no-op flavour.
@@ -134,8 +134,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         buttonClasses(variant, size),
         "disabled:cursor-not-allowed disabled:opacity-60 disabled:brightness-100",
         // a disabled button neither lifts nor presses
-        "disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-card",
-        "disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-card",
+        "disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:active:translate-x-0 disabled:active:translate-y-0",
+        // a disabled button keeps its resting elevation: raised, or flat for secondary
+        variant === "secondary"
+          ? "disabled:hover:shadow-none disabled:active:shadow-none"
+          : "disabled:hover:shadow-card disabled:active:shadow-card",
         className,
       )}
       {...props}
@@ -241,7 +244,7 @@ export function Segmented<T extends string>({
       role="group"
       aria-label={label}
       className={clsx(
-        "relative inline-grid shrink-0 rounded-xl border-2 border-ink bg-surface p-1 shadow-card",
+        "relative inline-grid shrink-0 rounded-xl border-2 border-ink bg-surface p-1",
         className,
       )}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
@@ -279,6 +282,30 @@ export function Segmented<T extends string>({
 }
 
 /**
+ * A row of presets joined into one bar — "0% · 25% · 50% · 75% · 100%" — so
+ * a set of related choices reads as one control, not five separate bubbles.
+ * Wrap ChipButtons in it; it strips their own border and corners and rules
+ * them apart instead.
+ */
+export function ChipRow({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className={clsx(
+        "flex overflow-hidden rounded-xl border-2 border-ink divide-x-2 divide-ink",
+        "[&>*]:rounded-none [&>*]:border-0",
+        // the focus ring draws inside each segment, or the bar's edge clips it
+        "[&>*:focus-visible]:ring-inset [&>*:focus-visible]:ring-offset-0",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
  * A small preset button — "25%", "Split evenly", "All cash". `active` marks
  * the preset that matches the current value, so the row doubles as a readout.
  */
@@ -294,12 +321,12 @@ export function ChipButton({
       aria-pressed={active}
       className={clsx(
         "min-h-[44px] flex-1 whitespace-nowrap rounded-xl border-2 border-ink px-2 text-sm font-display font-bold",
-        // Active = the active-nav pattern (DESIGN.md §8): ink fill, cream text,
-        // pressed flat. An ink offset under an ink chip would read as a notch.
+        // Flat, like every control inside a card (DESIGN.md §4 elevation
+        // budget). Active = ink fill, cream text (the active-nav pattern).
         active
-          ? "translate-x-[2px] translate-y-[2px] bg-ink text-paper-inverse transition-colors"
-          : clsx("bg-surface text-ink shadow-card hover:bg-paper-2", PRESSABLE),
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-card",
+          ? "bg-ink text-paper-inverse transition-colors"
+          : "bg-surface text-ink transition-colors hover:bg-paper-2",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
@@ -537,8 +564,8 @@ export function InfoTip({
 const hasBg = (c?: string) => !!c && /(^|\s)bg-/.test(c);
 
 const FIELD =
-  "w-full rounded-xl border-2 border-ink px-4 py-3 text-base font-semibold text-ink shadow-card " +
-  "transition focus:border-ink focus:shadow-card-hover disabled:opacity-60";
+  "w-full rounded-xl border-2 border-ink px-4 py-3 text-base font-semibold text-ink " +
+  "transition focus:shadow-card disabled:opacity-60";
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -579,8 +606,8 @@ export const NumberField = forwardRef<
         type="number"
         {...props}
         className={clsx(
-          "no-spinner h-12 w-full min-w-0 rounded-xl border-2 border-ink bg-surface text-right font-mono text-lg font-bold tabular-nums text-ink shadow-card",
-          "transition placeholder:font-normal placeholder:text-ink-subtle/70 focus:shadow-card-hover disabled:opacity-60",
+          "no-spinner h-12 w-full min-w-0 rounded-xl border-2 border-ink bg-surface text-right font-mono text-lg font-bold tabular-nums text-ink",
+          "transition placeholder:font-normal placeholder:text-ink-subtle/70 focus:shadow-card disabled:opacity-60",
           prefix ? "pl-8" : "pl-3",
           suffix ? "pr-8" : "pr-3.5",
           className,
@@ -625,7 +652,7 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={clsx(
-        "flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-surface px-4 py-3 shadow-card transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-60",
+        "flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-surface px-4 py-3 transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-60",
         className ? className : "w-full"
       )}
     >
@@ -662,7 +689,7 @@ export function Banner({ kind, children }: { kind: "error" | "info" | "success";
   return (
     <div
       className={clsx(
-        "flex animate-pop-in items-start gap-2.5 rounded-xl border-2 border-ink px-4 py-3 text-sm font-semibold shadow-card",
+        "flex animate-pop-in items-start gap-2.5 rounded-xl border-2 border-ink px-4 py-3 text-sm font-semibold",
         styles[kind],
       )}
       role="alert"

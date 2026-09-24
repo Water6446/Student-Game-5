@@ -6,6 +6,7 @@ import type { RoundRow, SessionRow } from "@/lib/game/db";
 import { managerName, numManagers } from "@/lib/game/manager";
 import { signedPct } from "@/lib/game/format";
 import { Card, SectionTitle } from "@/components/ui";
+import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 import { CondensedList } from "@/components/CondensedList";
 import { useManagerTruth } from "@/components/use-manager-truth";
 
@@ -130,7 +131,7 @@ export function ManagerReveal({
         Who was actually skilled
       </SectionTitle>
 
-      <div className="mb-2 hidden gap-3 px-3 font-display text-[11px] font-extrabold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
+      <div className="mb-1.5 hidden gap-3 px-2 font-display text-[11px] font-extrabold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
         <span>Manager</span>
         <span className="text-right">True alpha</span>
         <span className="text-right">Delivered</span>
@@ -143,11 +144,11 @@ export function ManagerReveal({
         keyOf={(r) => String(r.slot)}
         moreNoun="managers"
         options={{ top: 5, bottom: 3, threshold: 8 }}
-        className="space-y-1"
+        className={LEDGER}
         gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         renderItem={(r) => (
-          <li className="grid grid-cols-2 items-baseline gap-x-3 gap-y-1 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2 sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
+          <li className={`grid grid-cols-2 items-baseline gap-x-3 gap-y-1 sm:grid-cols-[1fr_5rem_5rem_4rem_4rem] ${LEDGER_ROW}`}>
             {/* `truncate` needs a block box — on the inline span it used to sit
                 on it did nothing, so a long name ran straight into its verdict
                 with no separation. Flex gives a real gap and lets the verdict

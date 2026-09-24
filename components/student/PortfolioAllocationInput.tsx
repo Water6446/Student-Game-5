@@ -5,7 +5,7 @@ import { assetName, equalSplitAmounts, numAssets } from "@/lib/game/portfolio";
 import { money } from "@/lib/game/format";
 import { ArrowDown, ArrowUp } from "@/components/icons";
 import { roundCents } from "@/lib/game/math";
-import { ChipButton, InfoTip, NumberField } from "@/components/ui";
+import { ChipButton, ChipRow, InfoTip, NumberField } from "@/components/ui";
 
 /**
  * Per-asset allocation for the portfolio game: one $ field per risky asset,
@@ -62,7 +62,7 @@ export function PortfolioAllocationInput({
     <div className="space-y-4">
       {/* Safe vs invested totals — same read as the basic game's split boxes */}
       <div className="flex items-stretch gap-3">
-        <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white shadow-card">
+        <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white">
           <div className="flex items-center justify-center gap-1 font-display text-xs font-extrabold uppercase tracking-wide">
             Safe
             <InfoTip label="About the safe pot" className="text-white/80 hover:text-white">
@@ -80,7 +80,7 @@ export function PortfolioAllocationInput({
             {touched ? `${100 - investedPct}%` : "—"}
           </div>
         </div>
-        <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white shadow-card">
+        <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white">
           <div className="font-display text-xs font-extrabold uppercase tracking-wide">
             Invested
           </div>
@@ -94,7 +94,7 @@ export function PortfolioAllocationInput({
       </div>
 
       {/* Split meter: red = invested share, green = safe share */}
-      <div className="flex h-3 overflow-hidden rounded-full border-2 border-ink bg-paper-2 shadow-card">
+      <div className="flex h-3 overflow-hidden rounded-full border-2 border-ink bg-paper-2">
         {touched ? (
           <>
             <div
@@ -153,14 +153,14 @@ export function PortfolioAllocationInput({
         })}
       </ul>
 
-      <div className="flex gap-2">
+      <ChipRow label="Quick splits">
         <ChipButton disabled={disabled || wealth <= 0} onClick={equalSplit}>
           Split evenly
         </ChipButton>
         <ChipButton disabled={disabled} onClick={allSafe} active={touched && invested === 0}>
           All safe
         </ChipButton>
-      </div>
+      </ChipRow>
     </div>
   );
 }

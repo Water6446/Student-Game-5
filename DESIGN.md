@@ -18,9 +18,12 @@ Next.js + Tailwind project.
 
 1. **Light & legible first.** Warm paper background, dark ink text. Light themes
    read better on classroom projectors in lit rooms. No dark mode.
-2. **Hard edges, solid fills.** Every surface gets a 2–2.5px **ink border** and a
-   **hard offset shadow** (solid ink, no blur). Always put text on a solid fill,
-   never directly on the dot texture.
+2. **Hard edges, solid fills — and a budget for them.** Surfaces get a
+   2–2.5px **ink border**; only the top level gets a **hard offset shadow**
+   (solid ink, no blur). A card is raised; what sits inside it is printed on it.
+   When every input, chip, row and badge is its own raised, rounded box the
+   screen turns into a pile of bubbles and nothing leads (§4 "Elevation
+   budget"). Always put text on a solid fill, never directly on the dot texture.
 3. **Semantic, not decorative, color.** Green = gain / GOOD / safe-ish upside;
    rose/red = loss / BAD / risk. These map to game meaning and must always be
    paired with an icon or text (never color alone).
@@ -164,8 +167,11 @@ fontFamily: {
   projector/present uses viewport units (`px-[3vw]`). Page padding `px-6 py-…`.
 - **Full height:** use `min-h-dvh` (not `100vh`) so mobile browser chrome doesn't
   clip content.
-- **Radius:** cards `rounded-2xl` (16px), controls/inputs/cells `rounded-xl`
-  (12px), chips/pills `rounded-full`. Present-mode panels `rounded-3xl`.
+- **Radius:** the scale is tightened in `tailwind.config.ts` — printed-ticket
+  corners, not soft bubbles: cards `rounded-2xl` (12px), controls/inputs/panels
+  `rounded-xl` (8px), small blocks `rounded-lg` (6px), present-mode panels
+  `rounded-3xl` (16px). `rounded-full` is for true tags and round things only
+  (a status pill, a name chip, a dot, the round pill) — never a number or delta.
 - **Borders:** **ink**, `border-2` on cards/buttons/inputs, `border-[2.5px]`/`border-[3px]`
   on hero elements, the phone shell, and the projector stage. Prefer explicit
   `border-2 border-ink` per surface (clearer than a global default).
@@ -182,6 +188,15 @@ fontFamily: {
   }
   ```
   Cards: `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
+- **Elevation budget.** A hard shadow means "this is an object"; spend it on
+  (1) top-level cards and panels, (2) the **one** headline action on a screen
+  (`shadow-pop`), and (3) moments — a stamp, the trophy medallion, the podium,
+  the "came out on top" strategy. Everything inside a card is **flat**: inputs,
+  number fields, `Segmented`, `ChipButton`/`ChipRow`, `Toggle`, `Banner`, meters,
+  inner panels, list rows, badges, secondary buttons (which lift and gain their
+  shadow only under the pointer). An input gains `shadow-card` on focus — the
+  field you're typing in is the one that rises. If a screen has more than a
+  handful of shadows, something inside a card is raised that shouldn't be.
   **On an ink-filled (`bg-ink`) panel use `shadow-lift-brand`, never
   `shadow-lift`**: an ink offset under an ink panel is invisible except as a
   jagged notch at two corners, which reads as a rendering glitch. The amber block
@@ -264,7 +279,8 @@ emoji or pictographic Unicode glyphs as accents. Directional meaning
 ## 7. Core components (`components/ui.tsx`)
 
 Build screens from these; they encode the tokens so restyles cascade. Everything
-gets `border-2 border-ink` + `shadow-card` + the press shift.
+gets `border-2 border-ink`; only cards and the headline button carry
+`shadow-card` at rest (§4 "Elevation budget").
 
 - **`Card`** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
 - **`Button`** — `variant`: `primary` (electric blue, navigational CTAs),
@@ -295,12 +311,15 @@ gets `border-2 border-ink` + `shadow-card` + the press shift.
   active option sits on an ink block that **slides** between positions;
   `aria-pressed` per option, `label` names the group.
 - **`ChipButton`** — a preset ("25%", "Split evenly", "All cash", "2×"): 44px,
-  ink border, `PRESSABLE`. `active` marks the preset matching the current value
-  (ink fill, cream text, pressed), so the row doubles as a readout.
+  ink border, flat. `active` marks the preset matching the current value (ink
+  fill, cream text), so the row doubles as a readout.
+- **`ChipRow`** — wrap related presets in it and they join into **one ruled
+  bar** (`0% | 25% | 50% | 75% | 100%`) instead of five separate boxes. Use it
+  for any set of presets that fits one line.
 - **`CountUp`** — see §5.
 - **`Field` / `TextInput` / `Select`** — visible bold label, optional hint,
-  `border-2 border-ink bg-surface shadow-card font-semibold`, focus → brand/ink
-  ring. Use semantic input `type`/`inputMode`. `hint` stays on screen (format
+  `border-2 border-ink bg-surface font-semibold`, flat at rest; focus → the
+  brand ring plus `shadow-card` (the active field rises). Use semantic input `type`/`inputMode`. `hint` stays on screen (format
   limits like "0–1", why a control is disabled); `info` puts background (what the
   setting does, its default) behind an `InfoTip` beside the label.
 - **`InfoTip`** — a small ink-muted `Info` icon that reveals an explanation on
@@ -370,12 +389,21 @@ everyone had picked one strategy" cards) are toned by the outcome against the
 starting wealth — green above, red below, neutral level — never by which
 strategy or player they are.
 
-**Standings rows.** `rounded-xl border-2 border-ink bg-paper-2 px-3 py-2`, a
-`RankBadge` first (amber block for 1st, cream blocks for 2nd–3rd, a plain
-number after), name, then stats, then the balance. Outcome history renders as
-`OutcomeChips`: 18px ink-edged tiles, green-up / red-down, newest pops in.
-Inner dividers in lists and tables are hairlines (`divide-ink/10`,
-`border-ink/10`), not 2px ink — the ink border belongs to the container.
+**Lists are ledgers, not stacks of cards.** Standings, leaderboards, strategy
+comparisons and the manager reveal are ruled like a printed scoreboard:
+`LEDGER` (`components/ledger.ts` — a heavy ink rule top and bottom, hairlines
+between) around `LEDGER_ROW`s (padding + a quiet amber hover band). A row is
+never its own bordered, shadowed box. Each row: a `RankBadge` first (amber
+block for 1st, cream blocks for 2nd–3rd, a plain number after), name, stats,
+then the balance. "You" is a `bg-play-soft` band with a small blue "you" label,
+not a pill. The projector's leaderboard is the same ledger at scoreboard size
+(`border-y-[3px]`, 1st on an amber band). Outcome history renders as
+`OutcomeChips`: 16px borderless squares, green-up / red-down, newest pops in —
+a data strip, not a row of buttons. Stat groups (rank / Sharpe / luck) are one
+ruled strip with column dividers, not three tiles.
+
+**Deltas are text.** A change — "+$54.48 this round", a leaderboard delta, "you
++$858" — is coloured mono text with an arrow, never a filled pill.
 
 **Where the game is.** Every live screen says the round: the student's ink pill
 carries a thin amber progress track under "Round 6 / 10"; the host's header
@@ -493,7 +521,7 @@ route `app/host/[sessionId]/present/page.tsx`): the stage is an ink-bordered
 app/globals.css          tokens, base type, focus rings, body dot texture, motion reset, slider/confetti CSS, .stagger / .no-spinner / .bg-dots utilities
 tailwind.config.ts       color tokens, font families, hard-offset shadows, keyframes/animations
 app/layout.tsx           next/font wiring (Archivo / Hanken Grotesk / Fraunces italic / JetBrains Mono)
-components/ui.tsx         Card, Button (+ buttonClasses, PRESSABLE), SectionTitle, Field, TextInput, NumberField, Select, Segmented, ChipButton, Toggle, Banner, InfoTip, CountUp, Skeleton/SkeletonCards/PageSkeleton
+components/ui.tsx         Card, Button (+ buttonClasses, PRESSABLE), SectionTitle, Field, TextInput, NumberField, Select, Segmented, ChipButton, ChipRow, Toggle, Banner, InfoTip, CountUp, Skeleton/SkeletonCards/PageSkeleton
 components/Toast.tsx      useToast() — action confirmations
 components/ConfirmDialog.tsx  useConfirm() — the styled replacement for window.confirm
 components/StatusPage.tsx 404 / error / not-found dead ends, in site chrome
@@ -502,6 +530,7 @@ lib/site-chrome.ts        which routes show the header; current-page matching
 components/ConnectionBanner.tsx  offline / realtime-down pill for live screens
 components/use-count-up.ts       useCountUp() — the rolling-number hook behind ui.tsx's CountUp
 components/RankBadge.tsx         the standings rank block (amber 1st, cream 2nd–3rd)
+components/ledger.ts             LEDGER / LEDGER_ROW — ruled list styling for every standings-type list
 components/OutcomeChips.tsx      outcome history as ink-edged up/down tiles
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti

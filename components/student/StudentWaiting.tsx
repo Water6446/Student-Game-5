@@ -99,7 +99,7 @@ export function StudentWaiting({
           </div>
         ) : null}
 
-        <div className="mt-6 rounded-xl border-2 border-ink bg-gain p-4 text-white shadow-card">
+        <div className="mt-6 rounded-xl border-2 border-ink bg-gain p-4 text-white">
           <div className="font-display text-xs font-extrabold uppercase tracking-wide text-white/85">
             Starting wealth
           </div>

@@ -25,6 +25,7 @@ import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, Card, SectionTitle, buttonClasses } from "@/components/ui";
 import { RankBadge } from "@/components/RankBadge";
+import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { FeeCounter, sumFees } from "@/components/FeeCounter";
@@ -420,7 +421,7 @@ export function HostSummary({
             items={visibleResults}
             keyOf={(r) => r.player.id}
             keepIndices={openIndices}
-            className="space-y-1"
+            className={LEDGER}
             gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             renderItem={(r, i) => {
@@ -430,9 +431,7 @@ export function HostSummary({
               return (
                 <li
                   style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
-                  className={`stagger animate-rise overflow-hidden rounded-xl border-2 border-ink transition-colors ${
-                    open ? "bg-surface" : "bg-paper-2"
-                  }`}
+                  className={`stagger animate-rise transition-colors ${open ? "bg-brand-soft/50" : ""}`}
                 >
                   {/* Below sm this wraps to two lines — rank + name + final
                       wealth, then the stats — instead of overflowing a 375px
@@ -441,7 +440,7 @@ export function HostSummary({
                     type="button"
                     onClick={() => setOpenId(open ? null : r.player.id)}
                     aria-expanded={open}
-                    className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-left transition hover:bg-brand-soft"
+                    className={`flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left ${LEDGER_ROW}`}
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
                       <RankBadge rank={r.rank} />
@@ -479,7 +478,7 @@ export function HostSummary({
                     </span>
                   </button>
                   {open ? (
-                    <div className="animate-rise border-t-2 border-ink/15 px-4 py-2.5">
+                    <div className="animate-rise px-3 pb-3 pt-1">
                       <div className="mb-1 text-xs text-ink-subtle">
                         {/* A manager game has no good/bad draws, so this read
                             "0/0 good markets" under a chip row saying "no
@@ -602,13 +601,13 @@ export function HostSummary({
         <CondensedList
           items={luck}
           keyOf={(l) => l.id}
-          className="space-y-1"
+          className={LEDGER}
           gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
           renderItem={(l, i) => (
             <li
               style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
-              className="stagger flex animate-rise flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2"
+              className={`stagger flex animate-rise flex-wrap items-center justify-between gap-x-3 gap-y-1 ${LEDGER_ROW}`}
             >
               <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
                 <span className="flex w-7 shrink-0 justify-center">
@@ -688,7 +687,7 @@ function StrategyCard({
   return (
     <div
       className={`relative flex flex-col rounded-xl border-2 border-ink p-4 text-center ${bg} ${
-        best ? "shadow-pop" : "shadow-card"
+        best ? "shadow-card" : ""
       }`}
     >
       {best ? (

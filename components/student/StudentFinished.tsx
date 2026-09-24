@@ -22,6 +22,7 @@ import { Confetti } from "@/components/Confetti";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { Trophy, ArrowDown, ArrowLeft, ArrowUp, Clover } from "@/components/icons";
 import { SaveResultsPrompt } from "@/components/student/SaveResultsPrompt";
+import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 
 export function StudentFinished({
   supabase,
@@ -133,7 +134,7 @@ export function StudentFinished({
         {/* Green only if the game made money: a red block for a student who
             finished below where they started, instead of congratulating a loss. */}
         <div
-          className={`mt-6 rounded-xl border-2 border-ink p-5 text-white shadow-card ${
+          className={`mt-6 rounded-xl border-2 border-ink p-5 text-white ${
             me.current_wealth >= session.config.starting_wealth ? "bg-gain" : "bg-loss"
           }`}
         >
@@ -160,7 +161,11 @@ export function StudentFinished({
         {/* Rank, Sharpe and luck as three tiles: the old sentence-per-line
             layout broke mid-phrase on a phone. */}
         {rank || result ? (
-          <dl className={`mt-4 grid gap-2 ${myLuck ? "grid-cols-3" : "grid-cols-2"}`}>
+          <dl
+            className={`mt-5 grid divide-x-[1.5px] divide-ink/15 border-y-2 border-ink ${
+              myLuck ? "grid-cols-3" : "grid-cols-2"
+            }`}
+          >
             <StatTile label="Rank" tone={topThree ? "brand" : undefined}>
               {rank ? (
                 <>
@@ -200,7 +205,7 @@ export function StudentFinished({
         {/* The punchline: your wealth, the index (no fees at all), and the
             gap — with the fee total sitting inside it. */}
         {manager && managerSummary ? (
-          <div className="mt-6 rounded-2xl border-2 border-ink bg-surface p-4 text-left shadow-lift">
+          <div className="mt-6 border-y-2 border-ink py-3 text-left">
             <dl className="space-y-1 font-mono text-sm">
               <SumRow label="Final wealth" value={money(me.current_wealth)} />
               <SumRow
@@ -231,7 +236,7 @@ export function StudentFinished({
         {portfolio && pfCf ? (
           <div className="mt-6 text-left">
             <StrategiesHeading outcomes="asset outcomes" />
-            <ul className="space-y-2">
+            <ul className={LEDGER}>
               <CfRow
                 label="All safe"
                 desc="nothing invested, ever"
@@ -263,7 +268,7 @@ export function StudentFinished({
         {!portfolio && cf ? (
           <div className="mt-6 text-left">
             <StrategiesHeading outcomes="market outcomes" />
-            <ul className="space-y-2">
+            <ul className={LEDGER}>
               <CfRow
                 label="All safe"
                 desc="0% at risk each round"
@@ -366,7 +371,7 @@ function CfRow({
 }) {
   const diff = actual - value;
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-paper-2 px-4 py-2.5">
+    <li className={`flex items-center justify-between gap-3 ${LEDGER_ROW}`}>
       <span className="flex min-w-0 flex-col">
         <span className="font-display font-extrabold text-ink">{label}</span>
         {desc ? (
@@ -377,8 +382,8 @@ function CfRow({
         <span className="font-mono font-bold text-ink">{money(value)}</span>
         {/* Your result against this strategy, with an arrow so it isn't colour alone. */}
         <span
-          className={`inline-flex items-center gap-0.5 rounded-full px-1.5 font-mono text-[11px] font-bold ${
-            diff > 0 ? "bg-gain-soft text-gain" : diff < 0 ? "bg-loss-soft text-loss" : "bg-ink/5 text-ink-muted"
+          className={`inline-flex items-center gap-0.5 font-mono text-[11px] font-bold ${
+            diff > 0 ? "text-gain" : diff < 0 ? "text-loss" : "text-ink-muted"
           }`}
           title="your actual result vs this strategy"
         >
@@ -390,7 +395,10 @@ function CfRow({
   );
 }
 
-/** One of the three result tiles under the final wealth. */
+/**
+ * One cell of the rank / Sharpe / luck strip under the final wealth: ruled
+ * columns, not three separate boxes. Tone colours the figure, not the cell.
+ */
 function StatTile({
   label,
   info,
@@ -402,16 +410,16 @@ function StatTile({
   tone?: "gain" | "loss" | "brand";
   children: React.ReactNode;
 }) {
-  const bg =
-    tone === "brand" ? "bg-brand-soft" : tone === "gain" ? "bg-gain-soft" : tone === "loss" ? "bg-loss-soft" : "bg-surface";
   const fg = tone === "gain" ? "text-gain" : tone === "loss" ? "text-loss" : "text-ink";
   return (
-    <div className={`flex flex-col items-center justify-center rounded-xl border-2 border-ink px-2 py-2.5 shadow-card ${bg}`}>
+    <div
+      className={`flex flex-col items-center justify-center px-2 py-3 ${tone === "brand" ? "bg-brand-soft" : ""}`}
+    >
       <dt className="flex items-center gap-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
         {label}
         {info ? <InfoTip label={`About ${label.toLowerCase()}`}>{info}</InfoTip> : null}
       </dt>
-      <dd className={`mt-0.5 font-mono text-lg font-black leading-tight ${fg}`}>{children}</dd>
+      <dd className={`mt-0.5 font-mono text-xl font-black leading-tight ${fg}`}>{children}</dd>
     </div>
   );
 }

@@ -23,7 +23,7 @@ export function BotToggle({
       aria-checked={showBots}
       aria-label="Show benchmark bots"
       onClick={() => onToggle(!showBots)}
-      className="inline-flex min-h-[36px] items-center gap-2 rounded-full border-2 border-ink bg-surface py-1 pl-3 pr-1.5 text-xs font-bold text-ink shadow-card transition hover:bg-paper-2"
+      className="inline-flex min-h-[36px] items-center gap-2 rounded-full border-2 border-ink bg-surface py-1 pl-3 pr-1.5 text-xs font-bold text-ink transition hover:bg-paper-2"
       title={title}
     >
       <Bot className="text-sm text-ink-muted" />

@@ -263,14 +263,14 @@ function MiniStandings() {
         {s.wealthLabel}
       </div>
       <div className="font-mono text-3xl font-black leading-none">{s.wealth}</div>
-      {/* Under the number, as on the real reveal screen. Soft tint + ink words,
-          as on the market chip: white on solid green is under 4.5:1 here. */}
-      <span className="mt-2 inline-flex items-center gap-1 rounded-full border-2 border-ink bg-gain-soft px-2.5 py-0.5 font-mono text-xs font-bold">
-        <ArrowUp className="text-gain" />
+      {/* Under the number, as on the real reveal screen: the change as green
+          text with an arrow, not a pill. */}
+      <span className="mt-1 inline-flex items-center gap-1 font-mono text-sm font-bold text-gain">
+        <ArrowUp />
         {s.delta}
       </span>
 
-      <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-ink bg-brand-soft py-2 text-center text-sm font-semibold shadow-card">
+      <div className="mt-4 flex items-center justify-center gap-2 py-1 text-center text-sm font-semibold">
         {s.rankLead}{" "}
         <span className="rounded-md border-2 border-ink bg-brand px-1.5 font-display font-black">
           {s.rank}
@@ -278,22 +278,22 @@ function MiniStandings() {
         {s.rankTail}
       </div>
 
-      <ol className="mt-3 space-y-1">
+      <ol className="mt-3 divide-y-[1.5px] divide-ink/15 border-y-2 border-ink">
         {s.rows.map((r) => (
           <li
             key={r.rank}
             className={
               r.me
-                ? "flex items-center justify-between gap-2 rounded-lg border-2 border-ink bg-play-soft px-3 py-1 text-sm font-bold"
-                : "flex items-center justify-between gap-2 rounded-lg border-2 border-transparent bg-paper-2 px-3 py-1 text-sm text-ink-muted"
+                ? "flex items-center justify-between gap-2 bg-play-soft px-2 py-1 text-sm font-bold"
+                : "flex items-center justify-between gap-2 px-2 py-1 text-sm text-ink-muted"
             }
           >
             <span className="flex min-w-0 items-center gap-1.5">
               <span className="font-mono text-xs text-ink-subtle">{r.rank}</span>
               <span className="truncate">{r.name}</span>
               {r.me ? (
-                <span className="rounded-full bg-play px-1.5 font-display text-[9px] font-extrabold uppercase tracking-wide text-white">
-                  You
+                <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-play">
+                  you
                 </span>
               ) : null}
             </span>

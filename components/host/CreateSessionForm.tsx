@@ -16,6 +16,7 @@ import {
   Banner,
   Card,
   ChipButton,
+  ChipRow,
   Field,
   InfoTip,
   PRESSABLE,
@@ -511,7 +512,7 @@ export function CreateSessionForm({
                     aria-label="Asset correlation"
                   />
                 </div>
-                <div className="mt-2 flex gap-1.5">
+                <ChipRow className="mt-2" label="Preset correlations">
                   {[0, 0.25, 0.5, 0.75, 1].map((v) => (
                     <ChipButton
                       key={v}
@@ -522,7 +523,7 @@ export function CreateSessionForm({
                       {v}
                     </ChipButton>
                   ))}
-                </div>
+                </ChipRow>
               </Field>
             ) : null}
 
@@ -574,7 +575,7 @@ export function CreateSessionForm({
                 onChange={toggleCustomAssets}
               />
               {customAssets ? (
-                <div className="space-y-2 rounded-xl border-2 border-ink bg-paper-2 p-3 shadow-card">
+                <div className="space-y-2 rounded-xl border-2 border-ink bg-paper-2 p-3">
                   {/* Three columns need ~450px; below sm the fields stack and
                       carry their own labels instead. */}
                   <div className="hidden gap-2 text-xs font-bold uppercase tracking-wide text-ink-subtle sm:grid sm:grid-cols-[1fr_110px_150px]">
@@ -676,7 +677,7 @@ export function CreateSessionForm({
           </div>
         </>
       ) : (
-        <div className="mt-6 rounded-xl border-2 border-ink bg-brand-soft p-4 shadow-card">
+        <div className="mt-6 rounded-xl border-2 border-ink bg-brand-soft p-4">
           <div className="font-display text-sm font-extrabold uppercase tracking-tight text-ink">
             Standard setup
           </div>

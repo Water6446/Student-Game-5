@@ -16,7 +16,9 @@ export const PRESSABLE =
 export const BUTTON_VARIANTS = {
   primary: "bg-play text-white shadow-card hover:brightness-110", // electric blue
   gold: "bg-brand text-ink shadow-card hover:bg-brand-strong", // amber, INK text
-  secondary: "bg-surface text-ink shadow-card hover:bg-paper-2",
+  // Flat at rest: only the headline action on a screen sits raised. It lifts
+  // (and gains its shadow) under the pointer, so it still reads as pressable.
+  secondary: "bg-surface text-ink hover:bg-paper-2",
   success: "bg-gain text-white shadow-card hover:brightness-110",
   danger: "bg-loss text-white shadow-card hover:brightness-110",
 } as const;

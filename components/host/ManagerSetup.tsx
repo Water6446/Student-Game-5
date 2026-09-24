@@ -64,7 +64,7 @@ export function ManagerSetup({
               key={key}
               type="button"
               onClick={() => usePreset(key)}
-              className={`rounded-xl border-2 border-ink px-3 py-2 text-left text-sm font-semibold shadow-card transition ${
+              className={`rounded-xl border-2 border-ink px-3 py-2 text-left text-sm font-semibold transition ${
                 (cfg.manager_preset ?? "default") === key
                   ? "bg-brand text-ink"
                   : "bg-surface text-ink-muted hover:bg-paper-2"
@@ -167,7 +167,7 @@ export function ManagerSetup({
       </div>
 
       {borrowRate(managerMathConfig(cfg)) < (cfg.market_mean ?? 0.08) ? (
-        <p className="rounded-xl border-2 border-ink bg-brand-soft px-3 py-2 text-sm text-ink shadow-card">
+        <p className="rounded-xl border-2 border-ink bg-brand-soft px-3 py-2 text-sm text-ink">
           Borrowing at {borrowPct}% is cheaper than the index&apos;s{" "}
           {pct(cfg.market_mean ?? 0.08)}% average, so leverage now has a positive expected edge.
           The lesson lands hardest when the two match.
@@ -205,7 +205,7 @@ function ManagerFields({
   const loud = ir != null && Math.abs(ir) > 1;
 
   return (
-    <details className="group rounded-xl border-2 border-ink bg-paper-2 shadow-card">
+    <details className="group rounded-xl border-2 border-ink bg-paper-2">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
         <span className="min-w-0 truncate font-semibold text-ink">
           {manager.name || `Manager ${index + 1}`}

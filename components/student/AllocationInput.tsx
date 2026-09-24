@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useHotkeys } from "@/components/use-hotkeys";
-import { ChipButton, NumberField, Segmented } from "@/components/ui";
+import { ChipButton, ChipRow, NumberField, Segmented } from "@/components/ui";
 import { money } from "@/lib/game/format";
 import { roundCents } from "@/lib/game/math";
 
@@ -50,7 +50,7 @@ export function AllocationInput({
     <div className="space-y-4">
       {/* Safe on the left, Risky on the right — matches the slider (drag right = riskier) */}
       <div className="flex items-stretch gap-3">
-        <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white shadow-card">
+        <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white">
           <div className="font-display text-xs font-extrabold uppercase tracking-wide">Safe</div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
             {has ? money(safe) : "—"}
@@ -59,7 +59,7 @@ export function AllocationInput({
             {has ? `${safePct}%` : "—"}
           </div>
         </div>
-        <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white shadow-card">
+        <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white">
           <div className="font-display text-xs font-extrabold uppercase tracking-wide">Risky</div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
             {has ? money(r) : "—"}
@@ -74,7 +74,7 @@ export function AllocationInput({
           handle, green safe remainder to its right — so the color split sits
           exactly under the thumb (thumb position = risky share). */}
       <div
-        className="rounded-full border-2 border-ink shadow-card"
+        className="rounded-full border-2 border-ink"
         style={{
           background: has
             ? `linear-gradient(to right, rgb(var(--loss)) ${riskyPct}%, rgb(var(--gain)) ${riskyPct}%)`
@@ -143,7 +143,7 @@ export function AllocationInput({
         )}
       </div>
 
-      <div className="flex justify-between gap-2">
+      <ChipRow label="Quick amounts">
         {[0, 25, 50, 75, 100].map((p) => (
           <ChipButton
             key={p}
@@ -154,7 +154,7 @@ export function AllocationInput({
             {p}%
           </ChipButton>
         ))}
-      </div>
+      </ChipRow>
     </div>
   );
 }

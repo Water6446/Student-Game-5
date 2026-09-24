@@ -108,7 +108,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
 
           {/* The SVG scales to its wrapper, so the card interior still fits at
               375px without a second QR size. */}
-          <div className="my-6 rounded-2xl border-2 border-ink bg-white p-4 shadow-card">
+          <div className="my-6 rounded-2xl border-2 border-ink bg-white p-4">
             <div className="w-[180px] sm:w-[220px]">
               <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} className="h-auto w-full" />
             </div>
@@ -145,7 +145,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
             action={
               <span
                 key={players.length}
-                className="flex animate-count-pop items-center gap-2 rounded-full border-2 border-ink bg-play-soft px-3 py-1 font-mono text-2xl font-bold text-ink shadow-card"
+                className="flex animate-count-pop items-center gap-2 font-mono text-3xl font-black text-ink"
                 aria-label={`${players.length} joined`}
               >
                 <Users className="text-[0.8em] text-ink-muted" />
@@ -185,7 +185,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               toggleClassName="mt-2 font-editorial text-sm italic text-ink-muted hover:text-ink"
               renderItem={(p, i) => (
                 <li
-                  className={`flex max-w-full animate-pop-in items-center gap-1 rounded-full border-2 border-ink py-1 pl-3.5 pr-1.5 font-semibold text-ink shadow-card ${
+                  className={`flex max-w-full animate-pop-in items-center gap-1 rounded-full border-2 border-ink py-1 pl-3.5 pr-1.5 font-semibold text-ink ${
                     ["bg-brand-soft", "bg-play-soft", "bg-gain-soft", "bg-surface"][i % 4]
                   }`}
                 >

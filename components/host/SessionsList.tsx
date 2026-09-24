@@ -172,8 +172,8 @@ export function SessionsList({
                 className={clsx(
                   "min-h-[44px] rounded-full border-2 border-ink px-4 font-display text-sm font-extrabold transition",
                   status === f.id
-                    ? "translate-x-[1px] translate-y-[1px] bg-ink text-paper-inverse"
-                    : "bg-surface text-ink shadow-card hover:bg-paper-2",
+                    ? "bg-ink text-paper-inverse"
+                    : "bg-surface text-ink hover:bg-paper-2",
                 )}
               >
                 {f.label}
@@ -204,7 +204,7 @@ export function SessionsList({
             return (
               <li
                 key={s.id}
-                className="rounded-xl border-2 border-ink bg-surface shadow-card transition hover:bg-paper-2"
+                className="rounded-xl border-2 border-ink bg-surface transition hover:bg-paper-2"
               >
                 <div className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
                   {editing ? (

@@ -19,6 +19,15 @@ const config: Config = {
         // the look relies on chunky ink borders; make plain `border` 2px.
         DEFAULT: "2px",
       },
+      // Tighter than Tailwind's defaults (8/12/16/24px): at the defaults every
+      // card, input and row read as a soft bubble. Printed-ticket corners —
+      // rounded enough to be friendly, square enough to feel made.
+      borderRadius: {
+        lg: "0.375rem", // 6px — small controls, inner blocks
+        xl: "0.5rem", // 8px — inputs, buttons, panels
+        "2xl": "0.75rem", // 12px — cards
+        "3xl": "1rem", // 16px — projector panels
+      },
       colors: {
         paper: {
           DEFAULT: token("--paper"),

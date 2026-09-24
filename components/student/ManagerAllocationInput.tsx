@@ -99,7 +99,7 @@ export function ManagerAllocationInput({
       {/* One total meter, not per-manager bars: what matters is how much of your
           wealth is at work, and whether you have crossed into borrowing. */}
       <div>
-        <div className="relative flex h-3 overflow-hidden rounded-full border-2 border-ink shadow-card">
+        <div className="relative flex h-3 overflow-hidden rounded-full border-2 border-ink">
           <div
             className="bg-gain transition-[width] duration-300 ease-out"
             style={{ width: pctOf(Math.min(total, 100)) }}
@@ -140,7 +140,7 @@ export function ManagerAllocationInput({
 
       {/* The cost of leverage is never one click away — it names the rate. */}
       {borrowed > 0 ? (
-        <p className="rounded-xl border-2 border-ink bg-loss-soft px-3 py-2 text-center font-mono text-sm font-bold text-loss shadow-card">
+        <p className="rounded-xl border-2 border-ink bg-loss-soft px-3 py-2 text-center font-mono text-sm font-bold text-loss">
           Borrowed {money(borrowed)} at {ratePct}%/yr
         </p>
       ) : null}

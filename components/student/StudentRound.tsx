@@ -19,6 +19,7 @@ import { managerRunningStats } from "@/lib/game/results";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { money, signedMoney, signedPct, ordinal, sharpeText } from "@/lib/game/format";
 import { CondensedList } from "@/components/CondensedList";
+import { LEDGER } from "@/components/ledger";
 import { Banner, Button, Card, CountUp } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 import { ArrowUp, ArrowDown, ChevronDown, Lock } from "@/components/icons";
@@ -283,7 +284,7 @@ export function StudentRound({
         session={session}
         sharpe={manager ? progress.sharpe : null}
       >
-        <div className="overflow-hidden rounded-xl border-2 border-ink bg-brand-soft bg-dots px-5 pb-5 pt-7 text-center shadow-card">
+        <div className="overflow-hidden rounded-xl border-2 border-ink bg-brand-soft bg-dots px-5 pb-5 pt-7 text-center">
           {/* The stamp lands once per round (keyed), a small game-show beat for
               "your choice is in". "Loading" keeps it quiet: nothing locked yet. */}
           {phase === "loading" ? (
@@ -364,7 +365,7 @@ export function StudentRound({
 function SharpeChip({ sharpe }: { sharpe: number }) {
   return (
     <span
-      className="inline-flex items-baseline gap-2 rounded-xl border-2 border-ink bg-surface px-3 py-1.5 shadow-card"
+      className="inline-flex items-baseline gap-2 rounded-xl border-2 border-ink bg-surface px-3 py-1.5"
       title="Sharpe ratio: return per unit of risk taken, across the years so far"
     >
       <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
@@ -447,7 +448,7 @@ function Shell({
         </div>
       ) : null}
       {showOdds ? (
-        <div className="mb-4 flex items-center justify-between rounded-xl border-2 border-ink bg-surface px-4 py-2 text-sm shadow-card">
+        <div className="mb-4 flex items-center justify-between border-y-2 border-ink/15 px-1 py-2 text-sm">
           <span className="font-editorial italic text-ink-muted">
             {isPortfolio(session.config) ? "Each asset looks like" : "The market looks like"}
           </span>
@@ -548,7 +549,7 @@ function Reveal({
       </div>
       <Card className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
         <div
-          className={`-mx-6 -mt-6 mb-1 flex items-center justify-center overflow-hidden rounded-t-[14px] border-b-2 border-ink bg-dots-light px-6 py-5 font-display text-3xl font-black uppercase tracking-tight text-white ${
+          className={`-mx-6 -mt-6 mb-1 flex items-center justify-center overflow-hidden rounded-t-[10px] border-b-2 border-ink bg-dots-light px-6 py-5 font-display text-3xl font-black uppercase tracking-tight text-white ${
             personal
               ? delta > 0
                 ? "bg-gain"
@@ -644,10 +645,11 @@ function Reveal({
             className="block animate-count-pop font-mono text-5xl font-black text-ink"
           />
           <div
-            className={`mt-2 inline-block animate-pop-in rounded-full border-2 border-ink px-3 py-0.5 font-mono text-lg font-bold text-white [animation-delay:0.9s] ${
-              delta > 0 ? "bg-gain" : delta < 0 ? "bg-loss" : "bg-ink-subtle"
+            className={`mt-1 inline-flex animate-pop-in items-center gap-1 font-mono text-lg font-bold [animation-delay:0.9s] ${
+              delta > 0 ? "text-gain" : delta < 0 ? "text-loss" : "text-ink-muted"
             }`}
           >
+            {delta > 0 ? <ArrowUp /> : delta < 0 ? <ArrowDown /> : null}
             {/* Manager game: a percentage, the unit the market is quoted in on
                 this same card — the dollars are already in "Your year". */}
             {manager
@@ -657,7 +659,7 @@ function Reveal({
         </div>
 
         {rank ? (
-          <div className="flex animate-rise items-center justify-center gap-3 rounded-xl border-2 border-ink bg-brand-soft py-3 text-lg font-semibold text-ink shadow-card">
+          <div className="flex animate-rise items-center justify-center gap-3 py-1 text-lg font-semibold text-ink">
             <span className="flex h-10 min-w-10 items-center justify-center rounded-lg border-2 border-ink bg-brand px-1.5 font-display text-xl font-black">
               {ordinal(rank.rank)}
             </span>
@@ -694,24 +696,22 @@ function StudentBoard({ board }: { board: LeaderboardRow[] }) {
         items={board}
         keyOf={(r) => r.player_id}
         keepIndices={keepIndices}
-        className="space-y-1 text-left"
+        className={`${LEDGER} text-left`}
         gapClassName="font-editorial text-xs italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-1 font-editorial text-xs italic text-ink-subtle hover:text-ink"
         renderItem={(r, i) => (
           <li
             style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
-            className={`stagger flex animate-rise items-center justify-between gap-3 rounded-lg border-2 px-3 py-1.5 text-sm ${
-              r.is_me
-                ? "border-ink bg-play-soft font-bold text-ink"
-                : "border-transparent bg-paper-2 text-ink-muted"
+            className={`stagger flex animate-rise items-center justify-between gap-3 px-2 py-2 text-sm ${
+              r.is_me ? "bg-play-soft font-bold text-ink" : "text-ink-muted"
             }`}
           >
-            <span className="flex min-w-0 items-center gap-2">
+            <span className="flex min-w-0 items-center gap-2.5">
               <span className="w-5 shrink-0 text-right font-mono text-xs text-ink-subtle">{r.rank}</span>
               <span className="truncate">{r.display_name}</span>
               {r.is_me ? (
-                <span className="shrink-0 rounded-full bg-play px-1.5 py-px font-display text-[10px] font-extrabold uppercase tracking-wide text-white">
-                  You
+                <span className="shrink-0 font-display text-[11px] font-extrabold uppercase tracking-wide text-play">
+                  you
                 </span>
               ) : null}
             </span>
