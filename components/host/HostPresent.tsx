@@ -77,7 +77,8 @@ function PresentHeader({ session }: { session: SessionRow }) {
   }
 
   return (
-    <header className="flex items-center justify-between gap-4">
+    // The paper masthead every game screen shares, edge to edge.
+    <header className="-mx-[3vw] -mt-[2.5vh] mb-[1vh] flex items-center justify-between gap-4 border-b-2 border-ink bg-paper px-[3vw] py-3">
       <div className="flex items-center gap-2 text-ink">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-ink bg-brand text-ink">
           <Coins />

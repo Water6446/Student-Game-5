@@ -20,7 +20,7 @@ Next.js + Tailwind project.
    read better on classroom projectors in lit rooms. No dark mode.
 2. **Printed, not boxed.** Content sits on the page, grouped by rules and
    headings — not inside containers. A game screen is one cream sheet with
-   open sections under a heavy ink rule; a list is ruled rows; a verdict is a
+   open sections under an ink rule; a list is ruled rows; a verdict is a
    full-width colour band. Boxes are for real objects only: a button, an input,
    a stamp, the join-code block. Card inside card, row-box inside that, pill
    inside that is the "everything is a bubble" look, and it is banned (§4
@@ -193,7 +193,8 @@ fontFamily: {
 - **Sections, not cards.** Every game screen (host lobby / control / summary,
   projector, student waiting / round / finish, the host dashboard) is **one
   cream sheet**: `<main className="min-h-dvh bg-surface">`, no dot texture, and
-  content grouped into open `Section`s — a 3px ink rule across the top
+  a **paper masthead** on top (below), and content grouped into open
+  `Section`s — a 2px ink rule across the top
   (`SECTION` in `components/ledger.ts`), the `SectionTitle`, then content
   straight on the page. Two sections side by side sit in a grid with a wide
   gutter (`gap-x-12`); their rules line up. Inside a section, group with
@@ -295,7 +296,12 @@ Build screens from these; they encode the tokens so restyles cascade. Everything
 gets `border-2 border-ink`; only cards and the headline button carry
 `shadow-card` at rest (§4 "Elevation budget").
 
-- **`Section`** — the game screens' container: heavy ink rule, `SectionTitle`
+- **`Masthead`** (`components/Masthead.tsx`) — the paper band across the top
+  of every game screen: back link and secondary tools on the first line; the
+  big display title, a text status, and the screen's **one primary action**
+  (top right, full width under the title on a phone) on the second; an
+  optional strip under them (the round progress). One per screen, always.
+- **`Section`** — the game screens' container: ink rule, `SectionTitle`
   (with optional `info`, `icon`, `action`), content on the page. See §4.
 - **`Card`** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
   Standalone forms and dialogs only (§4).
@@ -316,8 +322,10 @@ gets `border-2 border-ink`; only cards and the headline button carry
   moving on — Next round / Next year, Sign in. `danger` only for irreversible
   destruction, and those sit behind a confirm; ending a game after its last round
   is the natural end, not a destructive act.
-- **`SectionTitle`** — every card heading: Archivo extra-bold, upper case,
-  `text-lg sm:text-xl`, with an optional `info` (renders the `InfoTip` beside
+- **`SectionTitle`** — every section heading: a *label*, not a headline —
+  Archivo extra-bold, 13px, upper case, tracked `0.1em`. The masthead title is
+  the page's one big heading. Min-height 36px so side-by-side sections line up
+  whether or not one has a switch beside its title. Optional `info` (renders the `InfoTip` beside
   it), `icon`, and `action` slot on the right (a `BotToggle`, a "Show all").
   Don't hand-roll `<h2>` styles inside cards.
 - **`NumberField`** — money/percent input: 48px, mono, tabular, right-aligned,
@@ -392,9 +400,17 @@ in `globals.css`).
 ## 8. Reusable patterns
 
 **Primary-action placement.** Keep the main CTA pinned to the same spot across a
-state machine so sequential actions are clickable in place (e.g. host control
-panel: `Lock & reveal` while open and `Next round` after reveal occupy the same
-top position). Put the button first; supporting context flows below it.
+state machine so sequential actions are clickable in place. On every game
+screen that spot is the **masthead's top right**: `Start the game` in the
+lobby, then `Lock & reveal` / `Next round` / `Finish game` on the control
+screen, all in one place, so the host never hunts for the button. It is the
+only raised (`shadow-pop`) control on the page; the body below is data.
+
+**Tables line up.** Standings and allocations are grids, not flex rows: small
+tracked column heads (`#`, Player, Luck, Last 5, Wealth) over rows whose
+figures sit in fixed-width columns, so a column of numbers reads as one. An
+allocation is one line — name, risk bar, % at risk, dollars at risk — with the
+full split in the row's tooltip.
 
 **Balances are ink; changes are coloured.** A wealth figure in a standings row,
 leaderboard or header is `text-ink` — green says "gained", and a $30 balance
@@ -424,7 +440,7 @@ text too: the host's OPEN / LOCKED / REVEALED is a coloured label with a dot.
 
 **Colour bands, not panels.** The student's verdicts — GOOD!/Down, "LOCKED IN",
 starting and final wealth — run the full width of the screen (`-mx-5`) as a
-solid band between 3px ink rules, with square ends. Colour does the work; there
+solid band under the masthead or between ink rules, with square ends. Colour does the work; there
 is no rounded box around it.
 
 **Rosters, not pill walls.** Names in the lobby are a ruled list in columns — a
@@ -432,9 +448,11 @@ small colour square, the name, the edit pencil — not a chip per student.
 
 **Where the game is.** Every live screen says the round: the student's ink pill
 carries a thin amber progress track under "Round 6 / 10"; the host's header
-carries the **round track** — one segment per round, green/red once a shared
-basic market resolves (ink otherwise), amber for the round in play (a single
-bar past 40 rounds).
+carries the **round track** in its masthead — slim borderless segments, one
+per round, green/red once a shared basic market resolves (ink otherwise),
+amber for the round in play, faint ink for rounds to come (a single bar past
+40 rounds). Progress bars are slim and borderless everywhere (the submission
+meter too): a bar is data, not an object.
 
 **Money & data.** Format via a single `money()` helper (`$1,234.56`,
 `maximumFractionDigits: 2`) and a `signedMoney()` with ± and `−`. Render in
@@ -559,6 +577,7 @@ components/ConnectionBanner.tsx  offline / realtime-down pill for live screens
 components/use-count-up.ts       useCountUp() — the rolling-number hook behind ui.tsx's CountUp
 components/RankBadge.tsx         the standings rank (amber block for 1st, bold ink for 2nd–3rd)
 components/ledger.ts             SECTION (open-section rule), LEDGER / LEDGER_ROW (ruled lists)
+components/Masthead.tsx          the paper band atop every game screen: title, status, tools, the one action
 components/OutcomeChips.tsx      outcome history as ink-edged up/down tiles
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti

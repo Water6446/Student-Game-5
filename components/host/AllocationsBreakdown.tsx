@@ -104,8 +104,8 @@ export function AllocationsBreakdown({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between pb-1">
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+      <div className="flex items-center justify-between pb-1.5">
+        <span className="flex items-center gap-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted">
           Allocations
           {/* The legend: teaches the red=risky / green=safe encoding once,
               replacing per-column headers so each row stays compact. */}
@@ -127,7 +127,7 @@ export function AllocationsBreakdown({
         items={rows}
         keyOf={(r) => r.id}
         as="ul"
-        className="divide-y divide-ink/10"
+        className="divide-y-[1.5px] divide-ink/10 border-y-[1.5px] border-ink/15"
         gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
         renderItem={(r) => {
@@ -138,9 +138,21 @@ export function AllocationsBreakdown({
           const barPct = Math.min(pct ?? 0, 100);
           const isLevered = manager && pct != null && pct > 100;
           return (
-            <li className="flex items-center gap-3 py-2">
+            // One line per player, in columns: name, the risk bar, the % at
+            // risk (the hero) and the dollars at risk. The safe share is the
+            // bar's green, and the full split is in the row's tooltip.
+            <li
+              className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.75rem_5.5rem] items-center gap-x-3 px-1 py-2 sm:grid-cols-[minmax(0,1fr)_6rem_3rem_6rem]"
+              title={
+                r.risky == null
+                  ? undefined
+                  : safeVal < 0
+                    ? `${money(r.risky)} invested, ${money(-safeVal)} borrowed`
+                    : `${money(r.risky)} at risk, ${money(safeVal)} kept safe`
+              }
+            >
               {/* Name + status */}
-              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 {r.isBot ? (
                   <Bot
                     className="shrink-0 text-ink-subtle"
@@ -152,7 +164,7 @@ export function AllocationsBreakdown({
                 <span className="truncate text-sm text-ink">{r.name}</span>
                 {!r.isBot && !r.submitted ? (
                   <span
-                    className="shrink-0 rounded-full border border-ink bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink"
+                    className="shrink-0 font-display text-[10px] font-extrabold uppercase tracking-wide text-brand-strong"
                     title={
                       manager
                         ? "No change this year — last year's portfolio carries forward"
@@ -164,40 +176,36 @@ export function AllocationsBreakdown({
                 ) : null}
               </div>
 
-              {/* Risk meter — instant read of how aggressive each player is */}
-              <div className="flex shrink-0 items-center gap-1">
-                <div className="flex h-3 w-16 shrink-0 overflow-hidden rounded-full border-[1.5px] border-ink sm:w-24">
-                  <div className="bg-loss transition-[width] duration-500" style={{ width: `${barPct}%` }} />
-                  <div className="bg-gain" style={{ width: `${100 - barPct}%` }} />
-                </div>
+              {/* Risk meter — instant read of how aggressive each player is.
+                  Past fully invested it says so as a multiple, not overflow. */}
+              <div className="relative flex h-2.5 overflow-hidden rounded-full bg-gain">
+                <div
+                  className="rounded-r-full bg-loss transition-[width] duration-500"
+                  style={{ width: `${barPct}%` }}
+                />
                 {isLevered ? (
-                  <span className="rounded-full border border-ink bg-ink px-1.5 py-0.5 font-mono text-[10px] font-bold text-paper-inverse">
+                  <span className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-bold leading-none text-white">
                     {((pct ?? 0) / 100).toFixed(1)}×
                   </span>
                 ) : null}
               </div>
 
-              {/* Numbers: % is the hero; exact dollars sit labelled beneath.
-                  The pair used to render as a bare "$67.52 · $22.52", and the
-                  middot read as a minus sign — a host asked where the
-                  subtraction came from. Each amount now names itself, and a
-                  levered row says "borrowed" instead of showing a negative
-                  safe balance, which is the same fix the student screen made. */}
-              <div className="w-24 shrink-0 text-right sm:w-28">
-                <div className="font-mono text-sm font-bold text-ink">
-                  {pct == null ? "—" : `${pct}%`}
-                </div>
-                <div className="font-mono text-[11px] leading-tight text-ink-subtle">
-                  <div className="text-loss/90">
-                    {r.risky == null ? "—" : `${money(r.risky)} risky`}
-                  </div>
-                  {safeVal < 0 ? (
-                    <div className="font-bold text-loss">{money(-safeVal)} borrowed</div>
-                  ) : (
-                    <div className="text-gain/90">{money(safeVal)} safe</div>
-                  )}
-                </div>
-              </div>
+              <span className="text-right font-mono text-sm font-bold text-ink">
+                {pct == null ? "—" : `${pct}%`}
+              </span>
+
+              {/* Dollars name themselves: a bare "$67.52 · $22.52" once read as
+                  a subtraction. A levered row says "borrowed", never a
+                  negative safe balance. */}
+              <span className="truncate text-right font-mono text-xs">
+                {r.risky == null ? (
+                  <span className="text-ink-subtle">—</span>
+                ) : safeVal < 0 ? (
+                  <span className="font-bold text-loss">{money(-safeVal)} borrowed</span>
+                ) : (
+                  <span className="text-loss">{money(r.risky)} <span className="text-ink-subtle">risk</span></span>
+                )}
+              </span>
             </li>
           );
         }}

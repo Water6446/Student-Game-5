@@ -128,7 +128,7 @@ export function SessionHistoryTable({
         <thead>
           {/* An open table: column heads over a rule, hairlines between rows —
               no box around it and no ink band (DESIGN.md §8 ledgers). */}
-          <tr className="sticky top-0 z-10 border-b-2 border-ink bg-surface text-left font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
+          <tr className="sticky top-0 z-10 border-b-[1.5px] border-ink/15 bg-surface text-left font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted">
             <th className="px-2 py-2">{manager ? "Year" : "Round"}</th>
             <th className="px-2 py-2">{manager ? "Index" : "Market"}</th>
             <th className="px-2 py-2 text-right">Avg</th>

@@ -12,8 +12,8 @@ export const LEDGER = "divide-y-[1.5px] divide-ink/15 border-y-[1.5px] border-in
 export const LEDGER_ROW = "px-2 py-2.5 transition-colors hover:bg-brand-soft/60";
 
 /**
- * An open section's rule: a heavy ink line across the top, then the heading,
+ * An open section's rule: an ink line across the top, then the heading,
  * then content on the page — the container the game screens use instead of a
  * card. `Section` in ui.tsx wraps it; raw <section>s use this string.
  */
-export const SECTION = "border-t-[3px] border-ink pt-3";
+export const SECTION = "border-t-2 border-ink pt-3";

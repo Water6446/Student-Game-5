@@ -26,13 +26,14 @@ import { money, sharpeText, signedPct } from "@/lib/game/format";
 import { Button, SectionTitle, buttonClasses } from "@/components/ui";
 import { RankBadge } from "@/components/RankBadge";
 import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
+import { Masthead } from "@/components/Masthead";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { FeeCounter, sumFees } from "@/components/FeeCounter";
 import { LuckChip } from "@/components/LuckChip";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
-import { ArrowDown, ArrowLeft, ArrowUp, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
+import { ArrowDown, ArrowUp, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
 
 export function HostSummary({
   supabase,
@@ -203,22 +204,48 @@ export function HostSummary({
   return (
     // One cream sheet, no cards: sections sit on the page (DESIGN.md §4).
     <main className="min-h-dvh bg-surface">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-10 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link
-            href="/host"
-            className="inline-flex min-h-[32px] items-center gap-1 text-sm font-semibold text-ink-muted transition hover:text-ink"
-          >
-            <ArrowLeft /> Dashboard
-          </Link>
-          <h1 className="flex items-center gap-3 font-display text-3xl font-black uppercase tracking-tight text-ink sm:text-4xl">
-            <span className="flex h-11 w-11 animate-stamp items-center justify-center rounded-xl border-2 border-ink bg-brand text-2xl shadow-card">
+      <Masthead
+        back={{ href: "/host", label: "Dashboard" }}
+        title={
+          <span className="inline-flex items-center gap-3">
+            <span className="flex h-10 w-10 animate-stamp items-center justify-center rounded-xl border-2 border-ink bg-brand text-2xl shadow-card sm:h-12 sm:w-12">
               <Trophy />
             </span>
-            Game finished
-          </h1>
-          <p className="font-editorial italic text-ink-muted">
+            Game over
+          </span>
+        }
+        tools={
+          <>
+            {hasBots ? (
+              <BotToggle
+                showBots={showBots}
+                onToggle={setShowBots}
+                title="Toggle benchmark bots in the standings, luck and chart (CSV always includes them)"
+              />
+            ) : null}
+            <Link
+              href={`/host/${session.id}/present`}
+              target="_blank"
+              className={buttonClasses("secondary", "sm")}
+              title="Open the projector view in a new tab"
+            >
+              <Monitor /> Present
+            </Link>
+          </>
+        }
+        action={
+          <Button
+            onClick={downloadCsv}
+            variant="secondary"
+            disabled={results.length === 0}
+            className="w-full"
+          >
+            <Download /> Download CSV
+          </Button>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p className="font-editorial text-lg italic text-ink-muted">
             {session.config.num_rounds} {managerGame ? "years" : "rounds"} ·{" "}
             {visibleResults.length} players · started at{" "}
             {money(session.config.starting_wealth)}
@@ -226,29 +253,10 @@ export function HostSummary({
               ? ` · ρ = ${(session.config.correlation ?? 0).toFixed(2)}`
               : ""}
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
           {managerGame ? <FeeCounter total={classFees} label="Class fees paid" /> : null}
-          {hasBots ? (
-            <BotToggle
-              showBots={showBots}
-              onToggle={setShowBots}
-              title="Toggle benchmark bots in the standings, luck and chart (CSV always includes them)"
-            />
-          ) : null}
-          <Link
-            href={`/host/${session.id}/present`}
-            target="_blank"
-            className={buttonClasses("secondary", "sm")}
-            title="Open the projector view in a new tab"
-          >
-            <Monitor /> Present
-          </Link>
-          <Button onClick={downloadCsv} variant="secondary" size="sm" disabled={results.length === 0}>
-            <Download /> Download CSV
-          </Button>
         </div>
-      </header>
+      </Masthead>
+      <div className="mx-auto max-w-5xl px-4 pb-12 pt-8 sm:px-6">
 
       {/* Who was actually skilled — the payoff of the whole module. */}
       {managerGame ? (

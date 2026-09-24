@@ -436,8 +436,10 @@ function Shell({
     // No card: the phone IS the sheet. A thick rule under the header, then the
     // controls straight on the page (DESIGN.md §4).
     <main className="min-h-dvh bg-surface">
-      <div className="mx-auto flex max-w-lg flex-col px-5 pb-10 pt-5">
-      <div className="mb-4 flex items-center justify-between border-b-[3px] border-ink pb-3">
+      {/* The paper masthead every game screen shares: where you are, and
+          what you have. */}
+      <header className="border-b-2 border-ink bg-paper">
+      <div className="mx-auto flex max-w-lg items-center justify-between px-5 py-3">
         <RoundPill session={session} roundNumber={roundNumber} />
         <span className="text-right">
           <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
@@ -447,6 +449,8 @@ function Shell({
           <CountUp value={wealth} format={money} className="font-mono text-xl font-bold text-ink" />
         </span>
       </div>
+      </header>
+      <div className="mx-auto flex max-w-lg flex-col px-5 pb-10 pt-4">
       {sharpe != null ? (
         <div className="mb-4 flex justify-end">
           <SharpeChip sharpe={sharpe} />
@@ -550,15 +554,16 @@ function Reveal({
   return (
     <main className="min-h-dvh bg-surface">
       {celebrate ? <Confetti /> : null}
-      <div className="mx-auto flex max-w-lg flex-col px-5 pb-10 pt-5">
-      <div className="mb-4 flex justify-center">
-        <RoundPill session={session} roundNumber={round.round_number} />
-      </div>
+      <header className="border-b-2 border-ink bg-paper">
+        <div className="mx-auto flex max-w-lg items-center px-5 py-3">
+          <RoundPill session={session} roundNumber={round.round_number} />
+        </div>
+      </header>
       <div className={`space-y-5 text-center ${good ? "animate-pop-in" : "animate-shake"}`}>
-        {/* The verdict as a full-width band across the screen, not a card
-            header: colour does the work, no box around it. */}
+        {/* The verdict as a full-width band straight under the masthead, not a
+            card header: colour does the work, no box around it. */}
         <div
-          className={`-mx-5 mb-1 flex items-center justify-center overflow-hidden border-y-[3px] border-ink bg-dots-light px-5 py-6 font-display text-4xl font-black uppercase tracking-tight text-white ${
+          className={`flex items-center justify-center overflow-hidden border-b-2 border-ink bg-dots-light px-5 py-7 font-display text-4xl font-black uppercase tracking-tight text-white ${
             personal
               ? delta > 0
                 ? "bg-gain"
@@ -585,6 +590,7 @@ function Reveal({
           </span>
         </div>
 
+        <div className="mx-auto max-w-lg space-y-5 px-5 pb-10">
         {manager ? (
           <>
             <ManagerYearResult

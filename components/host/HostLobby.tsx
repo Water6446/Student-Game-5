@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
 import { Banner, Button, SectionTitle, buttonClasses } from "@/components/ui";
 import { SECTION } from "@/components/ledger";
+import { Masthead } from "@/components/Masthead";
 import { ArrowRight, Check, Monitor, Trash, Users } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -85,9 +86,60 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
   }
 
   return (
-    // One cream sheet: the join code is the only block on it (DESIGN.md §4).
+    // The paper masthead carries the one action (Start); below, the cream
+    // sheet with the join code as its only block (DESIGN.md §4, §8).
     <main className="min-h-dvh bg-surface">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+      <Masthead
+        back={{ href: "/host", label: "Dashboard" }}
+        title="Lobby"
+        status={
+          <span className="font-editorial text-lg italic text-ink-muted">
+            {session.config.num_rounds} {isManager(session.config) ? "years" : "rounds"} · late
+            joiners {session.config.allow_late_join ? "can still get in" : "locked out once it starts"}
+          </span>
+        }
+        tools={
+          <>
+            <Link
+              href={`/host/${session.id}/present`}
+              target="_blank"
+              className={buttonClasses("secondary", "sm")}
+              title="Open the projector view in a new tab"
+            >
+              <Monitor /> <span className="hidden sm:inline">Present</span>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={deleteSession}
+              disabled={busy}
+              aria-label="Delete this session"
+              className="min-w-[44px] text-loss hover:bg-loss-soft hover:text-loss"
+            >
+              <Trash /> <span className="hidden sm:inline">Delete</span>
+            </Button>
+          </>
+        }
+        action={
+          // The headline "start" CTA is gold (DESIGN.md §7).
+          <Button
+            variant="gold"
+            onClick={start}
+            disabled={busy || players.length === 0}
+            title={players.length === 0 ? "Needs at least one player to start" : undefined}
+            className="w-full text-lg shadow-pop"
+          >
+            {busy ? (
+              "Starting…"
+            ) : (
+              <>
+                Start the game <ArrowRight />
+              </>
+            )}
+          </Button>
+        }
+      />
+      <div className="mx-auto max-w-5xl px-4 pb-12 pt-8 sm:px-6">
       <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
         {/* Projectable join panel — dark ink block */}
         {/* A solid ink block on the sheet — the one object here, made to be
@@ -131,14 +183,6 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
                 "Copy link"
               )}
             </Button>
-            <Link
-              href={`/host/${session.id}/present`}
-              target="_blank"
-              className={buttonClasses("secondary", "md", ON_INK)}
-              title="Open the projector view in a new tab"
-            >
-              <Monitor /> Present
-            </Link>
           </div>
         </div>
 
@@ -209,41 +253,6 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
             </div>
           ) : null}
 
-          <div className="mt-6">
-            {/* The headline "start" CTA is gold (DESIGN.md §7). */}
-            <Button
-              variant="gold"
-              onClick={start}
-              disabled={busy || players.length === 0}
-              className="w-full text-lg shadow-pop"
-            >
-              {busy ? (
-                "Starting…"
-              ) : (
-                <>
-                  Start the game <ArrowRight />
-                </>
-              )}
-            </Button>
-            <p className="mt-2 text-center font-editorial text-sm italic text-ink-muted">
-              {players.length === 0
-                ? "Needs at least one player to start."
-                : `${session.config.num_rounds} ${isManager(session.config) ? "years" : "rounds"} · late joiners ${
-                    session.config.allow_late_join ? "can still get in" : "are locked out once it starts"
-                  }`}
-            </p>
-            <div className="mt-3 flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={deleteSession}
-                disabled={busy}
-                className="text-loss hover:bg-loss-soft hover:text-loss"
-              >
-                <Trash /> Delete session
-              </Button>
-            </div>
-          </div>
         </section>
       </div>
 

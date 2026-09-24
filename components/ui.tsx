@@ -63,7 +63,7 @@ export function Section({
   as?: "h1" | "h2" | "h3";
 }) {
   return (
-    <section className={clsx("border-t-[3px] border-ink pt-3", className)}>
+    <section className={clsx("border-t-2 border-ink pt-3", className)}>
       {title ? (
         <SectionTitle
           as={as}
@@ -216,10 +216,14 @@ export function SectionTitle({
   className?: string;
 }) {
   return (
-    <div className={clsx("flex items-center justify-between gap-3", className)}>
+    // min-h: a title with a switch beside it is no taller than one without, so
+    // side-by-side sections' headings line up.
+    <div className={clsx("flex min-h-[36px] items-center justify-between gap-3", className)}>
       <div className="flex min-w-0 items-center gap-2">
-        {icon ? <span className="shrink-0 text-lg text-ink">{icon}</span> : null}
-        <Tag className="font-display text-lg font-extrabold uppercase leading-tight tracking-tight text-ink sm:text-xl">
+        {icon ? <span className="shrink-0 text-base text-ink">{icon}</span> : null}
+        {/* A label, not a headline: small, tracked caps. The page title in the
+            masthead is the one big heading; sections just name themselves. */}
+        <Tag className="font-display text-[0.8125rem] font-extrabold uppercase leading-tight tracking-[0.1em] text-ink">
           {children}
         </Tag>
         {info ? (

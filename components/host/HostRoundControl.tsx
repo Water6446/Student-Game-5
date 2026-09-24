@@ -49,10 +49,10 @@ import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
 import { ManagePlayerButton } from "@/components/host/ManagePlayer";
 import { RankBadge } from "@/components/RankBadge";
+import { Masthead } from "@/components/Masthead";
 import { LEDGER, LEDGER_ROW, SECTION } from "@/components/ledger";
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowRight,
   ArrowUp,
   Check,
@@ -66,6 +66,10 @@ import {
   Trash,
   Trophy,
 } from "@/components/icons";
+
+// Standings columns from sm up: rank, name, stats, wealth. Shared by the
+// column heads and every row so they line up.
+const STANDINGS_GRID = "sm:grid-cols-[1.75rem_minmax(0,1fr)_auto_7.5rem]";
 
 // The submitted checklist exists to spot who HASN'T submitted, so pending
 // players sort first and the collapse keeps them in the visible top slice.
@@ -317,6 +321,9 @@ export function HostRoundControl({
     [portfolioGame, managerGame, history.rounds, history.allocations],
   );
 
+  // Luck is only per-player when each player draws their own markets.
+  const showLuck = independent && !managerGame;
+
   // benchmark GOOD rate per draw (portfolio: mean of per-asset odds)
   const expected = expectedGoodRate(session.config);
 
@@ -432,28 +439,20 @@ export function HostRoundControl({
   );
 
   return (
-    // One cream sheet, no cards: sections sit on the page under a heavy rule
-    // (DESIGN.md §4). Only real objects — buttons, stamps, the verdict — box up.
+    // A paper masthead (title, status, progress, the one action) over a cream
+    // sheet of open sections — no cards (DESIGN.md §4, §8).
     <main className="min-h-dvh bg-surface">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-8">
-        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-          <div>
-            <Link
-              href="/host"
-              className="inline-flex min-h-[32px] items-center gap-1 text-sm font-semibold text-ink-muted transition hover:text-ink"
-            >
-              <ArrowLeft /> Dashboard
-            </Link>
-            <div className="flex items-center gap-3">
-              <h1 className="font-display text-3xl font-black uppercase tracking-tight text-ink sm:text-4xl">
-                {managerGame ? "Year" : "Round"} {session.current_round}
-                <span className="text-ink-subtle"> / {session.config.num_rounds}</span>
-              </h1>
-              <StatusBadge phase={phase} />
-            </div>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2">
+      <Masthead
+        back={{ href: "/host", label: "Dashboard" }}
+        title={
+          <>
+            {managerGame ? "Year" : "Round"} {session.current_round}
+            <span className="text-ink-subtle">/{session.config.num_rounds}</span>
+          </>
+        }
+        status={<StatusBadge phase={phase} />}
+        tools={
+          <>
             <Link
               href={`/host/${session.id}/present`}
               target="_blank"
@@ -487,25 +486,15 @@ export function HostRoundControl({
             >
               <Trash /> <span className="hidden sm:inline">Delete</span>
             </Button>
-          </div>
-        </div>
-        <RoundTrack
-          total={session.config.num_rounds}
-          current={session.current_round}
-          phase={phase}
-          rounds={history.rounds}
-          sharedBasic={!portfolioGame && !managerGame && !independent}
-        />
-      </header>
-
-      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
-        {/* Control panel */}
-        <section className={`space-y-5 ${SECTION}`}>
-          <SectionTitle>{managerGame ? "This year" : "This round"}</SectionTitle>
-          {/* Primary action — pinned to the top of the panel so it stays in the
-              same place across open → reveal → next. In auto mode the host can
-              click "Lock & reveal" then "Next round" without moving the cursor. */}
-          {primaryAction ? (
+          </>
+        }
+        action={
+          // Primary action — pinned to the masthead's top right so it stays in
+          // the same place across open → reveal → next: in auto mode the host
+          // clicks "Lock & reveal" then "Next round" without moving the cursor.
+          // While the next round loads it keeps its place, disabled — showing
+          // the previous round's body there is the bug use-round-phase fixes.
+          primaryAction ? (
             <Button
               onClick={primaryAction.run}
               disabled={primaryAction.disabled}
@@ -516,45 +505,60 @@ export function HostRoundControl({
               {primaryAction.icon}
             </Button>
           ) : (
-            <>
-              {/* One fetch round-trip after "Next round" lands. The panel keeps
-                  its shape and the action stays pinned but disabled — showing
-                  the previous round's body here is the bug this fixes. */}
-              <Button disabled variant="secondary" className="w-full text-lg">
-                Loading {managerGame ? "year" : "round"} {session.current_round}…
-              </Button>
-              <p className="text-center font-editorial text-sm italic text-ink-subtle">
-                Syncing with the server…
-              </p>
-            </>
-          )}
+            <Button disabled variant="secondary" className="w-full text-lg">
+              Loading {managerGame ? "year" : "round"} {session.current_round}…
+            </Button>
+          )
+        }
+      >
+        <RoundTrack
+          total={session.config.num_rounds}
+          current={session.current_round}
+          phase={phase}
+          rounds={history.rounds}
+          sharedBasic={!portfolioGame && !managerGame && !independent}
+        />
+      </Masthead>
 
-
+      <div className="mx-auto max-w-5xl px-4 pb-12 pt-8 sm:px-6">
+      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[5fr_7fr]">
+        {/* This round: who is in, what they bet, what happened */}
+        <section className={`space-y-5 ${SECTION}`}>
+          <SectionTitle>
+            {phase === "open"
+              ? "Submissions"
+              : phase === "locked"
+                ? "Locked — review, then reveal"
+                : phase === "revealed"
+                  ? gameOver
+                    ? "Final results"
+                    : "Result"
+                  : "Loading"}
+          </SectionTitle>
           {error ? <Banner kind="error">{error}</Banner> : null}
 
           {/* Supporting context for each phase, below the pinned action. */}
           {phase === "open" && (
             <>
-              <div className="text-center">
-                <div className="font-mono text-6xl font-black text-ink">
-                  {/* "—" while the fetch is in flight: an unknown numerator is
-                      honest, a stale one is a lie. */}
-                  {allocsLoading ? "—" : <CountUp value={submitted.submitted} duration={400} />}
-                  <span className="text-ink-subtle"> / {submitted.total}</span>
+              <div>
+                <div className="flex items-end justify-between gap-3">
+                  <div className="font-mono text-6xl font-black leading-none text-ink">
+                    {/* "—" while the fetch is in flight: an unknown numerator is
+                        honest, a stale one is a lie. */}
+                    {allocsLoading ? "—" : <CountUp value={submitted.submitted} duration={400} />}
+                    <span className="text-ink-subtle">/{submitted.total}</span>
+                  </div>
+                  <div className="pb-1 text-right font-display text-xs font-extrabold uppercase tracking-[0.1em] text-ink-muted">
+                    {submitted.total > 0 && submitted.submitted === submitted.total && !allocsLoading
+                      ? "Everyone's in"
+                      : "Submitted"}
+                  </div>
                 </div>
                 <SubmitMeter
                   submitted={allocsLoading ? 0 : submitted.submitted}
                   total={submitted.total}
                 />
-                <div className="mt-1.5 font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
-                  {submitted.total > 0 && submitted.submitted === submitted.total && !allocsLoading
-                    ? "Everyone's in"
-                    : "Submitted"}
-                </div>
               </div>
-              {!isManual && !managerGame ? (
-                <OddsDisclosure supabase={supabase} session={session} />
-              ) : null}
               <CondensedList
                 items={checklist}
                 keyOf={(p) => p.id}
@@ -578,6 +582,10 @@ export function HostRoundControl({
                   </li>
                 )}
               />
+              {/* Rarely used, so it sits last. */}
+              {!isManual && !managerGame ? (
+                <OddsDisclosure supabase={supabase} session={session} />
+              ) : null}
             </>
           )}
 
@@ -775,6 +783,21 @@ export function HostRoundControl({
               vs {Math.round(classLuck.expected * 100)}% expected
             </p>
           ) : null}
+          {/* Column heads, so every row's figures line up under a name. */}
+          <div
+            aria-hidden="true"
+            className={`hidden gap-x-3 px-2 pb-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted sm:grid ${STANDINGS_GRID}`}
+          >
+            <span className="text-center">#</span>
+            <span>Player</span>
+            <span className="flex justify-end gap-3">
+              {showLuck ? <span className="w-14 text-right">Luck</span> : null}
+              {sharpeFor ? <span className="w-12 text-right">Sharpe</span> : null}
+              {feesFor ? <span className="w-14 text-right">Fees</span> : null}
+              <span className="w-[5.75rem] text-right">Last 5</span>
+            </span>
+            <span className="text-right">Wealth</span>
+          </div>
           <CondensedList
             items={standings}
             keyOf={(p) => p.id}
@@ -790,18 +813,45 @@ export function HostRoundControl({
               const rowLuck = luckByPlayer.get(p.id) ?? null;
               const ret = returnsFor?.get(p.id) ?? null;
               return (
-                // Below sm this wraps to two lines — name + money, then luck and
-                // the market chips — instead of overflowing a 375px viewport.
+                // A grid row whose columns line up with the heads above: rank,
+                // name, the stats, wealth. Below sm the stats drop to a second
+                // line under the name instead of overflowing a 375px viewport.
                 <li
                   style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
-                  className={`stagger flex animate-rise flex-wrap items-center justify-between gap-x-3 gap-y-1 ${LEDGER_ROW}`}
+                  className={`stagger grid animate-rise grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 ${STANDINGS_GRID} ${LEDGER_ROW}`}
                 >
-                  <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
-                    <RankBadge rank={index + 1} />
+                  <RankBadge rank={index + 1} />
+                  <span className="flex min-w-0 items-center gap-1 text-ink">
                     <span className="min-w-0 truncate font-semibold">{p.display_name}</span>
                     <ManagePlayerButton supabase={supabase} session={session} player={p} />
                   </span>
-                  <span className="order-2 text-right sm:order-3">
+                  <span className="col-span-3 row-start-2 flex items-center justify-end gap-3 sm:col-span-1 sm:col-start-3 sm:row-start-1">
+                    {showLuck ? (
+                      <span className="flex w-14 justify-end">
+                        <LuckChip luck={rowLuck} expected={expected} />
+                      </span>
+                    ) : null}
+                    {sharpeFor ? (
+                      <span
+                        className="w-12 shrink-0 text-right font-mono text-xs text-ink-muted"
+                        title="Sharpe ratio: return per unit of risk taken, across the years so far"
+                      >
+                        {sharpeText(sharpeFor.get(p.id) ?? null)}
+                      </span>
+                    ) : null}
+                    {feesFor ? (
+                      <span
+                        className="w-14 shrink-0 text-right font-mono text-xs text-loss"
+                        title="fees paid to managers so far"
+                      >
+                        {cost(feesFor.get(p.id) ?? 0)}
+                      </span>
+                    ) : null}
+                    <span className="flex w-[5.75rem] justify-end">
+                      <OutcomeChips outcomes={last5} />
+                    </span>
+                  </span>
+                  <span className="col-start-3 row-start-1 text-right sm:col-start-4">
                     {/* Ink, not green: a balance is not a gain. The chips beside it
                         say which way each round went. */}
                     <span className="block font-mono text-lg font-bold text-ink">
@@ -824,26 +874,6 @@ export function HostRoundControl({
                         ) : null}
                       </span>
                     ) : null}
-                  </span>
-                  <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
-                    <LuckChip luck={rowLuck} expected={expected} />
-                    {sharpeFor ? (
-                      <span
-                        className="shrink-0 font-mono text-xs text-ink-muted"
-                        title="Sharpe ratio: return per unit of risk taken, across the years so far"
-                      >
-                        S {sharpeText(sharpeFor.get(p.id) ?? null)}
-                      </span>
-                    ) : null}
-                    {feesFor ? (
-                      <span
-                        className="shrink-0 font-mono text-xs text-loss"
-                        title="fees paid to managers so far"
-                      >
-                        {cost(feesFor.get(p.id) ?? 0)}
-                      </span>
-                    ) : null}
-                    <OutcomeChips outcomes={last5} />
                   </span>
                 </li>
               );
@@ -960,19 +990,16 @@ function RoundTrack({
     const pct = total > 0 ? Math.min(current / total, 1) * 100 : 0;
     return (
       <div
-        className="mt-4 h-3 overflow-hidden rounded-full border-2 border-ink bg-surface"
+        className="h-2 overflow-hidden rounded-full bg-ink/10"
         role="img"
         aria-label={`Round ${current} of ${total}`}
       >
-        <div className="h-full bg-ink transition-[width] duration-500" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${pct}%` }} />
       </div>
     );
   }
   return (
-    <ol
-      className="mt-4 flex h-3 gap-[3px]"
-      aria-label={`Round ${current} of ${total}`}
-    >
+    <ol className="flex h-2 gap-1" aria-label={`Round ${current} of ${total}`}>
       {Array.from({ length: total }, (_, i) => {
         const n = i + 1;
         const r = byNumber.get(n);
@@ -986,13 +1013,13 @@ function RoundTrack({
                 : "bg-ink"
             : "bg-ink"
           : n === current
-            ? "bg-brand animate-pulse-soft"
-            : "bg-surface";
+            ? "bg-brand-strong animate-pulse-soft"
+            : "bg-ink/10";
         return (
           <li
             key={n}
             title={`${n}${revealed && sharedBasic && r?.market_outcome ? ` · ${r.market_outcome === "good" ? "up" : "down"}` : ""}`}
-            className={`min-w-0 flex-1 rounded-[3px] border-[1.5px] border-ink transition-colors duration-300 ${cls}`}
+            className={`min-w-0 flex-1 rounded-full transition-colors duration-300 ${cls}`}
           />
         );
       })}
@@ -1000,14 +1027,14 @@ function RoundTrack({
   );
 }
 
-/** A chunky meter under the submitted counter that fills as students lock in. */
+/** A slim bar under the submitted counter that fills as students lock in. */
 function SubmitMeter({ submitted, total }: { submitted: number; total: number }) {
   const pct = total > 0 ? Math.min(submitted / total, 1) * 100 : 0;
   return (
-    <div className="mx-auto mt-3 h-4 w-full max-w-xs overflow-hidden rounded-full border-2 border-ink bg-paper-2">
+    <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-ink/10">
       <div
-        className="h-full rounded-r-full border-r-2 border-ink bg-gain transition-[width] duration-500 ease-out"
-        style={{ width: `${pct}%`, borderRightWidth: pct > 0 && pct < 100 ? 2 : 0 }}
+        className="h-full rounded-full bg-gain transition-[width] duration-500 ease-out"
+        style={{ width: `${pct}%` }}
       />
     </div>
   );
