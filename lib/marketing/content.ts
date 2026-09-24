@@ -54,16 +54,17 @@ export const NAV_LINKS = [
 ] as const;
 
 export const HEADER = {
-  joinCta: { label: "Join a game", href: "/join" },
+  /** a text link on wide screens; the phone header's one button (short label) */
+  joinCta: { label: "Join a game", short: "Join", href: "/join" },
   /**
-   * The one amber action in the bar, and it depends on who is looking: hosting
-   * is not offered to someone who cannot host yet, so signed out it invites them
-   * to sign in instead. AccountMenu picks between the two.
+   * The bar's amber action. The label never changes with who is looking — only
+   * where it goes: straight to the dashboard when signed in, via sign-in when
+   * not. A button that renamed itself resized itself, and moved everything
+   * beside it.
    */
-  hostCta: { label: "Host a session", href: "/host" },
-  /** the same action, shortened for phones */
-  hostCtaShort: "Host",
+  hostCta: { label: "Host a session", href: "/host", signedOutHref: "/login?next=%2Fhost" },
   loginCta: { label: "Log in", href: "/login" },
+  menuLabel: { open: "Open menu", close: "Close menu" },
 } as const;
 
 /**

@@ -74,6 +74,24 @@ body {
 }
 
 @layer components {
+  /* The site header's signed-out / signed-in variants. Both are rendered; this
+     shows one. html[data-auth] is set from the auth cookie by an inline script
+     before first paint (lib/auth/auth-hint.ts) and kept true afterwards by the
+     account island (components/marketing/header-account.tsx), so the right
+     variant is on screen from the first frame and nothing jumps into place. */
+  .auth-out {
+    display: flex;
+  }
+  .auth-in {
+    display: none;
+  }
+  html[data-auth="in"] .auth-out {
+    display: none;
+  }
+  html[data-auth="in"] .auth-in {
+    display: flex;
+  }
+
   /* Shared range-slider thumb: amber, ink border, hard offset shadow. */
   .game-slider::-webkit-slider-thumb {
     -webkit-appearance: none;

@@ -1,4 +1,3 @@
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { Hero } from "@/components/marketing/Hero";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { GameModes } from "@/components/marketing/GameModes";
@@ -20,7 +19,6 @@ import { HomeResumeSlot } from "@/components/marketing/HomeResumeSlot";
 export default function Home() {
   return (
     <>
-      <SiteHeader />
       <main className="min-h-dvh">
         {/* "Resume your class" / "Rejoin your game" — nothing for most visitors. */}
         <HomeResumeSlot />

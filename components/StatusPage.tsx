@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { FallbackSiteHeader } from "@/components/marketing/SiteHeaderGate";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Card } from "@/components/ui";
 
@@ -34,7 +34,9 @@ export function StatusPage({
 }) {
   return (
     <>
-      <SiteHeader />
+      {/* The root layout draws the header on site pages; on a game route this
+          supplies it, so the way out is always on screen. */}
+      <FallbackSiteHeader />
       <main className="min-h-dvh bg-paper-2">
         <div className="mx-auto w-full max-w-md px-5 py-16 sm:py-24">
           <Card className="animate-pop-in">

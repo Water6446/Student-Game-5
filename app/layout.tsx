@@ -6,6 +6,8 @@ import { COLOR } from "@/lib/design/colors";
 import { siteUrl } from "@/lib/game/db";
 import { Providers } from "@/components/Providers";
 import { SkipLink } from "@/components/SkipLink";
+import { SiteHeaderGate } from "@/components/marketing/SiteHeaderGate";
+import { AUTH_HINT_SCRIPT } from "@/lib/auth/auth-hint";
 
 // Display: big bold grotesk for headlines, big numbers, button labels and names.
 // "Academy Arcade" — punchy game-show confidence over a finance classroom.
@@ -76,10 +78,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       className={`${display.variable} ${sans.variable} ${editorial.variable} ${mono.variable}`}
+      // The script below adds data-auth before React hydrates; that one
+      // attribute is expected to differ from the server's markup.
+      suppressHydrationWarning
     >
+      <head>
+        {/* Signed in? Read from the cookie's NAME before first paint, so the
+            header draws the right buttons from frame one (lib/auth/auth-hint.ts).
+            A fixed string: nothing from the request is interpolated into it. */}
+        <script dangerouslySetInnerHTML={{ __html: AUTH_HINT_SCRIPT }} />
+      </head>
       <body className="min-h-dvh font-sans">
         <SkipLink />
-        <Providers>{children}</Providers>
+        <Providers>
+          {/* Once, here, so it survives navigation instead of being rebuilt by
+              every page. The game screens opt out (lib/site-chrome.ts). */}
+          <SiteHeaderGate />
+          {children}
+        </Providers>
         <Analytics />
       </body>
     </html>

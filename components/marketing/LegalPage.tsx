@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Eyebrow } from "@/components/marketing/primitives";
 
@@ -25,7 +24,6 @@ export function LegalPage({
 }) {
   return (
     <>
-      <SiteHeader />
       <main className="min-h-dvh">
         <article className="mx-auto w-full max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
           <header>

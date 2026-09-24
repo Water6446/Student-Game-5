@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Eyebrow } from "@/components/marketing/primitives";
 import { JoinForm, JoinResume } from "@/components/JoinForm";
@@ -25,7 +24,6 @@ export const metadata: Metadata = { title: "Join a game" };
 export default function JoinPage() {
   return (
     <>
-      <SiteHeader />
       <main className="min-h-dvh">
         <div className="mx-auto w-full max-w-xl px-5 py-10 sm:px-8 sm:py-14">
           <header>

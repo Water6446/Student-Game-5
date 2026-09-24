@@ -3,7 +3,6 @@
 import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SignInCard } from "@/components/auth/SignInCard";
 import { Banner, Skeleton } from "@/components/ui";
@@ -25,7 +24,6 @@ import { LOGIN } from "@/lib/marketing/content";
 export default function LoginPage() {
   return (
     <>
-      <SiteHeader />
       <main className="min-h-dvh bg-paper-2">
         <Suspense
           fallback={

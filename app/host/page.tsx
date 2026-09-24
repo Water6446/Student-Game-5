@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useProfile } from "@/components/use-profile";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Eyebrow } from "@/components/marketing/primitives";
 import { NewSessionPanel } from "@/components/host/CreateSessionForm";
@@ -72,7 +71,6 @@ export default function HostPage() {
   if (loading || !allowed) {
     return (
       <>
-        <SiteHeader />
         <main className="min-h-dvh">
           <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
             <SkeletonCards label={loading ? "Loading your dashboard" : "Taking you to sign-in"} />
@@ -86,7 +84,6 @@ export default function HostPage() {
 
   return (
     <>
-      <SiteHeader />
       <main className="min-h-dvh">
         <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
           <header>

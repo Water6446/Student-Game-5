@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Card } from "@/components/ui";
 import { AUTH_FAILURE_COPY, parseAuthFailure } from "@/lib/auth/errors";
@@ -22,7 +21,6 @@ export default function AuthError({
 
   return (
     <>
-      <SiteHeader />
       <main className="min-h-dvh bg-paper-2">
         <div className="mx-auto w-full max-w-md px-5 py-12 sm:py-16">
           <Card className="animate-pop-in">

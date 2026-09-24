@@ -36,7 +36,7 @@ and the "later" list in [§7](#part-7--whats-left).
 | "Confirm it's you" before changing email/password/Google or deleting the account | `components/account/ConfirmIdentity.tsx`, `lib/auth/reauth.ts` |
 | Sign-in / register card, Google, reset page | `components/auth/SignInCard.tsx`, `app/auth/reset/` |
 | The one login URL | `app/login/` |
-| Account dropdown in the site header | `components/marketing/AccountMenu.tsx` |
+| Account menu in the site header (avatar menu; the phone menu's account section) | `components/marketing/header-account.tsx`, `SiteHeader.tsx` |
 | Account page (profile, identities, history, export, delete) | `app/account/`, `components/account/` |
 | "Keep your results?" prompt | `components/student/SaveResultsPrompt.tsx` |
 | Who may host (and the testing bypass flag) | `lib/auth/can-host.ts` |

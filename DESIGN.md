@@ -343,6 +343,23 @@ tab and the projector tab use `localStorage` + a `storage` event listener (see
 **Active nav/step.** Active tab = solid ink fill + cream text + pressed offset;
 inactive = `bg-surface` + ink border + shadow. Drive via conditional classes.
 
+**Site header** (`components/marketing/SiteHeader.tsx`). A solid `bg-surface`
+bar with a `border-b-2 border-ink` edge, sticky, 64px. Rules that keep it still:
+- **Mounted once**, in the root layout (`SiteHeaderGate`), never per page — so
+  it survives navigation. Game screens (`/play/<id>`, `/host/<id>`, the
+  projector) opt out in `lib/site-chrome.ts`. Pages do not render it.
+- **Wide screens:** a `1fr auto 1fr` grid — wordmark, section links at the true
+  centre, actions right. **Below `lg`:** wordmark, one amber action (Join — the
+  phone audience is students) and a menu button opening a sheet with every link.
+- **Nothing changes size with who is looking.** Both auth variants are rendered
+  and CSS shows one (`.auth-out` / `.auth-in` off `html[data-auth]`, set before
+  first paint). Keep them the same width; labels do not change with state.
+- **No link hides on its own page.** Text links show current with the amber
+  underline hover uses; the amber pill shows current as the active-nav pattern
+  above. Mark it with `aria-current`.
+- Anything needing supabase-js loads as an async chunk behind a same-size
+  skeleton (`header-account.tsx` / `header-account-skeletons.tsx`).
+
 **Loading / empty states.** Never ship a bare spinner only; use a short, on-brand
 line (`text-ink-subtle`) and, for data, a helpful empty state ("appears after the
 first round"). Prefer skeletons for >300ms loads.
@@ -396,6 +413,8 @@ components/ui.tsx         Card, Button, Field, TextInput, Select, Toggle, Banner
 components/Toast.tsx      useToast() — action confirmations
 components/ConfirmDialog.tsx  useConfirm() — the styled replacement for window.confirm
 components/StatusPage.tsx 404 / error / not-found dead ends, in site chrome
+components/marketing/SiteHeader.tsx   the site header (see §8); SiteHeaderGate.tsx mounts it; header-account.tsx is its lazy account menu
+lib/site-chrome.ts        which routes show the header; current-page matching
 components/ConnectionBanner.tsx  offline / realtime-down pill for live screens
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti

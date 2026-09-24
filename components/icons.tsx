@@ -220,6 +220,17 @@ export function Maximize(props: IconProps) {
   );
 }
 
+/** Three bars: the phone header's menu button. */
+export function Menu(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </Base>
+  );
+}
+
 export function X(props: IconProps) {
   return (
     <Base {...props}>

@@ -150,6 +150,10 @@ browser to Supabase so GoTrue sees the real client IP.
 
 - `app/globals.css` body has a tiled-dot background; some headless screenshot
   tools hang on it (renders fine in real browsers).
+- The site header is mounted **once**, in `app/layout.tsx` (`SiteHeaderGate`) —
+  pages must not render `<SiteHeader />` themselves. Game routes opt out in
+  `lib/site-chrome.ts`; `StatusPage` supplies it there. Its signed-in/out
+  variants switch on `html[data-auth]` (DESIGN.md §8 "Site header").
 - The host **"Skip email — sign in for testing"** bypass is **live and wanted**
   — the game is still in its testing phase. It sits behind
   `NEXT_PUBLIC_ALLOW_ANON_HOST`, which defaults to **on**, so the button renders

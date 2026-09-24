@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useProfile } from "@/components/use-profile";
@@ -123,7 +122,6 @@ export default function AccountPage() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SiteHeader />
       <main className="min-h-dvh">
         <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14">{children}</div>
       </main>
