@@ -8,9 +8,12 @@ import type { SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
 import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
-import { Banner, Button, buttonClasses } from "@/components/ui";
+import { Banner, Button } from "@/components/ui";
 import { FlapText, Panel, PanelGrid, StatStrip, type Stat } from "@/components/terminal";
-import { Masthead } from "@/components/Masthead";
+import { Masthead, TOOL, TOOL_DANGER } from "@/components/Masthead";
+import { SettingsMenu } from "@/components/SettingsMenu";
+import { SessionCrumbs } from "@/components/host/SessionCrumbs";
+import { LineScore, lineScoreKind } from "@/components/host/LineScore";
 import { ArrowRight, Check, Monitor, Trash, Users } from "@/components/icons";
 import { CondensedList } from "@/components/CondensedList";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -98,30 +101,31 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
         title="Lobby"
         status={
           <span className="font-editorial text-lg italic text-ink-muted">
-            {session.config.num_rounds} {isManager(session.config) ? "years" : "rounds"} · late
-            joiners {session.config.allow_late_join ? "can still get in" : "locked out once it starts"}
+            Late joiners {session.config.allow_late_join ? "can still get in" : "are locked out once it starts"}
           </span>
         }
+        crumbs={<SessionCrumbs session={session} stage="Lobby" />}
         tools={
           <>
             <Link
               href={`/host/${session.id}/present`}
               target="_blank"
-              className={buttonClasses("secondary", "sm")}
+              className={TOOL}
               title="Open the projector view in a new tab"
             >
               <Monitor /> <span className="hidden sm:inline">Present</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="sm"
+            <SettingsMenu className={TOOL} />
+            <button
+              type="button"
               onClick={deleteSession}
               disabled={busy}
               aria-label="Delete this session"
-              className="min-w-[44px] text-loss hover:bg-loss-soft hover:text-loss"
+              title="Delete this session"
+              className={TOOL_DANGER}
             >
               <Trash /> <span className="hidden sm:inline">Delete</span>
-            </Button>
+            </button>
           </>
         }
         action={
@@ -142,7 +146,16 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
             )}
           </Button>
         }
-      />
+      >
+        {/* The empty scoreboard: how long the game will run, before it does. */}
+        <LineScore
+          total={session.config.num_rounds}
+          current={0}
+          phase="open"
+          rounds={[]}
+          kind={lineScoreKind(session.config)}
+        />
+      </Masthead>
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
       <StatStrip items={lobbyStats(session.config, players.length)} />
       <PanelGrid className="mt-6 lg:grid-cols-2">
@@ -220,13 +233,15 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
               as="ul"
               options={LOBBY_CONDENSE}
               moreNoun="players"
-              className="grid max-h-[46vh] flex-1 grid-cols-2 content-start gap-x-6 overflow-y-auto sm:grid-cols-3"
+              // a sign-in sheet: ruled cells, filling in as the room arrives
+              className="grid max-h-[46vh] grid-cols-2 content-start overflow-y-auto border-l-[1.5px] border-t-[1.5px] border-ink/15 sm:grid-cols-3"
+              gapItemClassName="border-b-[1.5px] border-r-[1.5px] border-ink/15"
               gapClassName="font-editorial text-sm italic text-ink-muted hover:text-ink"
               toggleClassName="mt-2 font-editorial text-sm italic text-ink-muted hover:text-ink"
               renderItem={(p, i) => (
-                // A printed roster: a colour mark and a name on a ruled line,
+                // A printed roster: a colour mark and a name in a ruled cell,
                 // not a pill per student.
-                <li className="flex min-w-0 animate-pop-in items-center gap-2 border-b-[1.5px] border-ink/10 py-1 font-semibold text-ink">
+                <li className="flex min-w-0 animate-pop-in items-center gap-2 border-b-[1.5px] border-r-[1.5px] border-ink/15 py-1 pl-2.5 pr-1 font-semibold text-ink">
                   <span
                     aria-hidden="true"
                     className={`h-2.5 w-2.5 shrink-0 rounded-[2px] ${

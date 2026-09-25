@@ -264,7 +264,7 @@ Tailwind keyframes/animations; everything below is gated by a global
 | `animate-ping` | The live dot on the host's "Open" status pill. |
 | `animate-spin-slow` | The sunburst rays behind a projector reveal takeover. |
 | `animate-fade-in` | Dialog backdrops. |
-| `animate-ticker` | The ticker tape sliding left, forever; pauses under the pointer or focus, stands still under reduced motion (§8 "The trading floor"). |
+| `animate-ticker` | The ticker tape sliding left, forever — only when Settings → Fun turns it on; pauses under the pointer or focus, stands still under reduced motion (§8 "The trading floor"). |
 | `animate-flap` | A split-flap tile turning over to a new character; tiles land in turn (`animationDelay: i * 70ms`). Keyed on the character, so only changed tiles flip. |
 | `CountUp` / `useCountUp` | **Numbers roll, they don't jump.** A student's new wealth rolls from the pre-round balance; the final wealth from the starting wealth; the projector's balances and the submitted counters roll on every change. Display only — screen readers get the final value once. |
 
@@ -306,11 +306,16 @@ Build screens from these; they encode the tokens so restyles cascade. Everything
 gets `border-2 border-ink`; only cards and the headline button carry
 `shadow-card` at rest (§4 "Elevation budget").
 
-- **`Masthead`** (`components/Masthead.tsx`) — the paper band across the top
-  of every game screen: back link and secondary tools on the first line; the
-  big display title, a text status, and the screen's **one primary action**
-  (top right, full width under the title on a phone) on the second; an
-  optional strip under them (the round progress). One per screen, always.
+- **`Masthead`** (`components/Masthead.tsx`) — the top of every host game
+  screen, in two layers. The **toolbar**: a cream strip with its own ink rule,
+  the back link and the session crumbs (`Session KXQ7P / Basic / Live`,
+  `SessionCrumbs`) on the left, the secondary tools as full-height cells split
+  by hairlines on the right (`TOOL` / `TOOL_DANGER`: Present, Settings, Finish
+  early, Delete — icons only on a phone). Then the **title band**: warm paper,
+  the big display title, a text status, the screen's **one primary action**
+  (top right, full width under the title on a phone), and a strip under them
+  (the line score). Housekeeping never sits beside the game's title. One per
+  screen, always.
 - **`Section`** — the game screens' container: ink rule, `SectionTitle`
   (with optional `info`, `icon`, `action`), content on the page. See §4.
 - **`Card`** — `rounded-2xl border-2 border-ink bg-surface p-6 shadow-card`.
@@ -430,34 +435,79 @@ frame instead of floating in bubbles:
   top of a screen, under the masthead: tracked label, mono figure, one quiet
   line of context (`+355% since the start`, `8/8 submitted`). Two per row on a
   phone (an odd last cell spans the row), all in one row from `sm`. `tone`
-  colours a figure only when it is a verdict.
-- **`Ticker` — a news channel's tape.** The latest round's results running
-  across an ink strip: the market's verdict, class average, average move,
-  leader, best and worst move, dollars at risk, wipe-outs
-  (`components/host/round-feed.ts` derives them — pure, humans only, from the
-  same rows as the standings, so the tape never disagrees with the table). Two
-  copies slide one copy's width, so it loops without a seam; longer tapes run
-  longer (`max(24, n × 6)s`), so the speed stays readable. It **pauses under
-  the pointer or keyboard focus** (WCAG 2.2.2), stands still under reduced
-  motion, and is a summary — nothing lives only on the tape. Up/down use
-  `gain-bright`/`loss-bright` with arrows; amber diamonds separate items. On the
-  control screen it runs under the masthead; on the projector, along the
-  bottom edge (`size="lg"`).
+  colours a figure only when it is a verdict or a rate; a **balance** (class
+  average, median) stays ink and its change line takes the colour
+  (`subTone`). `spark` adds a `Sparkline` beside the figure — a muted line
+  over a dashed baseline at the first value, the latest point dotted green or
+  red, values in its tooltip — from `md` up, and only in strips of five or
+  fewer (a sixth cell leaves no room; the figure wins).
+- **`Ticker` — a news channel's tape.** The latest round's results on an ink
+  strip: the market's verdict, class average, average move, leader, best and
+  worst move, dollars at risk, wipe-outs (`components/host/round-feed.ts`
+  derives them — pure, humans only, from the same rows as the standings, so the
+  tape never disagrees with the table). **It stands still by default**: a
+  moving strip competes with the standings for the eye. Still, it is a row of
+  ruled cells led by the verdict on amber, sliding sideways by hand on a
+  phone, and it leaves off the figures the key-figure strip already shows
+  (`TickerItem.secondary`). **Scrolling is a Fun setting** (below): two copies
+  slide one copy's width, so it loops without a seam; longer tapes run longer
+  (`max(24, n × 6)s`); it **pauses under the pointer or keyboard focus** (WCAG
+  2.2.2) and stands still under reduced motion. Up/down use
+  `gain-bright`/`loss-bright` with arrows. On the control screen it runs under
+  the masthead; on the projector, along the bottom edge (`size="lg"`). It is a
+  summary — nothing lives only on the tape.
 - **`FlapText` — a station's split-flap board.** A code or counter shown as
   characters on dark tiles with a hinge line; changed tiles turn over in turn.
   Used for the join code (lobby, projector lobby and header) and the
   projector's round counter. `onInk` lightens the tiles for an ink panel.
   `aria-label` carries the whole string; the tiles are hidden.
 
+- **`LineScore` — a baseball line score** (`components/host/LineScore.tsx`).
+  The game's progress, in the host masthead (control screen, lobby, summary)
+  and at the foot of the projector's "This round" panel (`size="lg"`): one
+  ruled column per round, its number over what the market did — green ↑ / red
+  ↓ for a shared basic market, the index's return for a manager year, "3/4"
+  assets up for a portfolio, a dot for independent draws — row labels on the
+  left and a **Total** column on the right, as a scoreboard has. The round in
+  play is amber (a pulsing dot while open, a lock once locked) and its number
+  is printed in reverse. The lobby shows it empty: how long the game will run.
+  Past a dozen rounds a phone keeps the colours and drops the figures; past 30
+  it falls back to slim segments, past 40 to one bar.
+- **Sign-in sheets.** A roster that fills in — the lobby's players, the
+  control screen's submissions — is a grid of ruled cells
+  (`border-l border-t` on the list, `border-r border-b` on each cell, hairline
+  ink), not a column of lines or a wall of pills. A submitted cell fills
+  `bg-gain-soft` with a green check; waiting ones sort first, so the gaps are
+  the first thing the host reads.
+
 **Standings are a timing tower** (F1's, on a broadcast). Columns: position (a
 `RankBadge`), **movement** since the last round (`▲2` green / `▼1` red / a dash,
 from `rankMovement()` in `lib/game/results.ts`), a **colour key** bar that
 matches the player's line on the wealth chart (`seriesColors()` in
 `WealthChart.tsx` — the table is the chart's legend), name, stats, **gap to the
-leader** (`−$1,130`, or "Leader"), then wealth. On a phone the tower collapses
+leader** (`−$1,130`, or "Leader"), then wealth — the manager game drops Gap,
+since its wealth cell already carries the year's and the annualized return, and
+its Sharpe and fee columns need the room. On a phone the tower collapses
 to two lines and shows movement beside the name only when there was one. The
 student's own row carries the tower's highlight: a `bg-play-soft` band with a
 4px `play` bar on its left edge.
+
+**The console layout.** The host control screen reads like the projector
+board: this round's panel over the wealth chart on the left (`5fr`), the
+standings tower down the full height on the right (`7fr`), the history
+across the foot. The host dashboard follows the same build under the site
+header: a paper title band, a key-figure strip (sessions, live now, players,
+rounds played, last game), then one frame — the live session across the top,
+the game picker as three ruled columns, your sessions beside how to run one.
+
+**Fun settings** (`components/SettingsMenu.tsx`, `components/use-fun.ts`).
+The gear in the toolbar (and the projector header) opens a small panel whose
+"Fun" section holds the flourishes a host can switch per device: **Scrolling
+ticker tape** (off by default), **Flip-board tiles** and **Confetti** (on).
+The same switches sit on the account page. A flourish never carries
+information that is not on the screen without it, so switching one off loses
+nothing. Each reads `useFun(name)`; the primitive checks it itself (`Ticker`,
+`FlapText`, `Confetti`), so callers do nothing.
 
 **Primary-action placement.** Keep the main CTA pinned to the same spot across a
 state machine so sequential actions are clickable in place. On every game
@@ -506,15 +556,15 @@ band filling its panel). Colour does the work; there is no rounded box inside
 the frame.
 
 **Rosters, not pill walls.** Names in the lobby — the host's and the
-projector's — are a ruled list in columns: a small colour square, the name
-(and, for the host, the edit pencil), not a chip per student.
+projector's — are ruled: a small colour square, the name (and, for the host,
+the edit pencil), in a sign-in sheet's cells on the host lobby and ruled
+columns on the projector; never a chip per student. A status beside a name or
+a session (ACTIVE / FINISHED / LOBBY) is coloured text with a dot, not a pill.
 
 **Where the game is.** Every live screen says the round: the student's ink pill
-carries a thin amber progress track under "Round 6 / 10"; the host's header
-carries the **round track** in its masthead — slim borderless segments, one
-per round, green/red once a shared basic market resolves (ink otherwise),
-amber for the round in play, faint ink for rounds to come (a single bar past
-40 rounds). Progress bars are slim and borderless everywhere (the submission
+carries a thin amber progress track under "Round 6 / 10"; the host's
+masthead carries the **line score** (above) — every round, what it did, and
+the total. Progress bars are slim and borderless everywhere (the submission
 meter too): a bar is data, not an object.
 
 **Money & data.** Format via a single `money()` helper (`$1,234.56`,
@@ -547,8 +597,10 @@ bounded `max-h-[…] overflow-y-auto` so primary actions never get pushed off-sc
 — assume 100+ students.
 
 **Cross-tab host preferences.** Host UI prefs that must sync between the control
-tab and the projector tab use `localStorage` + a `storage` event listener (see
-`useShowBots`), not React state.
+tab and the projector tab use `useSyncedPreference`: `localStorage` + a
+`storage` event listener for other tabs, plus a same-tab window event so a
+settings menu and the component it controls agree without sharing state (see
+`useShowBots`, `useFun`). Not React state.
 
 **Active nav/step.** Active tab = solid ink fill + cream text + pressed offset;
 inactive = `bg-surface` + ink border + shadow. Drive via conditional classes.
@@ -603,9 +655,11 @@ verdict block, the podium.
   starting wealth, confetti — then places 4+ in a "The rest of the class"
   panel). Big type throughout (`clamp()` sizes).
 - **The live board:** "This round" (status, with a split-flap round counter
-  in its strip) over the wealth chart on the left; the standings tower
-  spanning both rows on the right, with the class's market luck in its strip;
-  the ticker tape under all of it.
+  in its strip and the line score along its foot) over the wealth chart on
+  the left; the standings tower spanning both rows on the right, with the
+  class's market luck in its strip; the ticker tape under all of it. The
+  header carries the settings gear, so the host can set the tape running
+  from the projector itself.
 - The live leaderboard shows each player's **change this round** (a delta chip),
   not the market's arrow: in a shared up-market an all-safe player gained
   nothing, and a player can lose money in a good round.
@@ -647,7 +701,12 @@ components/RankBadge.tsx         the standings rank (amber block for 1st, bold i
 components/ledger.ts             SECTION (open-section rule), LEDGER / LEDGER_ROW (ruled lists)
 components/Masthead.tsx          the paper band atop every game screen: title, status, tools, the one action
 components/terminal.tsx          the trading floor: PanelGrid / Panel, StatStrip, Ticker, FlapText (§8)
-components/host/round-feed.ts    roundFeed() + tickerItems(): the latest round's figures for the tape and strips
+components/host/round-feed.ts    roundFeed() + tickerItems(): the latest round's figures for the tape and strips (+ the class-average sparkline)
+components/host/LineScore.tsx    the line score: every round's result in ruled columns, with a total
+components/host/SessionCrumbs.tsx  the toolbar's "Session KXQ7P / Basic / Live"
+components/host/HostDashboard.tsx  the host dashboard's body (app/host/page.tsx only loads the data)
+components/SettingsMenu.tsx      the gear menu and its Fun section (FunSettingsList, also on /account)
+components/use-fun.ts            the Fun settings: ticker scroll, flip tiles, confetti — per device, synced across tabs
 components/OutcomeChips.tsx      outcome history as ink-edged up/down tiles
 components/icons.tsx      inline SVG icon set
 components/Confetti.tsx   reduced-motion-aware celebratory confetti

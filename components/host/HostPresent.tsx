@@ -30,8 +30,10 @@ import { money, signedMoney, signedPct } from "@/lib/game/format";
 import { CountUp } from "@/components/ui";
 import { FlapText, Panel, PanelGrid, Ticker } from "@/components/terminal";
 import { roundFeed, tickerItems } from "@/components/host/round-feed";
+import { LineScore, lineScoreKind } from "@/components/host/LineScore";
 import { seriesColors } from "@/components/host/WealthChart";
 import { Confetti } from "@/components/Confetti";
+import { SettingsMenu } from "@/components/SettingsMenu";
 import { ManagerProspectus } from "@/components/ManagerProspectus";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { ArrowUp, ArrowDown, Coins, Lock, Users, Shuffle, Maximize, X, Trophy } from "@/components/icons";
@@ -98,6 +100,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
             <FlapText text={session.join_code} className="text-xl" />
           </span>
         ) : null}
+        <SettingsMenu className="flex h-10 items-center gap-2 rounded-xl border-2 border-ink bg-surface px-3 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink" />
         <button
           type="button"
           onClick={toggleFs}
@@ -270,7 +273,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     [history.rounds, history.allocations],
   );
   const ticker = useMemo(
-    () => tickerItems(session, roundFeed(players, history.rounds, history.allocations)),
+    () => tickerItems(session, roundFeed(session, players, history.rounds, history.allocations)),
     [session, players, history.rounds, history.allocations],
   );
 
@@ -322,7 +325,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
         <Panel
           size="lg"
           title={manager ? "This year" : "This round"}
-          bodyClassName="flex flex-1 flex-col items-center justify-center px-8 py-8 text-center"
+          bodyClassName="flex flex-1 flex-col px-8 pb-6 pt-8 text-center"
           action={
             // The round counter as a split-flap board: it flips when the round turns.
             <span className="flex items-center gap-2 font-display text-xs font-extrabold uppercase tracking-[0.12em] text-ink-muted">
@@ -332,66 +335,79 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
             </span>
           }
         >
-          {phase === "loading" ? (
-            /* One fetch round-trip while the next round loads. Showing the
-               previous round's outcome under a new round number is the bug. */
-            <p className="mt-6 animate-pulse-soft font-editorial text-3xl italic text-ink-muted">
-              Getting round {session.current_round} ready…
-            </p>
-          ) : phase === "open" ? (
-            <>
-              <p className="mt-6 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
-                Place your bets
+          <div className="flex flex-1 flex-col items-center justify-center">
+            {phase === "loading" ? (
+              /* One fetch round-trip while the next round loads. Showing the
+                 previous round's outcome under a new round number is the bug. */
+              <p className="mt-6 animate-pulse-soft font-editorial text-3xl italic text-ink-muted">
+                Getting round {session.current_round} ready…
               </p>
-              <div className="mt-8 font-mono text-[clamp(4rem,12vw,9rem)] font-black leading-none text-ink">
-                {/* "—" while the fetch is in flight: an unknown numerator is
-                    honest, a stale one is a lie. */}
-                {allocsLoading ? "—" : <CountUp value={submitted} duration={400} />}
-                <span className="text-ink-muted">/{humanCount}</span>
-              </div>
-              <div className="mt-6 h-6 w-full max-w-md overflow-hidden rounded-full border-[3px] border-ink bg-surface">
-                <div
-                  className="h-full bg-gain transition-[width] duration-700 ease-out"
-                  style={{
-                    width: `${humanCount > 0 && !allocsLoading ? Math.min(submitted / humanCount, 1) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-              <p className="mt-3 font-display text-2xl font-extrabold uppercase tracking-wide text-ink-muted">
-                {humanCount > 0 && submitted === humanCount && !allocsLoading ? "Everyone's in" : "locked in"}
-              </p>
-            </>
-          ) : phase === "locked" ? (
-            <>
-              <p className="mt-8 inline-flex animate-stamp items-center gap-4 rounded-2xl border-[3px] border-ink bg-brand px-8 py-3 font-display text-4xl font-black uppercase tracking-tight text-ink shadow-lift sm:text-5xl">
-                <Lock /> Bets are locked
-              </p>
-              <p className="mt-4 animate-pulse-soft font-editorial text-2xl italic text-ink-muted">
-                Revealing the market…
-              </p>
-            </>
-          ) : manager && round?.market_return != null ? (
-            /* Manager years have no good/bad outcome — the field is null, and
-               reading it here shouted "Market down!" over every up year. */
-            <RoundOutcomeBig
-              good={Number(round.market_return) >= 0}
-              pct={Number(round.market_return)}
+            ) : phase === "open" ? (
+              <>
+                <p className="mt-6 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
+                  Place your bets
+                </p>
+                <div className="mt-8 font-mono text-[clamp(4rem,12vw,9rem)] font-black leading-none text-ink">
+                  {/* "—" while the fetch is in flight: an unknown numerator is
+                      honest, a stale one is a lie. */}
+                  {allocsLoading ? "—" : <CountUp value={submitted} duration={400} />}
+                  <span className="text-ink-muted">/{humanCount}</span>
+                </div>
+                <div className="mt-6 h-6 w-full max-w-md overflow-hidden rounded-full border-[3px] border-ink bg-surface">
+                  <div
+                    className="h-full bg-gain transition-[width] duration-700 ease-out"
+                    style={{
+                      width: `${humanCount > 0 && !allocsLoading ? Math.min(submitted / humanCount, 1) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                <p className="mt-3 font-display text-2xl font-extrabold uppercase tracking-wide text-ink-muted">
+                  {humanCount > 0 && submitted === humanCount && !allocsLoading ? "Everyone's in" : "locked in"}
+                </p>
+              </>
+            ) : phase === "locked" ? (
+              <>
+                <p className="mt-8 inline-flex animate-stamp items-center gap-4 rounded-2xl border-[3px] border-ink bg-brand px-8 py-3 font-display text-4xl font-black uppercase tracking-tight text-ink shadow-lift sm:text-5xl">
+                  <Lock /> Bets are locked
+                </p>
+                <p className="mt-4 animate-pulse-soft font-editorial text-2xl italic text-ink-muted">
+                  Revealing the market…
+                </p>
+              </>
+            ) : manager && round?.market_return != null ? (
+              /* Manager years have no good/bad outcome — the field is null, and
+                 reading it here shouted "Market down!" over every up year. */
+              <RoundOutcomeBig
+                good={Number(round.market_return) >= 0}
+                pct={Number(round.market_return)}
+              />
+            ) : portfolio && round?.market_outcomes ? (
+              <PortfolioOutcomeBig config={session.config} outcomes={round.market_outcomes} />
+            ) : shared && !portfolio ? (
+              <RoundOutcomeBig good={round?.market_outcome === "good"} />
+            ) : (
+              <>
+                <Shuffle className="mt-6 text-5xl text-ink-muted" />
+                <p className="mt-4 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
+                  Results are in
+                </p>
+                <p className="mt-2 font-editorial text-2xl italic text-ink-muted">
+                  Each player drew their own market{portfolio ? "s" : ""}.
+                </p>
+              </>
+            )}
+          </div>
+          {/* The game so far, as a scoreboard along the foot of the panel. */}
+          <div className="mt-8 text-left">
+            <LineScore
+              size="lg"
+              total={session.config.num_rounds}
+              current={session.current_round}
+              phase={phase}
+              rounds={history.rounds}
+              kind={lineScoreKind(session.config)}
             />
-          ) : portfolio && round?.market_outcomes ? (
-            <PortfolioOutcomeBig config={session.config} outcomes={round.market_outcomes} />
-          ) : shared && !portfolio ? (
-            <RoundOutcomeBig good={round?.market_outcome === "good"} />
-          ) : (
-            <>
-              <Shuffle className="mt-6 text-5xl text-ink-muted" />
-              <p className="mt-4 font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
-                Results are in
-              </p>
-              <p className="mt-2 font-editorial text-2xl italic text-ink-muted">
-                Each player drew their own market{portfolio ? "s" : ""}.
-              </p>
-            </>
-          )}
+          </div>
         </Panel>
 
         <Panel size="lg" title={`Wealth over ${manager ? "years" : "rounds"}`} className="lg:row-start-2" bodyClassName="p-3 sm:p-4">

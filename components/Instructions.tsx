@@ -60,19 +60,28 @@ const CONTENT: Record<Role, RoleContent> = {
   },
 };
 
-export function Instructions({ role, className }: { role: Role; className?: string }) {
+export function Instructions({
+  role,
+  className,
+  bare,
+}: {
+  role: Role;
+  className?: string;
+  /** inside a Panel, whose title strip already names it: no rule, no heading */
+  bare?: boolean;
+}) {
   const [showMore, setShowMore] = useState(false);
   const content = CONTENT[role];
 
   return (
-    <div
-      className={`border-t-[3px] border-ink pt-3 text-left ${className ?? ""}`}
-    >
-      <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
-        {content.heading}
-      </h2>
+    <div className={`text-left ${bare ? "" : "border-t-[3px] border-ink pt-3"} ${className ?? ""}`}>
+      {bare ? null : (
+        <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+          {content.heading}
+        </h2>
+      )}
 
-      <ul className="mt-4 space-y-2.5">
+      <ul className={bare ? "space-y-2.5" : "mt-4 space-y-2.5"}>
         {content.simple.map((line, i) => (
           <li key={line} className="flex gap-3 text-ink">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-brand text-xs font-bold text-ink">

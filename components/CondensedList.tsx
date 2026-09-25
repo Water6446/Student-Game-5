@@ -30,6 +30,7 @@ export function CondensedList<T>({
   as = "ol",
   className,
   gapClassName,
+  gapItemClassName,
   toggleClassName,
   moreNoun,
 }: {
@@ -43,6 +44,8 @@ export function CondensedList<T>({
   className?: string;
   /** styling hook so the projector can use bigger type than the control panel */
   gapClassName?: string;
+  /** the gap row's own <li>, for a list whose rows carry their own rules */
+  gapItemClassName?: string;
   toggleClassName?: string;
   /** appended to the expander label: "+92 more players". Omit for "+92 more". */
   moreNoun?: string;
@@ -72,7 +75,7 @@ export function CondensedList<T>({
             // Keyed per gap: keepIndices can produce more than one.
             // col-span-full matters when the list is a grid (the host's
             // submitted checklist); it is inert everywhere else.
-            <li key={`gap-${i}`} className="col-span-full basis-full text-center">
+            <li key={`gap-${i}`} className={clsx("col-span-full basis-full text-center", gapItemClassName)}>
               <button
                 type="button"
                 onClick={() => setShowAll(true)}

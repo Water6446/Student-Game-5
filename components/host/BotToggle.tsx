@@ -11,10 +11,13 @@ export function BotToggle({
   showBots,
   onToggle,
   title = "Show benchmark bots in the standings, chart and allocations",
+  className = "inline-flex min-h-[36px] items-center gap-2 rounded-lg px-1.5 text-xs font-bold text-ink transition hover:bg-ink/[0.05]",
 }: {
   showBots: boolean;
   onToggle: (v: boolean) => void;
   title?: string;
+  /** the button's look: compact beside a panel title by default, a toolbar cell in the masthead */
+  className?: string;
 }) {
   return (
     <button
@@ -23,7 +26,7 @@ export function BotToggle({
       aria-checked={showBots}
       aria-label="Show benchmark bots"
       onClick={() => onToggle(!showBots)}
-      className="inline-flex min-h-[36px] items-center gap-2 rounded-lg px-1.5 text-xs font-bold text-ink transition hover:bg-ink/[0.05]"
+      className={className}
       title={title}
     >
       <Bot className="text-sm text-ink-muted" />

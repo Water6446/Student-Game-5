@@ -18,7 +18,6 @@ import {
   ChipRow,
   Field,
   InfoTip,
-  SectionTitle,
   Select,
   TextInput,
   Toggle,
@@ -94,16 +93,9 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
 
   if (gameType === null) {
     return (
-      <div>
-        <SectionTitle
-          info="Pick which simulation to run, then tune its settings."
-          infoLabel="About hosting a game"
-        >
-          Host a game
-        </SectionTitle>
-        {/* Three across on the dashboard's width; two-up left the manager
-            game alone on a row with an empty slot beside it. */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      // Sits edge to edge in the dashboard's "Start a game" panel, which
+      // carries the title: three ruled columns, one per game, each a button.
+      <div className="grid divide-y-[1.5px] divide-ink/15 sm:grid-cols-3 sm:divide-x-[1.5px] sm:divide-y-0">
           <GameCard
             title="Basic Risk Game"
             tagline="One risky bet vs. the safe pot"
@@ -137,13 +129,14 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
             icon={<Trophy />}
             onClick={() => setGameType("manager")}
           />
-        </div>
       </div>
     );
   }
 
   return (
-    <CreateSessionForm supabase={supabase} gameType={gameType} onBack={() => setGameType(null)} />
+    <div className="p-4 sm:p-6">
+      <CreateSessionForm supabase={supabase} gameType={gameType} onBack={() => setGameType(null)} />
+    </div>
   );
 }
 
@@ -164,9 +157,9 @@ function GameCard({
     <button
       type="button"
       onClick={onClick}
-      // An open column under a rule, like a prospectus entry — the whole column
-      // is the button, and it takes the amber band on hover.
-      className="group flex flex-col border-t-[3px] border-ink px-1 pb-3 pt-4 text-left transition-colors hover:bg-brand-soft/60"
+      // A ruled column, like a prospectus entry — the whole column is the
+      // button, and it takes the amber band on hover.
+      className="group flex flex-col px-5 pb-5 pt-5 text-left transition-colors hover:bg-brand-soft/60 focus-visible:bg-brand-soft/60"
     >
       <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-ink bg-brand text-xl text-ink transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-105">
         {icon}

@@ -1,5 +1,5 @@
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "@/lib/game/db";
-import { revealedRounds } from "@/lib/game/results";
+import { buildPlayerResults, revealedRounds } from "@/lib/game/results";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { money, signedMoney, signedPct } from "@/lib/game/format";
 import type { TickerItem } from "@/components/terminal";
@@ -23,9 +23,12 @@ export interface RoundFeed {
   busted: number;
   /** dollars at risk in the latest round, humans only */
   atRisk: number;
+  /** the class average at the start and after each revealed round (the sparkline) */
+  avgSeries: number[];
 }
 
 export function roundFeed(
+  session: SessionRow,
   players: PlayerRow[],
   rounds: RoundRow[],
   allocations: AllocationRow[],
@@ -61,7 +64,16 @@ export function roundFeed(
       if (sorted[sorted.length - 1].delta < -0.005) worst = sorted[sorted.length - 1];
     }
   }
-  return { last, humans, avgWealth, avgDelta, leader, best, worst, busted, atRisk };
+  // Same per-round wealth as the chart and the end screen, averaged.
+  let avgSeries: number[] = [];
+  if (humans.length > 0) {
+    const results = buildPlayerResults(session, humans, rounds, allocations);
+    avgSeries = [
+      session.config.starting_wealth,
+      ...revealed.map((_, i) => results.reduce((s, r) => s + (r.wealthByRound[i] ?? r.finalWealth), 0) / results.length),
+    ];
+  }
+  return { last, humans, avgWealth, avgDelta, leader, best, worst, busted, atRisk, avgSeries };
 }
 
 const dirOf = (n: number | null | undefined): TickerItem["dir"] =>
@@ -88,12 +100,19 @@ export function tickerItems(session: SessionRow, feed: RoundFeed): TickerItem[] 
     items.push({ key: "mkt", label: `${unit} ${last.round_number}`, value: "Each player drew their own market" });
   }
 
-  items.push({ key: "avg", label: "Class average", value: money(feed.avgWealth) });
+  // Class average and leader head the key-figure strip, so the still tape
+  // leaves them off (TickerItem.secondary).
+  items.push({ key: "avg", label: "Class average", value: money(feed.avgWealth), secondary: true });
   if (feed.avgDelta != null) {
     items.push({ key: "avgd", label: "Average move", value: signedMoney(feed.avgDelta), dir: dirOf(feed.avgDelta) });
   }
   if (feed.leader) {
-    items.push({ key: "lead", label: "Leader", value: `${feed.leader.display_name} ${money(feed.leader.current_wealth)}` });
+    items.push({
+      key: "lead",
+      label: "Leader",
+      value: `${feed.leader.display_name} ${money(feed.leader.current_wealth)}`,
+      secondary: true,
+    });
   }
   if (feed.best) {
     items.push({ key: "best", label: "Best move", value: `${feed.best.player.display_name} ${signedMoney(feed.best.delta)}`, dir: "up" });

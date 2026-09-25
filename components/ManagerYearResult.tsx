@@ -60,7 +60,8 @@ export function ManagerYearResult({
   return (
     <div className="space-y-2 text-left">
       {rMarket != null ? (
-        <div className="flex items-baseline justify-between gap-2 rounded-xl border-2 border-ink bg-paper-2 px-3 py-2">
+        // The year's headline figure on a ruled band, not in a box.
+        <div className="flex items-baseline justify-between gap-2 border-y-2 border-ink bg-paper-2 px-3 py-2">
           <span className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
             The market
           </span>

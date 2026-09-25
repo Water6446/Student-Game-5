@@ -44,7 +44,7 @@ import { feesByPlayer, sumFees } from "@/components/FeeCounter";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { ManagerYearResult } from "@/components/ManagerYearResult";
 import { cost, money, sharpeText, signedPct } from "@/lib/game/format";
-import { Banner, Button, CountUp, buttonClasses } from "@/components/ui";
+import { Banner, Button, CountUp } from "@/components/ui";
 import { useHotkeys } from "@/components/use-hotkeys";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useShowBots } from "@/components/use-show-bots";
@@ -52,7 +52,10 @@ import { BotToggle } from "@/components/host/BotToggle";
 import { FinalResults } from "@/components/host/FinalResults";
 import { ManagePlayerButton } from "@/components/host/ManagePlayer";
 import { RankBadge } from "@/components/RankBadge";
-import { Masthead } from "@/components/Masthead";
+import { Masthead, TOOL, TOOL_DANGER } from "@/components/Masthead";
+import { SettingsMenu } from "@/components/SettingsMenu";
+import { SessionCrumbs } from "@/components/host/SessionCrumbs";
+import { LineScore, lineScoreKind } from "@/components/host/LineScore";
 import { LEDGER, LEDGER_ROW } from "@/components/ledger";
 import {
   ArrowDown,
@@ -73,6 +76,9 @@ import {
 // Standings columns from sm up: rank, name, stats, wealth. Shared by the
 // column heads and every row so they line up.
 const STANDINGS_GRID = "sm:grid-cols-[1.75rem_2rem_minmax(0,1fr)_auto_5.5rem_7rem]";
+// The manager game drops the Gap column: its wealth cell already carries this
+// year's and the annualized return, and Sharpe + fees need the room.
+const MANAGER_STANDINGS_GRID = "sm:grid-cols-[1.75rem_2rem_minmax(0,1fr)_auto_7.5rem]";
 
 // The submitted checklist exists to spot who HASN'T submitted, so pending
 // players sort first and the collapse keeps them in the visible top slice.
@@ -443,8 +449,8 @@ export function HostRoundControl({
 
   // ── The trading-floor layer: tape, key figures, timing-tower columns ──
   const feed = useMemo(
-    () => roundFeed(players, history.rounds, history.allocations),
-    [players, history.rounds, history.allocations],
+    () => roundFeed(session, players, history.rounds, history.allocations),
+    [session, players, history.rounds, history.allocations],
   );
   const ticker = useMemo(() => tickerItems(session, feed), [session, feed]);
   // ▲/▼ over the last resolved round, among the players on show
@@ -454,6 +460,7 @@ export function HostRoundControl({
   );
   const colors = useMemo(() => seriesColors(visiblePlayers, benchmark != null), [visiblePlayers, benchmark]);
   const leaderWealth = Number(standings[0]?.current_wealth ?? 0);
+  const standingsGrid = managerGame ? MANAGER_STANDINGS_GRID : STANDINGS_GRID;
   const unit = managerGame ? "year" : "round";
   const humanIds = useMemo(() => new Set(humanPlayers.map((p) => p.id)), [humanPlayers]);
   const atRiskNow = allocs.reduce(
@@ -469,10 +476,13 @@ export function HostRoundControl({
       sub: botCount > 0 ? `+ ${botCount} benchmark bot${botCount === 1 ? "" : "s"}` : "in the room",
     },
     {
+      // a balance, so the figure stays ink; the change under it carries colour
       label: "Class average",
       value: money(feed.avgWealth),
       sub: start > 0 ? `${signedPct((feed.avgWealth / start - 1) * 100)} since the start` : undefined,
-      tone: feed.avgWealth > start + 0.005 ? "gain" : feed.avgWealth < start - 0.005 ? "loss" : undefined,
+      subTone: feed.avgWealth > start + 0.005 ? "gain" : feed.avgWealth < start - 0.005 ? "loss" : undefined,
+      spark: feed.avgSeries,
+      sparkLabel: `Class average by ${unit}`,
     },
     {
       label: "Leader",
@@ -521,41 +531,41 @@ export function HostRoundControl({
           </>
         }
         status={<StatusBadge phase={phase} />}
+        crumbs={<SessionCrumbs session={session} stage="Live" />}
         tools={
           <>
             <Link
               href={`/host/${session.id}/present`}
               target="_blank"
               aria-label="Present — open the projector view in a new tab"
-              className={buttonClasses("secondary", "sm", "min-w-[44px]")}
+              className={TOOL}
               title="Open the projector view in a new tab"
             >
               {/* Below sm the labels drop and the icons carry the meaning — the
-                  header has to fit a 375px viewport without wrapping to three rows. */}
+                  toolbar has to fit a 375px viewport on one line. */}
               <Monitor /> <span className="hidden sm:inline">Present</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="sm"
+            <SettingsMenu className={TOOL} />
+            <button
+              type="button"
               onClick={finishEarly}
               disabled={busy}
               aria-label="Finish early — end the game now and jump to the final summary"
               title="End the game now and jump to the final summary"
-              className="min-w-[44px]"
+              className={TOOL}
             >
               <Flag /> <span className="hidden sm:inline">Finish early</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+            </button>
+            <button
+              type="button"
               onClick={deleteSession}
               disabled={busy}
               aria-label="Delete this session"
               title="Delete this session"
-              className="min-w-[44px] text-loss hover:bg-loss-soft hover:text-loss"
+              className={TOOL_DANGER}
             >
               <Trash /> <span className="hidden sm:inline">Delete</span>
-            </Button>
+            </button>
           </>
         }
         action={
@@ -581,12 +591,12 @@ export function HostRoundControl({
           )
         }
       >
-        <RoundTrack
+        <LineScore
           total={session.config.num_rounds}
           current={session.current_round}
           phase={phase}
           rounds={history.rounds}
-          sharedBasic={!portfolioGame && !managerGame && !independent}
+          kind={lineScoreKind(session.config)}
         />
       </Masthead>
       {/* The tape: what the last round did, running under the masthead. */}
@@ -594,9 +604,12 @@ export function HostRoundControl({
 
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
       <StatStrip items={stats} />
-      <PanelGrid className="mt-6 lg:grid-cols-[5fr_7fr]">
+      {/* The board: this round and the chart stacked on the left, the
+          standings tower down the right, history across the foot. */}
+      <PanelGrid className="mt-6 lg:grid-cols-[5fr_7fr] lg:grid-rows-[auto_1fr]">
         {/* This round: who is in, what they bet, what happened */}
         <Panel
+          className="lg:col-start-1 lg:row-start-1"
           bodyClassName="space-y-5"
           title={
             phase === "open"
@@ -639,21 +652,25 @@ export function HostRoundControl({
                 keyOf={(p) => p.id}
                 as="ul"
                 options={CHECKLIST_CONDENSE}
-                className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2"
-                gapClassName="font-editorial text-sm italic text-ink-subtle hover:text-ink"
+                // A sign-in sheet: ruled cells that fill green as each student
+                // locks in — still waiting first, so the gaps are easy to call out.
+                className="grid grid-cols-2 border-l-[1.5px] border-t-[1.5px] border-ink/15 text-sm sm:grid-cols-3 lg:grid-cols-2"
+                gapItemClassName="border-b-[1.5px] border-r-[1.5px] border-ink/15"
+                gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
                 toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
                 renderItem={(p) => (
                   <li
-                    className={`flex items-center gap-2 rounded-lg px-2 py-1 transition-colors ${
-                      submittedIds.has(p.id) ? "font-semibold text-gain" : "text-ink-muted"
+                    className={`flex min-w-0 items-center gap-2 border-b-[1.5px] border-r-[1.5px] border-ink/15 px-2.5 py-2 transition-colors duration-300 ${
+                      submittedIds.has(p.id) ? "bg-gain-soft font-semibold text-ink" : "text-ink-muted"
                     }`}
                   >
                     {submittedIds.has(p.id) ? (
-                      <Check className="shrink-0 animate-count-pop" />
+                      <Check className="shrink-0 animate-count-pop text-gain" />
                     ) : (
                       <CircleDashed className="shrink-0 text-ink-subtle" />
                     )}
                     <span className="truncate">{p.display_name}</span>
+                    <span className="sr-only">{submittedIds.has(p.id) ? " — locked in" : " — waiting"}</span>
                   </li>
                 )}
               />
@@ -811,6 +828,7 @@ export function HostRoundControl({
 
         {/* Live standings — a timing tower: position, movement, gap to the lead */}
         <Panel
+          className="lg:col-start-2 lg:row-span-2 lg:row-start-1"
           bodyClassName="px-2 pb-2 pt-3 sm:px-3"
           infoLabel="About the standings"
             info={
@@ -833,7 +851,7 @@ export function HostRoundControl({
           {/* Column heads, so every row's figures line up under a name. */}
           <div
             aria-hidden="true"
-            className={`hidden gap-x-3 px-2 pb-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted sm:grid ${STANDINGS_GRID}`}
+            className={`hidden gap-x-3 px-2 pb-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted sm:grid ${standingsGrid}`}
           >
             <span className="text-center">#</span>
             <span className="text-center">±</span>
@@ -844,7 +862,7 @@ export function HostRoundControl({
               {feesFor ? <span className="w-14 text-right">Fees</span> : null}
               <span className="w-[5.75rem] text-right">Last 5</span>
             </span>
-            <span className="text-right">Gap</span>
+            {managerGame ? null : <span className="text-right">Gap</span>}
             <span className="text-right">Wealth</span>
           </div>
           <CondensedList
@@ -867,7 +885,7 @@ export function HostRoundControl({
                 // line under the name instead of overflowing a 375px viewport.
                 <li
                   style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
-                  className={`stagger grid animate-rise grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 ${STANDINGS_GRID} ${LEDGER_ROW}`}
+                  className={`stagger grid animate-rise grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 ${standingsGrid} ${LEDGER_ROW}`}
                 >
                   <span className="col-start-1 row-start-1">
                     <RankBadge rank={index + 1} />
@@ -919,6 +937,7 @@ export function HostRoundControl({
                       <OutcomeChips outcomes={last5} />
                     </span>
                   </span>
+                  {managerGame ? null : (
                   <span className="hidden text-right font-mono text-xs text-ink-muted sm:col-start-5 sm:row-start-1 sm:block">
                     {index === 0 ? (
                       <span className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink">
@@ -928,7 +947,8 @@ export function HostRoundControl({
                       `−${money(Math.max(leaderWealth - Number(p.current_wealth), 0))}`
                     )}
                   </span>
-                  <span className="col-start-3 row-start-1 text-right sm:col-start-6">
+                  )}
+                  <span className={`col-start-3 row-start-1 text-right ${managerGame ? "sm:col-start-5" : "sm:col-start-6"}`}>
                     {/* Ink, not green: a balance is not a gain. The chips beside it
                         say which way each round went. */}
                     <span className="block font-mono text-lg font-bold text-ink">
@@ -958,8 +978,12 @@ export function HostRoundControl({
           />
         </Panel>
 
-      {/* Wealth over rounds — the standings' colour bars are its key */}
-      <Panel className="lg:col-span-2" title={`Wealth over ${managerGame ? "years" : "rounds"}`}>
+      {/* Wealth over rounds, under this round — the standings' colour bars are its key */}
+      <Panel
+        className="lg:col-start-1 lg:row-start-2"
+        bodyClassName="p-3 sm:p-4"
+        title={`Wealth over ${managerGame ? "years" : "rounds"}`}
+      >
         <WealthChart
           players={visiblePlayers}
           rounds={history.rounds}
@@ -1037,68 +1061,6 @@ function StatusBadge({ phase }: { phase: RoundPhase }) {
       </span>
       {s.label}
     </span>
-  );
-}
-
-/**
- * The game as a strip of segments under the round title: one per round,
- * coloured once it resolves (green/red for a class-wide basic market, ink
- * otherwise), amber for the round in play. Where the class has been, at a glance.
- */
-function RoundTrack({
-  total,
-  current,
-  phase,
-  rounds,
-  sharedBasic,
-}: {
-  total: number;
-  current: number;
-  phase: RoundPhase;
-  rounds: { round_number: number; status: string; market_outcome: MarketOutcome | null }[];
-  sharedBasic: boolean;
-}) {
-  const byNumber = new Map(rounds.map((r) => [r.round_number, r]));
-  // Past ~40 rounds a segment is thinner than the gap between segments; a long
-  // game gets one continuous bar instead.
-  if (total > 40) {
-    const pct = total > 0 ? Math.min(current / total, 1) * 100 : 0;
-    return (
-      <div
-        className="h-2 overflow-hidden rounded-full bg-ink/10"
-        role="img"
-        aria-label={`Round ${current} of ${total}`}
-      >
-        <div className="h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${pct}%` }} />
-      </div>
-    );
-  }
-  return (
-    <ol className="flex h-2 gap-1" aria-label={`Round ${current} of ${total}`}>
-      {Array.from({ length: total }, (_, i) => {
-        const n = i + 1;
-        const r = byNumber.get(n);
-        const revealed = r?.status === "revealed" && !(n === current && phase !== "revealed");
-        const cls = revealed
-          ? sharedBasic
-            ? r?.market_outcome === "good"
-              ? "bg-gain"
-              : r?.market_outcome === "bad"
-                ? "bg-loss"
-                : "bg-ink"
-            : "bg-ink"
-          : n === current
-            ? "bg-brand-strong animate-pulse-soft"
-            : "bg-ink/10";
-        return (
-          <li
-            key={n}
-            title={`${n}${revealed && sharedBasic && r?.market_outcome ? ` · ${r.market_outcome === "good" ? "up" : "down"}` : ""}`}
-            className={`min-w-0 flex-1 rounded-full transition-colors duration-300 ${cls}`}
-          />
-        );
-      })}
-    </ol>
   );
 }
 

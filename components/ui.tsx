@@ -684,12 +684,15 @@ export function Toggle({
   checked,
   onChange,
   label,
+  hint,
   className,
   disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
+  /** a quiet line under the label saying what the switch does */
+  hint?: string;
   className?: string;
   disabled?: boolean;
 }) {
@@ -706,10 +709,17 @@ export function Toggle({
         className ? className : "w-full"
       )}
     >
-      <span className="text-sm font-semibold text-ink">{label}</span>
+      {hint ? (
+        <span className="flex min-w-0 flex-col py-1.5 text-left">
+          <span className="text-sm font-semibold text-ink">{label}</span>
+          <span className="text-xs leading-snug text-ink-muted">{hint}</span>
+        </span>
+      ) : (
+        <span className="text-sm font-semibold text-ink">{label}</span>
+      )}
       <span
         className={clsx(
-          "relative h-6 w-11 rounded-full border-2 border-ink transition-colors",
+          "relative h-6 w-11 shrink-0 rounded-full border-2 border-ink transition-colors",
           checked ? "bg-play" : "bg-paper-2",
         )}
       >

@@ -19,10 +19,11 @@ import {
   type SessionStatusFilter,
 } from "@/lib/game/session-format";
 
-const STATUS_STYLES: Record<string, string> = {
-  lobby: "bg-brand text-ink",
-  active: "bg-gain text-white",
-  finished: "bg-paper-2 text-ink-subtle",
+// A status is text with a dot, not a pill (DESIGN.md §8 "Deltas are text").
+const STATUS_STYLES: Record<string, { text: string; dot: string }> = {
+  lobby: { text: "text-ink", dot: "bg-brand" },
+  active: { text: "text-gain", dot: "bg-gain animate-pulse-soft" },
+  finished: { text: "text-ink-subtle", dot: "bg-ink-subtle" },
 };
 
 /** Search and filters only earn their space once the list is long enough to need them. */
@@ -159,8 +160,13 @@ export function SessionsList({
               className="py-2.5 pl-10"
             />
           </label>
-          {/* Active = solid ink fill + cream text (DESIGN.md §8). */}
-          <div role="group" aria-label="Filter by status" className="flex shrink-0 gap-2">
+          {/* One joined control, not three pills: active = solid ink fill +
+              cream text (DESIGN.md §8). */}
+          <div
+            role="group"
+            aria-label="Filter by status"
+            className="flex shrink-0 divide-x-2 divide-ink overflow-hidden rounded-lg border-2 border-ink"
+          >
             {FILTERS.map((f) => (
               <button
                 key={f.id}
@@ -171,7 +177,7 @@ export function SessionsList({
                   setLimit(PAGE);
                 }}
                 className={clsx(
-                  "min-h-[44px] rounded-full border-2 border-ink px-4 font-display text-sm font-extrabold transition",
+                  "min-h-[44px] px-4 font-display text-sm font-extrabold transition",
                   status === f.id
                     ? "bg-ink text-paper-inverse"
                     : "bg-surface text-ink hover:bg-paper-2",
@@ -244,10 +250,11 @@ export function SessionsList({
                         </span>
                         <span
                           className={clsx(
-                            "rounded-full border-2 border-ink px-2.5 py-0.5 font-display text-[11px] font-extrabold uppercase tracking-wide",
-                            STATUS_STYLES[s.status] ?? "",
+                            "inline-flex items-center gap-1.5 font-display text-[11px] font-extrabold uppercase tracking-[0.12em]",
+                            STATUS_STYLES[s.status]?.text,
                           )}
                         >
+                          <span aria-hidden="true" className={clsx("h-2 w-2 rounded-full", STATUS_STYLES[s.status]?.dot)} />
                           {s.status}
                         </span>
                       </span>
@@ -298,10 +305,12 @@ export function SessionsList({
                         onClick={() => runAgain(s)}
                         disabled={busy}
                         title="Create a new session with these settings"
+                        aria-label={busy ? "Starting…" : `Run ${sessionTitle(s)} again`}
                         className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
                       >
                         <Shuffle />
-                        {busy ? "Starting…" : "Run again"}
+                        {/* icon-only on a phone, so the session's name has the room */}
+                        <span className="hidden sm:inline">{busy ? "Starting…" : "Run again"}</span>
                       </button>
                       <button
                         type="button"

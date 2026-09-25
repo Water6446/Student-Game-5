@@ -166,6 +166,15 @@ body {
     margin: 0;
   }
 
+  /* A strip that scrolls sideways on a phone without a scrollbar across it:
+     the still ticker tape. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* The dot grid the page wears, for a panel that should read as "stage":
      the projector's status panel, the reveal takeover. */
   .bg-dots {

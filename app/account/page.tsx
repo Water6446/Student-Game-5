@@ -10,7 +10,8 @@ import { HistoryPanel } from "@/components/account/HistoryPanel";
 import { DangerZone } from "@/components/account/DangerZone";
 import { ClaimAccount } from "@/components/account/ClaimAccount";
 import { Button, Card, SkeletonCards } from "@/components/ui";
-import { ArrowLeft, LogOut } from "@/components/icons";
+import { ArrowLeft, LogOut, Sparkle } from "@/components/icons";
+import { FunSettingsList } from "@/components/SettingsMenu";
 import { useToast } from "@/components/Toast";
 
 /**
@@ -112,6 +113,19 @@ export default function AccountPage() {
         <ProfilePanel supabase={supabase} profile={profile} onSaved={reload} />
         <IdentitiesPanel supabase={supabase} user={user} onChanged={reload} />
         <HistoryPanel supabase={supabase} />
+        {/* The same switches as the gear on a game screen: per device, so
+            they sit here for convenience, not on the account itself. */}
+        <Card>
+          <h2 className="flex items-center gap-2 font-display text-xl font-black uppercase tracking-tight text-ink">
+            <Sparkle className="text-lg" /> Fun
+          </h2>
+          <p className="mt-1 font-editorial text-sm italic text-ink-muted">
+            Flourishes for your game screens. Saved on this device.
+          </p>
+          <div className="mt-3">
+            <FunSettingsList />
+          </div>
+        </Card>
         <DangerZone supabase={supabase} />
       </div>
     </Shell>

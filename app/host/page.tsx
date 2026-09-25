@@ -5,28 +5,15 @@ import { useRouter } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useProfile } from "@/components/use-profile";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { Eyebrow } from "@/components/marketing/primitives";
-import { NewSessionPanel } from "@/components/host/CreateSessionForm";
-import { SessionsList } from "@/components/host/SessionsList";
-import { LiveSessionStrip } from "@/components/host/LiveSessionStrip";
-import { liveSession } from "@/lib/game/session-format";
-import { Instructions } from "@/components/Instructions";
+import { HostDashboard } from "@/components/host/HostDashboard";
 import { canHost } from "@/lib/auth/can-host";
-import { Banner, SkeletonCards } from "@/components/ui";
-import { clsx } from "@/components/clsx";
-import { Message } from "@/components/icons";
-import { feedbackHref } from "@/lib/feedback";
+import { SkeletonCards } from "@/components/ui";
 import type { SessionOverviewRow } from "@/lib/game/db";
 
 /**
- * The host dashboard.
- *
- * It wears the site header and footer, because signing in should not feel like
- * leaving the product. Inside that chrome it keeps the app's own chassis —
- * bordered cards for things you click — and borrows only the marketing page's
- * structural devices (eyebrow, hairline rule) to separate sections. DESIGN.md is
- * explicit that a page built entirely from cards "reads as a pile of boxes", and
- * that is exactly what this page was.
+ * The host dashboard: signs the host in, loads their sessions, and hands both
+ * to HostDashboard. It wears the site header and footer, because signing in
+ * should not feel like leaving the product.
  */
 export default function HostPage() {
   const router = useRouter();
@@ -80,102 +67,18 @@ export default function HostPage() {
     );
   }
 
-  const live = liveSession(rows);
-
   return (
     <>
-      <main className="min-h-dvh bg-surface">
-        <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
-          <header>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Eyebrow className="text-ink-muted">Host dashboard</Eyebrow>
-              {/* Pre-filled with the session most on their mind: the live one,
-                  else the most recent. */}
-              <a
-                href={feedbackHref({ joinCode: (live ?? rows[0])?.join_code })}
-                className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-ink-muted transition hover:text-ink"
-              >
-                <Message aria-hidden="true" />
-                Send feedback
-              </a>
-            </div>
-            {/* Held invisible (same height, no reflow) until the profile is
-                known, so it never reads one name and then another. */}
-            <h1
-              className={clsx(
-                "mt-5 font-display text-[clamp(1.9rem,4vw,3rem)] font-black uppercase leading-[0.95] tracking-tight text-ink",
-                profileLoading && "invisible",
-              )}
-            >
-              {greeting(profile?.username)}
-            </h1>
-          </header>
-
-          {live ? (
-            <div className="mt-8">
-              <LiveSessionStrip session={live} supabase={supabase} onDeleted={reload} />
-            </div>
-          ) : null}
-
-          <Section eyebrow="01 / Start a game" className="mt-12">
-            <NewSessionPanel supabase={supabase} />
-          </Section>
-
-          <Section eyebrow="02 / Your sessions" className="mt-14">
-            {/* Instead of the list, not above it: the list's empty state would
-                otherwise sit under the error still saying there is nothing. */}
-            {rowsError ? (
-              <Banner kind="error">Couldn&apos;t load your sessions: {rowsError}</Banner>
-            ) : (
-              <SessionsList
-                supabase={supabase}
-                rows={rows}
-                loading={rowsLoading}
-                onChanged={reload}
-              />
-            )}
-          </Section>
-
-          <Section eyebrow="03 / Running a game" className="mt-14">
-            <Instructions role="professor" />
-          </Section>
-        </div>
-      </main>
+      <HostDashboard
+        supabase={supabase}
+        username={profile?.username}
+        profileLoading={profileLoading}
+        rows={rows}
+        rowsLoading={rowsLoading}
+        rowsError={rowsError}
+        onChanged={reload}
+      />
       <SiteFooter />
     </>
   );
-}
-
-/** A hairline rule + eyebrow above the section's own content. */
-function Section({
-  eyebrow,
-  className,
-  children,
-}: {
-  eyebrow: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={className}>
-      <div className="border-t border-ink/15 pt-5">
-        <Eyebrow className="text-ink-muted">{eyebrow}</Eyebrow>
-      </div>
-      <div className="mt-5">{children}</div>
-    </section>
-  );
-}
-
-/**
- * The account's username, which is the name the person actually chose.
- *
- * Deliberately never the email: its local part is not what anyone calls
- * themselves (for a Google sign-up it is whatever sat in front of the @), and
- * using it as a stand-in while the profile loaded made the heading flash the
- * email before settling on the username. No username (a guest host) gets
- * something neutral rather than a guess at a person's name.
- */
-function greeting(username: string | undefined): string {
-  const name = username?.trim();
-  return name ? `Welcome back, ${name}` : "Your sessions";
 }

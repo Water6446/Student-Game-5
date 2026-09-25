@@ -23,11 +23,14 @@ import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/port
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
-import { Button, SectionTitle, buttonClasses } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { Panel, PanelGrid, StatStrip, type Stat } from "@/components/terminal";
 import { RankBadge } from "@/components/RankBadge";
 import { LEDGER, LEDGER_ROW } from "@/components/ledger";
-import { Masthead } from "@/components/Masthead";
+import { Masthead, TOOL } from "@/components/Masthead";
+import { SettingsMenu } from "@/components/SettingsMenu";
+import { SessionCrumbs } from "@/components/host/SessionCrumbs";
+import { LineScore, lineScoreKind } from "@/components/host/LineScore";
 import { CondensedList } from "@/components/CondensedList";
 import { ManagerReveal } from "@/components/ManagerReveal";
 import { FeeCounter, sumFees } from "@/components/FeeCounter";
@@ -220,9 +223,15 @@ export function HostSummary({
       label: "Class average",
       value: money(classAvg),
       sub: start > 0 ? `${signedPct((classAvg / start - 1) * 100)} on ${money(start)}` : undefined,
-      tone: toneOf(classAvg),
+      // balances stay ink; the change under them carries the colour
+      subTone: toneOf(classAvg),
     },
-    { label: "Class median", value: money(medianWealth), tone: toneOf(medianWealth) },
+    {
+      label: "Class median",
+      value: money(medianWealth),
+      sub: start > 0 ? `${signedPct((medianWealth / start - 1) * 100)} on ${money(start)}` : undefined,
+      subTone: toneOf(medianWealth),
+    },
     managerGame
       ? {
           label: "Beat the index",
@@ -257,6 +266,7 @@ export function HostSummary({
             Game over
           </span>
         }
+        crumbs={<SessionCrumbs session={session} stage="Results" />}
         tools={
           <>
             {hasBots ? (
@@ -264,16 +274,18 @@ export function HostSummary({
                 showBots={showBots}
                 onToggle={setShowBots}
                 title="Toggle benchmark bots in the standings, luck and chart (CSV always includes them)"
+                className={TOOL}
               />
             ) : null}
             <Link
               href={`/host/${session.id}/present`}
               target="_blank"
-              className={buttonClasses("secondary", "sm")}
+              className={TOOL}
               title="Open the projector view in a new tab"
             >
-              <Monitor /> Present
+              <Monitor /> <span className="hidden sm:inline">Present</span>
             </Link>
+            <SettingsMenu className={TOOL} />
           </>
         }
         action={
@@ -287,7 +299,15 @@ export function HostSummary({
           </Button>
         }
       >
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* The whole game's scoreboard: every round, and the total. */}
+        <LineScore
+          total={session.config.num_rounds}
+          current={0}
+          phase="revealed"
+          rounds={rounds}
+          kind={lineScoreKind(session.config)}
+        />
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
           <p className="font-editorial text-lg italic text-ink-muted">
             {session.config.num_rounds} {managerGame ? "years" : "rounds"} ·{" "}
             {visibleResults.length} players · started at{" "}

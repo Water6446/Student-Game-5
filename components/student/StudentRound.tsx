@@ -367,10 +367,11 @@ export function StudentRound({
  * Sharpe so far, as a chip beside the figures it qualifies. Absent until two
  * years have resolved (one return has no spread to divide by).
  */
-function SharpeChip({ sharpe }: { sharpe: number }) {
+/** The Sharpe so far, as a labelled figure in the ticket's title strip. */
+function SharpeFigure({ sharpe }: { sharpe: number }) {
   return (
     <span
-      className="inline-flex items-baseline gap-2 rounded-xl border-2 border-ink bg-surface px-3 py-1.5"
+      className="inline-flex items-baseline gap-2"
       title="Sharpe ratio: return per unit of risk taken, across the years so far"
     >
       <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
@@ -459,31 +460,35 @@ function Shell({
         </span>
       </div>
       </header>
-      <div className="mx-auto flex max-w-lg flex-col px-5 pb-10 pt-4">
-      {sharpe != null ? (
-        <div className="mb-4 flex justify-end">
-          <SharpeChip sharpe={sharpe} />
-        </div>
-      ) : null}
-      {showOdds ? (
-        <div className="mb-4 flex items-center justify-between border-b-[1.5px] border-ink/15 px-1 pb-3 text-sm">
-          <span className="font-editorial italic text-ink-muted">
-            {isPortfolio(session.config) ? "Each asset looks like" : "The market looks like"}
-          </span>
-          <span className="flex items-center gap-2 font-mono font-semibold">
-            <span className="inline-flex items-center gap-0.5 text-gain">
-              <ArrowUp /> {goodPct}%
-            </span>
-            <span className="text-ink-subtle">·</span>
-            <span className="inline-flex items-center gap-0.5 text-loss">
-              <ArrowDown /> {100 - goodPct}%
-            </span>
-          </span>
-        </div>
-      ) : null}
-      {/* The bet slip: one framed panel with a title strip, like a ticket. */}
+      <div className="mx-auto flex max-w-lg flex-col px-5 pb-10 pt-5">
+      {/* The bet slip: one framed panel with a title strip, like a ticket.
+          The strip carries the odds (or, for the manager game, the Sharpe so
+          far) — the one figure worth reading before you bet. */}
       <PanelGrid className="animate-pop-in">
-        <Panel title={title} bodyClassName={flush ? "p-0 sm:p-0" : "space-y-5"}>
+        <Panel
+          title={title}
+          bodyClassName={flush ? "p-0" : "space-y-5"}
+          action={
+            sharpe != null ? (
+              <SharpeFigure sharpe={sharpe} />
+            ) : showOdds ? (
+              <span
+                className="flex items-center gap-2 font-mono text-sm font-semibold"
+                aria-label={`${isPortfolio(session.config) ? "Each asset" : "The market"}: ${goodPct}% up, ${100 - goodPct}% down`}
+              >
+                <span className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+                  Odds
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-gain">
+                  <ArrowUp /> {goodPct}%
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-loss">
+                  <ArrowDown /> {100 - goodPct}%
+                </span>
+              </span>
+            ) : null
+          }
+        >
           {children}
         </Panel>
       </PanelGrid>
@@ -616,8 +621,8 @@ function Reveal({
               playerSoFar={running?.player ?? null}
             />
             {running?.sharpe != null ? (
-              <div className="flex justify-center">
-                <SharpeChip sharpe={running.sharpe} />
+              <div className="flex justify-center border-y-[1.5px] border-ink/15 py-2">
+                <SharpeFigure sharpe={running.sharpe} />
               </div>
             ) : null}
           </>
@@ -692,7 +697,7 @@ function Reveal({
           <PanelGrid className="animate-rise text-left">
             <Panel
               title="Class standings"
-              bodyClassName="p-0 sm:p-0"
+              bodyClassName="p-0"
               action={
                 rank ? (
                   <span className="flex items-center gap-2 text-sm font-semibold text-ink">

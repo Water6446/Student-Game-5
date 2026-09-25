@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { CONFETTI_COLORS } from "@/lib/design/colors";
+import { useFun } from "@/components/use-fun";
 
 // Lightweight, dependency-free celebratory confetti. Pure CSS animation; hidden
 // automatically under prefers-reduced-motion (see globals.css). Render it only
@@ -12,6 +13,8 @@ import { CONFETTI_COLORS } from "@/lib/design/colors";
 // each sways sideways (--drift) and tumbles at its own rate (--spin) as it falls.
 
 export function Confetti({ count = 70 }: { count?: number }) {
+  // Settings → Fun can switch it off on this device.
+  const [on] = useFun("confetti");
   const pieces = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => ({
@@ -28,6 +31,7 @@ export function Confetti({ count = 70 }: { count?: number }) {
     [count],
   );
 
+  if (!on) return null;
   return (
     <div
       className="pointer-events-none fixed inset-0 z-50 overflow-hidden"
