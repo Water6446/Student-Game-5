@@ -321,7 +321,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
     <>
     {/* A tiled board: status and chart on the left, the standings tower on
         the right, one ink frame around them all (DESIGN.md §8). */}
-    <PanelGrid className="my-4 flex-1 lg:grid-cols-[1fr_1.1fr] lg:grid-rows-[1fr_auto]">
+    <PanelGrid className="my-4 flex-1 lg:grid-cols-[1fr_1.1fr] lg:grid-rows-[1fr_auto_auto]">
         <Panel
           size="lg"
           title={manager ? "This year" : "This round"}
@@ -443,10 +443,14 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
       >
         <Leaderboard ranked={ranked} lastDelta={lastDelta} movement={movement} colors={colors} />
       </Panel>
+      {/* The tape along the foot of the board, news-channel style — inside
+          the frame, not bleeding off the screen's edges. */}
+      {ticker.length > 0 ? (
+        <div className="lg:col-span-2 lg:row-start-3">
+          <Ticker items={ticker} size="lg" />
+        </div>
+      ) : null}
     </PanelGrid>
-
-    {/* The tape along the bottom of the screen, news-channel style. */}
-    <Ticker items={ticker} size="lg" className="-mx-[3vw] -mb-[2.5vh] border-t-2 border-ink" />
 
       {revealFor ? (
         <RevealTakeover

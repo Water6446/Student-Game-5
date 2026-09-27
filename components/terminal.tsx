@@ -130,12 +130,22 @@ export interface Stat {
  * caps, the figure in mono, a line of context beneath. Two across on a phone,
  * all in one row from sm up.
  */
-export function StatStrip({ items, className }: { items: Stat[]; className?: string }) {
-  return (
+export function StatStrip({
+  items,
+  className,
+  tape,
+}: {
+  items: Stat[];
+  className?: string;
+  /** a Ticker run along the top of the strip, inside the same frame */
+  tape?: ReactNode;
+}) {
+  const strip = (
     <dl
       style={{ "--n": items.length } as CSSProperties}
       className={clsx(
-        "grid grid-cols-2 gap-[2px] overflow-hidden rounded-xl border-2 border-ink bg-ink",
+        "grid grid-cols-2 gap-[2px] bg-ink",
+        !tape && "overflow-hidden rounded-xl border-2 border-ink",
         "sm:[grid-template-columns:repeat(var(--n),minmax(0,1fr))]",
         // an odd cell out on a phone spans the row instead of leaving ink showing
         "[&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1",
@@ -174,6 +184,15 @@ export function StatStrip({ items, className }: { items: Stat[]; className?: str
         </div>
       ))}
     </dl>
+  );
+  if (!tape) return strip;
+  // The tape heads the key figures in one frame, inside the page's width like
+  // everything else — never a band bleeding off both edges of the screen.
+  return (
+    <div className="overflow-hidden rounded-xl border-2 border-ink bg-ink">
+      {tape}
+      {strip}
+    </div>
   );
 }
 

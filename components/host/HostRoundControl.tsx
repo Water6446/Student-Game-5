@@ -599,11 +599,10 @@ export function HostRoundControl({
           kind={lineScoreKind(session.config)}
         />
       </Masthead>
-      {/* The tape: what the last round did, running under the masthead. */}
-      <Ticker items={ticker} className="border-b-2 border-ink" />
 
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
-      <StatStrip items={stats} />
+      {/* The key figures, headed by the tape: what the last round did. */}
+      <StatStrip items={stats} tape={<Ticker items={ticker} />} />
       {/* The board: this round and the chart stacked on the left, the
           standings tower down the right, history across the foot. */}
       <PanelGrid className="mt-6 lg:grid-cols-[5fr_7fr] lg:grid-rows-[auto_1fr]">

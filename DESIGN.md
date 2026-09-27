@@ -453,9 +453,11 @@ frame instead of floating in bubbles:
   slide one copy's width, so it loops without a seam; longer tapes run longer
   (`max(24, n × 6)s`); it **pauses under the pointer or keyboard focus** (WCAG
   2.2.2) and stands still under reduced motion. Up/down use
-  `gain-bright`/`loss-bright` with arrows. On the control screen it runs under
-  the masthead; on the projector, along the bottom edge (`size="lg"`). It is a
-  summary — nothing lives only on the tape.
+  `gain-bright`/`loss-bright` with arrows. **It stays inside the page's width**,
+  like everything else: on the control screen it heads the key-figure strip in
+  one frame (`StatStrip`'s `tape`); on the projector it is the board's last
+  row, inside the `PanelGrid` (`size="lg"`). Never a band bleeding off both
+  edges of the screen. It is a summary — nothing lives only on the tape.
 - **`FlapText` — a station's split-flap board.** A code or counter shown as
   characters on dark tiles with a hinge line; changed tiles turn over in turn.
   Used for the join code (lobby, projector lobby and header) and the
