@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { strategyFinalWealth, allStrategyOutcomes, edgeFraction } from "./counterfactual";
+import { strategyFinalWealth, allStrategyOutcomes, edgeFraction, strategyText, STRATEGY_KEYS } from "./counterfactual";
 import { csvEscape, toCsv } from "./csv";
 import type { MarketOutcome } from "./types";
 
@@ -88,5 +88,15 @@ describe("csv", () => {
   it("leaves numbers numeric, including negative ones", () => {
     expect(csvEscape(-12.5)).toBe("-12.5");
     expect(toCsv([["Ann", -3]])).toBe("Ann,-3");
+  });
+});
+
+describe("strategyText", () => {
+  it("names every strategy, with the edge in its label and line", () => {
+    const t = strategyText(20);
+    expect(Object.keys(t).sort()).toEqual([...STRATEGY_KEYS].sort());
+    expect(t.edge.label).toBe("20% edge");
+    expect(t.edge.desc).toContain("20%");
+    for (const k of STRATEGY_KEYS) expect(t[k].desc.length).toBeGreaterThan(0);
   });
 });

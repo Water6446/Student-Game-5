@@ -130,11 +130,11 @@ function MethodRow({
         </span>
       </span>
       {active === undefined ? null : active ? (
-        <span className="flex items-center gap-1 font-display text-xs font-extrabold uppercase tracking-wide text-gain">
+        <span className="flex items-center gap-1 font-display text-xs font-extrabold uppercase tracking-label text-gain">
           <Check /> On
         </span>
       ) : (
-        <span className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-subtle">
+        <span className="font-display text-xs font-extrabold uppercase tracking-label text-ink-subtle">
           Off
         </span>
       )}

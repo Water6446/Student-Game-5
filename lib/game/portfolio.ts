@@ -167,3 +167,19 @@ export function allPortfolioStrategyOutcomes(
     ]),
   ) as Record<PortfolioStrategyKey, number>;
 }
+
+/**
+ * What each fixed portfolio strategy is called, and the line under it —
+ * shared by the host's strategy cards and the student's "Other strategies",
+ * so the two never word them differently.
+ */
+export function portfolioStrategyText(
+  firstAsset: string,
+): Record<PortfolioStrategyKey, { label: string; desc: string }> {
+  return {
+    all_safe: { label: "All safe", desc: "nothing invested, ever" },
+    concentrated: { label: "One basket", desc: `everything on ${firstAsset} every round` },
+    half_diversified: { label: "Half & half", desc: "half safe, half split evenly across assets" },
+    diversified: { label: "Diversified", desc: "everything invested, split evenly" },
+  };
+}

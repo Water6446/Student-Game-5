@@ -8,6 +8,14 @@ const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Two spacings for uppercase type, not a dozen: `label` for small caps
+      // labels (column heads, stat labels, panel titles, statuses) and
+      // `kicker` for the widely spaced overlines ("GAME CODE", "IN THE ROOM").
+      // Display headlines stay tracking-tight.
+      letterSpacing: {
+        label: "0.12em",
+        kicker: "0.24em",
+      },
       fontFamily: {
         display: ["var(--font-display)", "system-ui", "sans-serif"], // Archivo
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"], // Hanken Grotesk
@@ -124,6 +132,8 @@ const config: Config = {
         // The ticker tape: two copies of the tape side by side; sliding one
         // copy's width left lands on an identical frame, so the loop is seamless.
         ticker: { "0%": { transform: "translateX(0)" }, "100%": { transform: "translateX(-50%)" } },
+        // The condensed masthead bar dropping in from above the viewport.
+        "slide-down": { "0%": { transform: "translateY(-100%)" }, "100%": { transform: "translateY(0)" } },
         // A split-flap tile turning over to its new character.
         flap: {
           "0%": { transform: "rotateX(-90deg)", opacity: "0.3" },
@@ -153,6 +163,7 @@ const config: Config = {
         "fade-in": "fade-in 0.2s ease-out both",
         ticker: "ticker 40s linear infinite",
         flap: "flap 0.45s cubic-bezier(0.3, 0.9, 0.4, 1.2) both",
+        "slide-down": "slide-down 0.22s cubic-bezier(0.22, 1, 0.36, 1) both",
         "spin-slow": "spin 40s linear infinite",
       },
     },

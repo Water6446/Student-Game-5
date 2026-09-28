@@ -8,7 +8,7 @@ import type { SessionOverviewRow } from "@/lib/game/db";
 import { configForRerun, createSession } from "@/lib/game/create-session";
 import { clsx } from "@/components/clsx";
 import { LEDGER } from "@/components/ledger";
-import { Banner, Button, Skeleton, TextInput } from "@/components/ui";
+import { Banner, Button, Segmented, Skeleton, TextInput } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { Pencil, Search, Shuffle, Trash, Users } from "@/components/icons";
 import {
@@ -160,33 +160,17 @@ export function SessionsList({
               className="py-2.5 pl-10"
             />
           </label>
-          {/* One joined control, not three pills: active = solid ink fill +
-              cream text (DESIGN.md §8). */}
-          <div
-            role="group"
-            aria-label="Filter by status"
-            className="flex shrink-0 divide-x-2 divide-ink overflow-hidden rounded-lg border-2 border-ink"
-          >
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={status === f.id}
-                onClick={() => {
-                  setStatus(f.id);
-                  setLimit(PAGE);
-                }}
-                className={clsx(
-                  "min-h-[44px] px-4 font-display text-sm font-extrabold transition",
-                  status === f.id
-                    ? "bg-ink text-paper-inverse"
-                    : "bg-surface text-ink hover:bg-paper-2",
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          {/* The same switch as everywhere else a choice is one-of-few:
+              the shared Segmented control, ink thumb sliding to the pick. */}
+          <Segmented
+            label="Filter by status"
+            options={FILTERS.map((f) => ({ value: f.id, label: f.label }))}
+            value={status}
+            onChange={(v) => {
+              setStatus(v);
+              setLimit(PAGE);
+            }}
+          />
         </div>
       ) : null}
 
@@ -250,7 +234,7 @@ export function SessionsList({
                         </span>
                         <span
                           className={clsx(
-                            "inline-flex items-center gap-1.5 font-display text-[11px] font-extrabold uppercase tracking-[0.12em]",
+                            "inline-flex items-center gap-1.5 font-display text-[11px] font-extrabold uppercase tracking-label",
                             STATUS_STYLES[s.status]?.text,
                           )}
                         >

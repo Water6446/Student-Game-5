@@ -82,7 +82,7 @@ export function ConfirmIdentity({
       <div className="flex items-start gap-2.5">
         <Lock className="mt-0.5 shrink-0 text-lg text-ink" />
         <div>
-          <p className="font-display text-sm font-extrabold uppercase tracking-wide text-ink">
+          <p className="font-display text-sm font-extrabold uppercase tracking-label text-ink">
             Confirm it&apos;s you
           </p>
           <p className="mt-0.5 text-sm text-ink-muted">{reason}</p>

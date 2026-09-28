@@ -118,7 +118,7 @@ export function JoinForm() {
             enterKeyHint="go"
             placeholder="ABC12"
             maxLength={6}
-            className="bg-brand-soft py-4 text-center font-mono text-3xl font-bold uppercase tracking-[0.4em] placeholder:tracking-[0.4em] placeholder:text-ink/20"
+            className="bg-brand-soft py-4 text-center font-mono text-3xl font-bold uppercase tracking-kicker placeholder:tracking-kicker placeholder:text-ink/20"
           />
         </Field>
 

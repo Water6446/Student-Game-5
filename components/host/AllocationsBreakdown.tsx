@@ -105,7 +105,7 @@ export function AllocationsBreakdown({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between pb-1.5">
-        <span className="flex items-center gap-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted">
+        <span className="flex items-center gap-1.5 font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
           Allocations
           {/* The legend: teaches the red=risky / green=safe encoding once,
               replacing per-column headers so each row stays compact. */}
@@ -164,7 +164,7 @@ export function AllocationsBreakdown({
                 <span className="truncate text-sm text-ink">{r.name}</span>
                 {!r.isBot && !r.submitted ? (
                   <span
-                    className="shrink-0 font-display text-[10px] font-extrabold uppercase tracking-wide text-brand-strong"
+                    className="shrink-0 font-display text-[10px] font-extrabold uppercase tracking-label text-brand-strong"
                     title={
                       manager
                         ? "No change this year — last year's portfolio carries forward"

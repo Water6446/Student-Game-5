@@ -635,7 +635,7 @@ export function HostRoundControl({
                     {allocsLoading ? "—" : <CountUp value={submitted.submitted} duration={400} />}
                     <span className="text-ink-subtle">/{submitted.total}</span>
                   </div>
-                  <div className="pb-1 text-right font-display text-xs font-extrabold uppercase tracking-[0.1em] text-ink-muted">
+                  <div className="pb-1 text-right font-display text-xs font-extrabold uppercase tracking-label text-ink-muted">
                     {submitted.total > 0 && submitted.submitted === submitted.total && !allocsLoading
                       ? "Everyone's in"
                       : "Submitted"}
@@ -850,7 +850,8 @@ export function HostRoundControl({
           {/* Column heads, so every row's figures line up under a name. */}
           <div
             aria-hidden="true"
-            className={`hidden gap-x-3 px-2 pb-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted sm:grid ${standingsGrid}`}
+            // sticks under the masthead's condensed bar in a long class
+            className={`sticky top-[58px] z-10 hidden gap-x-3 border-b-[1.5px] border-ink/15 bg-surface px-2 pb-1.5 pt-1 font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted sm:grid ${standingsGrid}`}
           >
             <span className="text-center">#</span>
             <span className="text-center">±</span>
@@ -867,7 +868,8 @@ export function HostRoundControl({
           <CondensedList
             items={standings}
             keyOf={(p) => p.id}
-            className={LEDGER}
+            // the sticky heads above carry the top rule
+            className={`${LEDGER} border-t-0`}
             gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             renderItem={(p, index) => {
@@ -939,11 +941,14 @@ export function HostRoundControl({
                   {managerGame ? null : (
                   <span className="hidden text-right font-mono text-xs text-ink-muted sm:col-start-5 sm:row-start-1 sm:block">
                     {index === 0 ? (
-                      <span className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink">
+                      <span className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink">
                         Leader
                       </span>
                     ) : (
-                      `−${money(Math.max(leaderWealth - Number(p.current_wealth), 0))}`
+                      // level with the leader (a tie, or before anyone has moved): no "−$0"
+                      leaderWealth - Number(p.current_wealth) < 0.005
+                        ? "level"
+                        : `−${money(leaderWealth - Number(p.current_wealth))}`
                     )}
                   </span>
                   )}
@@ -1050,7 +1055,7 @@ function StatusBadge({ phase }: { phase: RoundPhase }) {
   return (
     <span
       role="status"
-      className={`inline-flex items-center gap-2 font-display text-sm font-extrabold uppercase tracking-wide ${s.cls}`}
+      className={`inline-flex items-center gap-2 font-display text-sm font-extrabold uppercase tracking-label ${s.cls}`}
     >
       <span className="relative flex h-2 w-2" aria-hidden="true">
         {phase === "open" ? (

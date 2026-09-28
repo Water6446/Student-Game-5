@@ -94,7 +94,7 @@ function PresentHeader({ session }: { session: SessionRow }) {
       <div className="flex items-center gap-3">
         {session.status !== "finished" ? (
           <span className="hidden items-baseline gap-2 px-2 sm:flex">
-            <span className="font-display text-sm font-extrabold uppercase tracking-wide text-ink-muted">
+            <span className="font-display text-sm font-extrabold uppercase tracking-label text-ink-muted">
               join code
             </span>
             <FlapText text={session.join_code} className="text-xl" />
@@ -137,7 +137,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
         title="Join the game"
         bodyClassName="flex flex-col items-center justify-center bg-ink p-10 text-center text-paper-inverse"
       >
-        <p className="font-display text-xl font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
+        <p className="font-display text-xl font-extrabold uppercase tracking-kicker text-paper-inverse/70">
           Game code
         </p>
         {/* A split-flap board, as at a station: the code flips in, tile by tile. */}
@@ -177,7 +177,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
               >
                 {players.length}
               </p>
-              <p className="mt-2 font-display text-3xl font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+              <p className="mt-2 font-display text-3xl font-extrabold uppercase tracking-label text-ink-muted">
                 {players.length === 1 ? "player" : "players"} in
               </p>
             </div>
@@ -328,7 +328,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
           bodyClassName="flex flex-1 flex-col px-8 pb-6 pt-8 text-center"
           action={
             // The round counter as a split-flap board: it flips when the round turns.
-            <span className="flex items-center gap-2 font-display text-xs font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+            <span className="flex items-center gap-2 font-display text-xs font-extrabold uppercase tracking-label text-ink-muted">
               {manager ? "Year" : "Round"}
               <FlapText text={String(session.current_round).padStart(2, "0")} className="text-lg" />
               <span className="font-mono text-lg font-bold text-ink-muted">/{session.config.num_rounds}</span>
@@ -361,7 +361,7 @@ function PresentActive({ supabase, session }: { supabase: SupabaseClient; sessio
                     }}
                   />
                 </div>
-                <p className="mt-3 font-display text-2xl font-extrabold uppercase tracking-wide text-ink-muted">
+                <p className="mt-3 font-display text-2xl font-extrabold uppercase tracking-label text-ink-muted">
                   {humanCount > 0 && submitted === humanCount && !allocsLoading ? "Everyone's in" : "locked in"}
                 </p>
               </>
@@ -559,7 +559,7 @@ function RevealTakeover({
       >
         <Sunburst />
         {allGood ? <Confetti /> : null}
-        <span className="relative font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
+        <span className="relative font-display text-sm font-extrabold uppercase tracking-kicker opacity-80">
           Round {roundNumber}
         </span>
         <span className="relative animate-stamp font-display text-[clamp(2rem,7vw,5rem)] font-black uppercase leading-none tracking-tight">
@@ -612,7 +612,7 @@ function RevealTakeover({
     >
       <Sunburst />
       {!neutral && isGood ? <Confetti /> : null}
-      <span className="relative font-display text-sm font-extrabold uppercase tracking-[0.3em] opacity-80">
+      <span className="relative font-display text-sm font-extrabold uppercase tracking-kicker opacity-80">
         {marketReturn != null ? "Year" : "Round"} {roundNumber}
       </span>
       {/* The arrow flies in from the direction it points. */}

@@ -49,6 +49,7 @@ export function SessionHistoryTable({
   allocations,
   scrollClassName,
   manager = false,
+  limit,
 }: {
   rounds: RoundRow[];
   allocations: AllocationRow[];
@@ -58,6 +59,9 @@ export function SessionHistoryTable({
   /** Applied to the single scroll container — e.g. a bounded `max-h-*` when the
    *  card is collapsed. Print variants keep every row visible on paper. */
   scrollClassName?: string;
+  /** show only the latest N rounds (whole rows, never a row cut in half);
+   *  a quiet line under the table counts the rest */
+  limit?: number;
 }) {
   const history = useMemo<HistoryRow[]>(() => {
     const revealed = rounds
@@ -128,7 +132,7 @@ export function SessionHistoryTable({
         <thead>
           {/* An open table: column heads over a rule, hairlines between rows —
               no box around it and no ink band (DESIGN.md §8 ledgers). */}
-          <tr className="sticky top-0 z-10 border-b-[1.5px] border-ink/15 bg-surface text-left font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-muted">
+          <tr className="sticky top-0 z-10 border-b-[1.5px] border-ink/15 bg-surface text-left font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
             <th className="px-2 py-2">{manager ? "Year" : "Round"}</th>
             <th className="px-2 py-2">{manager ? "Index" : "Market"}</th>
             <th className="px-2 py-2 text-right">Avg</th>
@@ -138,8 +142,14 @@ export function SessionHistoryTable({
           </tr>
         </thead>
         <tbody>
-          {history.map((h) => (
-            <tr key={h.round} className="border-t-[1.5px] border-ink/15 transition-colors first:border-t-0 hover:bg-brand-soft/60">
+          {history.map((h, i) => (
+            <tr
+              key={h.round}
+              // past the limit: hidden on screen, still printed
+              className={`border-t-[1.5px] border-ink/15 transition-colors first:border-t-0 hover:bg-brand-soft/60 ${
+                limit != null && i >= limit ? "hidden print:table-row" : ""
+              }`}
+            >
               <td className="px-2 py-2 font-mono text-ink">{h.round}</td>
               <td className="px-2 py-2">
                 {h.marketReturn != null ? (
@@ -187,6 +197,11 @@ export function SessionHistoryTable({
         </tbody>
         </table>
       </div>
+      {limit != null && history.length > limit ? (
+        <p className="mt-2 px-2 font-editorial text-sm italic text-ink-subtle print:hidden">
+          + {history.length - limit} earlier {manager ? "years" : "rounds"}
+        </p>
+      ) : null}
     </div>
   );
 }

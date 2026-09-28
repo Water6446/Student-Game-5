@@ -8,7 +8,7 @@ import type { SessionRow } from "@/lib/game/db";
 import { joinUrl } from "@/lib/game/db";
 import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
-import { Banner, Button } from "@/components/ui";
+import { Banner, Button, ON_INK_OFFSET } from "@/components/ui";
 import { FlapText, Panel, PanelGrid, StatStrip, type Stat } from "@/components/terminal";
 import { Masthead, TOOL, TOOL_DANGER } from "@/components/Masthead";
 import { SettingsMenu } from "@/components/SettingsMenu";
@@ -29,9 +29,6 @@ import { COLOR } from "@/lib/design/colors";
 // The lobby is a live roster, not a ranking, so every name stays visible until
 // the list is long enough that ~100 animated rows become a real jank source.
 const LOBBY_CONDENSE = { threshold: 24 };
-
-const ON_INK =
-  "shadow-[3px_3px_0_rgb(var(--brand))] hover:shadow-[4px_4px_0_rgb(var(--brand))]";
 
 export function HostLobby({ supabase, session }: { supabase: SupabaseClient; session: SessionRow }) {
   const router = useRouter();
@@ -162,7 +159,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
         {/* The join panel: an ink body under its title strip, made to be read
             from the back of the room. */}
         <Panel title="Join the game" bodyClassName="flex flex-col items-center bg-ink p-6 text-center text-paper-inverse sm:p-8">
-          <p className="font-display text-sm font-extrabold uppercase tracking-[0.2em] text-paper-inverse/70">
+          <p className="font-display text-sm font-extrabold uppercase tracking-kicker text-paper-inverse/70">
             Game code
           </p>
           {/* A split-flap board: the code reads as a code, and flips in. */}
@@ -181,7 +178,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             {/* On the ink panel an ink offset would vanish, so these two
                 carry the same amber offset as the panel itself. */}
-            <Button variant="secondary" onClick={copyLink} className={`min-w-[9.5rem] ${ON_INK}`}>
+            <Button variant="secondary" onClick={copyLink} className={`min-w-[9.5rem] ${ON_INK_OFFSET}`}>
               {copied ? (
                 <>
                   <Check /> Copied

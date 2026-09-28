@@ -65,7 +65,7 @@ export function SettingsMenu({ className }: { className?: string }) {
           )}
         >
           <header className="flex min-h-[44px] items-center justify-between border-b-[1.5px] border-ink/20 bg-paper-2 pl-4 pr-1">
-            <h2 className="font-display text-[0.75rem] font-extrabold uppercase tracking-[0.12em] text-ink">
+            <h2 className="font-display text-[0.75rem] font-extrabold uppercase tracking-label text-ink">
               Settings
             </h2>
             <button
@@ -81,7 +81,7 @@ export function SettingsMenu({ className }: { className?: string }) {
             </button>
           </header>
           <section className="px-4 pb-4 pt-3">
-            <h3 className="flex items-center gap-1.5 font-display text-xs font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+            <h3 className="flex items-center gap-1.5 font-display text-xs font-extrabold uppercase tracking-label text-ink-muted">
               <Sparkle /> Fun
             </h3>
             <FunSettingsList />

@@ -52,7 +52,7 @@ export function StudentWaiting({
         <div className="mx-auto flex h-16 w-16 animate-bob items-center justify-center rounded-2xl border-2 border-ink bg-brand text-3xl text-ink shadow-card">
           <Sparkle />
         </div>
-        <div className="mt-5 inline-flex animate-stamp items-center gap-1.5 rounded-full border-2 border-ink bg-gain px-3.5 py-1 font-display text-sm font-extrabold uppercase tracking-wide text-white shadow-card">
+        <div className="mt-5 inline-flex animate-stamp items-center gap-1.5 rounded-full border-2 border-ink bg-gain px-3.5 py-1 font-display text-sm font-extrabold uppercase tracking-label text-white shadow-card">
           You&apos;re in
         </div>
         <h1 className="mt-3 font-display text-3xl font-black uppercase tracking-tight text-ink">
@@ -107,7 +107,7 @@ export function StudentWaiting({
             game is, on one tiled frame (DESIGN.md §8 "The trading floor"). */}
         <PanelGrid className="mt-6">
           <div className="bg-gain px-5 py-5 text-white">
-            <div className="font-display text-xs font-extrabold uppercase tracking-[0.12em] text-white/85">
+            <div className="font-display text-xs font-extrabold uppercase tracking-label text-white/85">
               Starting wealth
             </div>
             <div className="font-mono text-4xl font-bold">{money(me.current_wealth)}</div>
@@ -163,7 +163,7 @@ export function StudentWaiting({
 function TicketCell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="bg-surface px-2 py-2.5">
-      <dt className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+      <dt className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
         {label}
       </dt>
       <dd className="mt-0.5 truncate font-mono text-lg font-bold text-ink">{children}</dd>

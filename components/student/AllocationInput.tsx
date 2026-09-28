@@ -51,7 +51,7 @@ export function AllocationInput({
       {/* Safe on the left, Risky on the right — matches the slider (drag right = riskier) */}
       <div className="flex items-stretch gap-3">
         <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white">
-          <div className="font-display text-xs font-extrabold uppercase tracking-wide">Safe</div>
+          <div className="font-display text-xs font-extrabold uppercase tracking-label">Safe</div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
             {has ? money(safe) : "—"}
           </div>
@@ -60,7 +60,7 @@ export function AllocationInput({
           </div>
         </div>
         <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white">
-          <div className="font-display text-xs font-extrabold uppercase tracking-wide">Risky</div>
+          <div className="font-display text-xs font-extrabold uppercase tracking-label">Risky</div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">
             {has ? money(r) : "—"}
           </div>
@@ -94,7 +94,7 @@ export function AllocationInput({
         />
       </div>
 
-      <div className="flex justify-between font-display text-[11px] font-extrabold uppercase tracking-wide text-ink-muted">
+      <div className="flex justify-between font-display text-[11px] font-extrabold uppercase tracking-label text-ink-muted">
         <span>All safe</span>
         <span>All risky</span>
       </div>

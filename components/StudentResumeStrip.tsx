@@ -62,7 +62,7 @@ export function StudentResumeStrip({
             className="flex flex-wrap items-center justify-between gap-3 border-l-4 border-play bg-play-soft px-4 py-3 sm:px-5"
           >
             <span className="min-w-0">
-              <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-play">
+              <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-kicker text-play">
                 <span aria-hidden="true" className="inline-block h-2 w-2 animate-pulse rounded-full bg-play" />
                 {g.status === "lobby" ? "Waiting to start" : "Game in progress"}
               </span>

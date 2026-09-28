@@ -62,7 +62,7 @@ export function ManagerYearResult({
       {rMarket != null ? (
         // The year's headline figure on a ruled band, not in a box.
         <div className="flex items-baseline justify-between gap-2 border-y-2 border-ink bg-paper-2 px-3 py-2">
-          <span className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
+          <span className="font-display text-xs font-extrabold uppercase tracking-label text-ink-muted">
             The market
           </span>
           <span className="text-right">
@@ -89,7 +89,7 @@ export function ManagerYearResult({
           GROSS returns for the year, with the fees itemised below. Without the
           label a student compares two different numbers and concludes the fund
           lied to them. */}
-      <div className="flex items-center gap-2 pt-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-subtle">
+      <div className="flex items-center gap-2 pt-1 font-display text-[10px] font-extrabold uppercase tracking-label text-ink-subtle">
         <span className="min-w-0 flex-1">Manager</span>
         <span className="w-20 shrink-0 text-right">Gross</span>
         {allocation ? <span className="w-24 shrink-0 text-right">You held</span> : null}
@@ -136,7 +136,7 @@ export function ManagerYearResult({
       </dl>
 
       <div className="flex flex-wrap items-baseline justify-between gap-x-2 border-t-2 border-ink pt-2">
-        <span className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
+        <span className="font-display text-xs font-extrabold uppercase tracking-label text-ink-muted">
           Your year
         </span>
         <span className="text-right font-mono text-sm text-ink">

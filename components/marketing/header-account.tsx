@@ -235,7 +235,7 @@ export function AvatarMenu() {
                   </p>
                 ) : null}
                 {profile ? (
-                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                  <p className="mt-1 font-mono text-[11px] uppercase tracking-label text-ink-subtle">
                     @{profile.username} · {profile.plan} plan
                   </p>
                 ) : null}

@@ -23,6 +23,14 @@ export const BUTTON_VARIANTS = {
   danger: "bg-loss text-white shadow-card hover:brightness-110",
 } as const;
 
+/**
+ * For a button sitting on an ink panel: an ink offset would vanish there, so
+ * it carries the amber offset the panels use instead (DESIGN.md §4 "Ink on
+ * ink"). Add it after the variant.
+ */
+export const ON_INK_OFFSET =
+  "shadow-[3px_3px_0_rgb(var(--brand))] hover:shadow-[4px_4px_0_rgb(var(--brand))]";
+
 /** Button styling for a <Link>: same variants, sizes and press affordance. */
 export function buttonClasses(
   variant: keyof typeof BUTTON_VARIANTS = "primary",

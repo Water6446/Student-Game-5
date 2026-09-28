@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
 import { usePlayers } from "@/components/use-players";
 import { useSessionHistory } from "@/components/use-session-history";
-import { WealthChart } from "@/components/host/WealthChart";
+import { WealthChart, seriesColors } from "@/components/host/WealthChart";
 import { SessionHistoryTable, historyInfo } from "@/components/host/SessionHistoryTable";
 import { OutcomeChips } from "@/components/OutcomeChips";
 import {
@@ -18,8 +18,8 @@ import {
   goodCount,
   luckStats,
 } from "@/lib/game/results";
-import { edgeFraction, type StrategyKey } from "@/lib/game/counterfactual";
-import { assetName, numAssets, type PortfolioStrategyKey } from "@/lib/game/portfolio";
+import { edgeFraction, strategyText, type StrategyKey } from "@/lib/game/counterfactual";
+import { assetName, numAssets, portfolioStrategyText, type PortfolioStrategyKey } from "@/lib/game/portfolio";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { money, sharpeText, signedPct } from "@/lib/game/format";
@@ -38,6 +38,12 @@ import { LuckChip } from "@/components/LuckChip";
 import { useShowBots } from "@/components/use-show-bots";
 import { BotToggle } from "@/components/host/BotToggle";
 import { ArrowDown, ArrowUp, Download, Trophy, Clover, ChevronDown, Monitor } from "@/components/icons";
+
+// The final standings' columns: rank, player, the stats, wealth — the same
+// grid for the heads and every row, so the figures line up (DESIGN.md §8).
+const FINAL_GRID = "sm:grid-cols-[1.75rem_minmax(0,1fr)_auto_8.5rem]";
+// Rounds the collapsed history lists before "Show all".
+const HISTORY_ROWS = 8;
 
 export function HostSummary({
   supabase,
@@ -84,6 +90,8 @@ export function HostSummary({
     [portfolio, session, visibleResults],
   );
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
+  const basicText = strategyText(edgePct);
+  const pfText = portfolioStrategyText(assetName(session.config, 0));
   const [openId, setOpenId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   // per-player luck only varies when each player draws their own market
@@ -103,6 +111,13 @@ export function HostSummary({
         .sort((a, b) => (b.stats?.delta ?? -Infinity) - (a.stats?.delta ?? -Infinity)),
     [visibleResults, expected],
   );
+
+  // Shared markets: the draws everyone faced, from the player who saw the most
+  // (a late joiner saw fewer).
+  const classDraws = useMemo(() => {
+    const full = [...visibleResults].sort((a, b) => b.outcomes.length - a.outcomes.length)[0];
+    return full ? luckStats(goodCount(full.outcomes), full.outcomes.length, expected) : null;
+  }, [visibleResults, expected]);
 
   // An expanded row must survive the list collapsing around it.
   const openIndices = useMemo(() => {
@@ -126,6 +141,9 @@ export function HostSummary({
       ),
     };
   }, [session.config, rounds]);
+  const revealedCount = rounds.filter((r) => r.status === "revealed").length;
+  // the wealth chart's colour per player, so the standings are its key
+  const colors = useMemo(() => seriesColors(visiblePlayers, benchmark != null), [visiblePlayers, benchmark]);
 
   // ── manager game: the index comparison that replaces the counterfactual ──
   const managerGame = isManager(session.config);
@@ -267,6 +285,7 @@ export function HostSummary({
           </span>
         }
         crumbs={<SessionCrumbs session={session} stage="Results" />}
+        shortTitle="Game over"
         tools={
           <>
             {hasBots ? (
@@ -395,29 +414,29 @@ export function HostSummary({
           {portfolio ? (
             <>
               <StrategyCard
-                label="All safe"
-                desc="nothing invested, ever"
+                label={pfText.all_safe.label}
+                desc={pfText.all_safe.desc}
                 value={cardValue("all_safe")}
                 start={cf.startWealth}
                 best={bestKey === "all_safe"}
               />
               <StrategyCard
-                label="One basket"
-                desc={`everything on ${assetName(session.config, 0)} every round`}
+                label={pfText.concentrated.label}
+                desc={pfText.concentrated.desc}
                 value={cardValue("concentrated")}
                 start={cf.startWealth}
                 best={bestKey === "concentrated"}
               />
               <StrategyCard
-                label="Half & half"
-                desc="half safe, half split evenly"
+                label={pfText.half_diversified.label}
+                desc={pfText.half_diversified.desc}
                 value={cardValue("half_diversified")}
                 start={cf.startWealth}
                 best={bestKey === "half_diversified"}
               />
               <StrategyCard
-                label="Diversified"
-                desc="everything invested, split evenly"
+                label={pfText.diversified.label}
+                desc={pfText.diversified.desc}
                 value={cardValue("diversified")}
                 start={cf.startWealth}
                 best={bestKey === "diversified"}
@@ -426,29 +445,29 @@ export function HostSummary({
           ) : (
             <>
               <StrategyCard
-                label="All safe"
-                desc="0% at risk every round"
+                label={basicText.all_safe.label}
+                desc={basicText.all_safe.desc}
                 value={cardValue("all_safe")}
                 start={cf.startWealth}
                 best={bestKey === "all_safe"}
               />
               <StrategyCard
-                label={`${edgePct}% Edge`}
-                desc="market edge percent every round"
+                label={basicText.edge.label}
+                desc={basicText.edge.desc}
                 value={cardValue("edge")}
                 start={cf.startWealth}
                 best={bestKey === "edge"}
               />
               <StrategyCard
-                label="50 / 50"
-                desc="half your wealth at risk every round"
+                label={basicText.fifty_fifty.label}
+                desc={basicText.fifty_fifty.desc}
                 value={cardValue("fifty_fifty")}
                 start={cf.startWealth}
                 best={bestKey === "fifty_fifty"}
               />
               <StrategyCard
-                label="All risky"
-                desc="everything at risk every round"
+                label={basicText.all_risky.label}
+                desc={basicText.all_risky.desc}
                 value={cardValue("all_risky")}
                 start={cf.startWealth}
                 best={bestKey === "all_risky"}
@@ -480,11 +499,28 @@ export function HostSummary({
             Click a player to see{" "}
             {managerGame ? "their full record" : "every market outcome they faced"}.
           </p>
+          {/* Column heads over the same grid as the rows: the control
+              screen's timing tower, at the finish. */}
+          <div
+            aria-hidden="true"
+            // sticks under the masthead's condensed bar in a long class
+            className={`sticky top-[58px] z-10 hidden gap-x-3 border-b-[1.5px] border-ink/15 bg-surface px-2 pb-1.5 pt-1 font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted sm:grid ${FINAL_GRID}`}
+          >
+            <span className="text-center">#</span>
+            <span>Player</span>
+            <span className="flex justify-end gap-3">
+              {independent ? <span className="w-[4.5rem] text-right">Luck</span> : null}
+              <span className="w-12 text-right">Sharpe</span>
+              <span className="w-16 text-right">Return</span>
+            </span>
+            <span className="text-right">Wealth</span>
+          </div>
           <CondensedList
             items={visibleResults}
             keyOf={(r) => r.player.id}
             keepIndices={openIndices}
-            className={LEDGER}
+            // the sticky heads above carry the top rule
+            className={`${LEDGER} border-t-0`}
             gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
             renderItem={(r, i) => {
@@ -503,41 +539,59 @@ export function HostSummary({
                     type="button"
                     onClick={() => setOpenId(open ? null : r.player.id)}
                     aria-expanded={open}
-                    className={`flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left ${LEDGER_ROW}`}
+                    className={`grid w-full grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-left ${FINAL_GRID} ${LEDGER_ROW}`}
                   >
-                    <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
+                    <span className="col-start-1 row-start-1">
                       <RankBadge rank={r.rank} />
+                    </span>
+                    <span className="col-start-2 row-start-1 flex min-w-0 items-center gap-2 text-ink">
+                      {/* the player's line on the wealth chart below */}
+                      {colors?.get(r.player.id) ? (
+                        <span
+                          aria-hidden="true"
+                          className="h-5 w-1 shrink-0 rounded-full"
+                          style={{ backgroundColor: colors.get(r.player.id) }}
+                        />
+                      ) : null}
                       <span className="truncate font-semibold">{r.player.display_name}</span>
                       <ChevronDown
                         className={`shrink-0 text-ink-subtle transition-transform ${open ? "rotate-180" : ""}`}
                       />
                     </span>
-                    <span className="order-2 font-mono text-xl font-black text-ink sm:order-3 sm:text-2xl">
-                      {money(r.finalWealth)}
-                    </span>
-                    <span className="order-3 flex w-full items-center justify-end gap-3 sm:order-2 sm:w-auto">
+                    {/* Permanent columns — the same figures FinalResults shows,
+                        so the two host panels read identically. The fuller
+                        sentence stays in the expanded panel below. Below sm
+                        they drop to a second line under the name. */}
+                    <span className="col-span-3 row-start-2 flex items-center justify-end gap-3 sm:col-span-1 sm:col-start-3 sm:row-start-1">
                       {independent ? (
-                        <LuckChip luck={rowLuck} expected={expected} withWord />
-                      ) : null}
-                      {/* Permanent column — matches FinalResults so the two host
-                          panels read identically. The fuller sentence stays in
-                          the expanded panel below. */}
-                      <span
-                        className="shrink-0 font-mono text-xs text-ink-muted"
-                        title="Sharpe ratio — return per unit of risk taken (see MECHANICS.md)"
-                      >
-                        S {sharpeText(r.sharpe)}
-                      </span>
-                      {r.totalReturn != null ? (
-                        <span
-                          className={`font-mono text-xs font-bold ${
-                            r.totalReturn > 0 ? "text-gain" : r.totalReturn < 0 ? "text-loss" : "text-ink-muted"
-                          }`}
-                          title="total return on starting wealth"
-                        >
-                          {signedPct(r.totalReturn * 100)}
+                        <span className="flex w-[4.5rem] justify-end">
+                          <LuckChip luck={rowLuck} expected={expected} withWord />
                         </span>
                       ) : null}
+                      <span
+                        className="w-12 shrink-0 text-right font-mono text-xs text-ink-muted"
+                        title="Sharpe ratio — return per unit of risk taken (see MECHANICS.md)"
+                      >
+                        <span className="sm:hidden">S </span>
+                        {sharpeText(r.sharpe)}
+                      </span>
+                      <span
+                        className={`w-16 shrink-0 text-right font-mono text-xs font-bold ${
+                          r.totalReturn == null
+                            ? "text-ink-subtle"
+                            : r.totalReturn > 0
+                              ? "text-gain"
+                              : r.totalReturn < 0
+                                ? "text-loss"
+                                : "text-ink-muted"
+                        }`}
+                        title="total return on starting wealth"
+                      >
+                        {r.totalReturn != null ? signedPct(r.totalReturn * 100) : "—"}
+                      </span>
+                    </span>
+                    <span className="col-start-3 row-start-1 text-right font-mono text-xl font-black text-ink sm:col-start-4 sm:text-2xl">
+                      {money(r.finalWealth)}
                     </span>
                   </button>
                   {open ? (
@@ -593,14 +647,14 @@ export function HostSummary({
           />
         </Panel>
 
-        {/* Round history — collapsed shows a bounded, scrollable window; "Show
-            all" expands to full height. The bound is a plain max-h at every
-            breakpoint, and print variants unbind it so every round makes it
-            onto paper regardless of collapse state. */}
+        {/* Round history — collapsed shows the latest rounds as whole rows
+            (a clipped scroll box cut the last one in half); "Show all" lists
+            every round. The toggle only appears when there is more to show. */}
         <Panel
             info={historyInfo(managerGame)}
             infoLabel="About the history table"
             action={
+              revealedCount > HISTORY_ROWS ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -612,6 +666,7 @@ export function HostSummary({
                   className={`transition-transform duration-200 ${historyOpen ? "rotate-180" : ""}`}
                 />
               </Button>
+              ) : null
             }
           title={<>{managerGame ? "Year" : "Round"} history</>}
         >
@@ -620,16 +675,15 @@ export function HostSummary({
               rounds={rounds}
               allocations={allocations}
               manager={managerGame}
-              scrollClassName={
-                historyOpen ? "" : "max-h-96 print:max-h-none print:overflow-visible"
-              }
+              limit={historyOpen ? undefined : HISTORY_ROWS}
             />
           </div>
         </Panel>
 
-      {/* Luck — who drew the best markets (independent outcomes). Suppressed for
-          manager games: there are no good/bad draws to be lucky in, so every row
-          would read "no draws". */}
+      {/* Luck — who drew the best markets (independent outcomes), or one line
+          when the whole class shared a market. Suppressed for manager games:
+          there are no good/bad draws to be lucky in, so every row would read
+          "no draws". */}
       {managerGame ? null : (
       <Panel className="lg:col-span-2"
           icon={<Clover />}
@@ -653,48 +707,69 @@ export function HostSummary({
           }
           title="Luck"
         >
-        {/* Two newspaper columns on a wide screen: a ranked list this narrow
-            would otherwise leave half the panel blank. */}
-        <CondensedList
-          items={luck}
-          keyOf={(l) => l.id}
-          className="border-t-[1.5px] border-ink/15 lg:columns-2 lg:gap-x-10 lg:border-t-0"
-          gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
-          toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
-          renderItem={(l, i) => (
-            <li
-              style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
-              className={`stagger flex animate-rise break-inside-avoid flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b-[1.5px] border-ink/15 ${LEDGER_ROW}`}
-            >
-              <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
-                <span className="flex w-7 shrink-0 justify-center">
-                  {i === 0 ? (
-                    <Clover className="text-lg text-gain" aria-label="Luckiest" />
-                  ) : (
-                    <span className="font-mono text-sm font-bold text-ink-subtle">{i + 1}</span>
-                  )}
+        {independent ? (
+          // Two newspaper columns on a wide screen: a ranked list this narrow
+          // would otherwise leave half the panel blank.
+          <CondensedList
+            items={luck}
+            keyOf={(l) => l.id}
+            className="border-t-[1.5px] border-ink/15 lg:columns-2 lg:gap-x-10 lg:border-t-0"
+            gapClassName="py-1 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+            toggleClassName="mt-2 font-editorial text-sm italic text-ink-subtle hover:text-ink"
+            renderItem={(l, i) => (
+              <li
+                style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
+                className={`stagger flex animate-rise break-inside-avoid flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b-[1.5px] border-ink/15 ${LEDGER_ROW}`}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2 text-ink">
+                  <span className="flex w-7 shrink-0 justify-center">
+                    {i === 0 ? (
+                      <Clover className="text-lg text-gain" aria-label="Luckiest" />
+                    ) : (
+                      <span className="font-mono text-sm font-bold text-ink-subtle">{i + 1}</span>
+                    )}
+                  </span>
+                  <span className="truncate">{l.name}</span>
                 </span>
-                <span className="truncate">{l.name}</span>
-              </span>
-              <span className="flex items-baseline gap-3 text-sm">
-                <span className="text-ink-muted">
-                  {l.stats ? `${l.stats.good}/${l.stats.total} good` : "no draws"}
+                <span className="flex items-baseline gap-3 text-sm">
+                  <span className="text-ink-muted">
+                    {l.stats ? `${l.stats.good}/${l.stats.total} good` : "no draws"}
+                  </span>
+                  <span
+                    className={`w-14 text-right font-mono font-bold ${
+                      !l.stats || l.stats.delta === 0
+                        ? "text-ink-muted"
+                        : l.stats.delta > 0
+                          ? "text-gain"
+                          : "text-loss"
+                    }`}
+                  >
+                    {l.stats ? signedPct(l.stats.delta * 100) : "—"}
+                  </span>
                 </span>
-                <span
-                  className={`w-14 text-right font-mono font-bold ${
-                    !l.stats || l.stats.delta === 0
-                      ? "text-ink-muted"
-                      : l.stats.delta > 0
-                        ? "text-gain"
-                        : "text-loss"
-                  }`}
-                >
-                  {l.stats ? signedPct(l.stats.delta * 100) : "—"}
-                </span>
-              </span>
-            </li>
-          )}
-        />
+              </li>
+            )}
+          />
+        ) : classDraws ? (
+          // One market for the class: every row would read the same, so the
+          // panel says it once.
+          <p className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-y-[1.5px] border-ink/15 px-2 py-3">
+            <span className="font-editorial italic text-ink-muted">
+              One market for the whole class, so everyone faced the same draws.
+            </span>
+            <span className="font-mono text-sm text-ink-muted">
+              {classDraws.good}/{classDraws.total} good ·{" "}
+              <span
+                className={`font-bold ${
+                  classDraws.delta > 0 ? "text-gain" : classDraws.delta < 0 ? "text-loss" : "text-ink"
+                }`}
+              >
+                {signedPct(classDraws.delta * 100)}
+              </span>{" "}
+              vs {Math.round(expected * 100)}% odds
+            </span>
+          </p>
+        ) : null}
       </Panel>
       )}
 
@@ -748,7 +823,7 @@ function StrategyCard({
   return (
     <div className={`flex flex-col px-4 py-4 text-center ${best ? "bg-brand-soft" : ""}`}>
       {best ? (
-        <span className="mx-auto mb-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink">
+        <span className="mx-auto mb-1 font-display text-[10px] font-extrabold uppercase tracking-label text-ink">
           Came out on top
         </span>
       ) : null}

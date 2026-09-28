@@ -25,7 +25,7 @@ export function Hero() {
         <div className="relative px-6 pb-8 pt-14 sm:px-10 sm:pt-20 lg:px-14 lg:pb-10 lg:pt-28">
           <div className="grid gap-12 lg:grid-cols-12 lg:gap-8">
             <div className="lg:col-span-7">
-              <span className="animate-rise inline-flex items-center gap-2.5 rounded-full border border-paper-inverse/40 px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-paper-inverse">
+              <span className="animate-rise inline-flex items-center gap-2.5 rounded-full border border-paper-inverse/40 px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-kicker text-paper-inverse">
                 <Coins className="text-[1.1em]" />
                 {HERO.eyebrow}
               </span>
@@ -72,7 +72,7 @@ export function Hero() {
               </div>
 
               <p
-                className="animate-rise mt-8 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-paper-inverse/60"
+                className="animate-rise mt-8 font-mono text-[11px] font-semibold uppercase tracking-label text-paper-inverse/60"
                 style={{ animationDelay: "580ms" }}
               >
                 {HERO.note}
@@ -107,7 +107,7 @@ export function Hero() {
             <div key={stat.label} className="flex flex-col border-t border-ink/20 pb-2 pt-4">
               {/* Number first visually, label under it; the DOM keeps dt before
                   dd so the pair is announced once, in the right order. */}
-              <dt className="order-2 mt-2 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+              <dt className="order-2 mt-2 font-mono text-[11px] uppercase tracking-label text-ink-muted">
                 {stat.label}
               </dt>
               <dd className="order-1 font-mono text-3xl font-black leading-none text-ink sm:text-4xl">
@@ -193,7 +193,7 @@ function MiniAllocation() {
           {prop.roundLabel}
         </span>
         <span className="text-right">
-          <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+          <span className="block font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
             {prop.wealthLabel}
           </span>
           <span className="font-mono text-lg font-bold text-ink">{prop.wealth}</span>
@@ -202,13 +202,13 @@ function MiniAllocation() {
 
       <div className="mt-4 flex items-stretch gap-2.5">
         <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-2.5 text-center text-white">
-          <div className="font-display text-[11px] font-extrabold uppercase tracking-wide">
+          <div className="font-display text-[11px] font-extrabold uppercase tracking-label">
             {prop.safe.label}
           </div>
           <div className="font-mono text-lg font-bold leading-tight">{prop.safe.amount}</div>
         </div>
         <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-2.5 text-center text-white">
-          <div className="font-display text-[11px] font-extrabold uppercase tracking-wide">
+          <div className="font-display text-[11px] font-extrabold uppercase tracking-label">
             {prop.risky.label}
           </div>
           <div className="font-mono text-lg font-bold leading-tight">{prop.risky.amount}</div>
@@ -222,7 +222,7 @@ function MiniAllocation() {
           background: `linear-gradient(to right, rgb(var(--loss)) ${prop.riskyShare}%, rgb(var(--gain)) ${prop.riskyShare}%)`,
         }}
       />
-      <div className="mt-2 flex justify-between font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+      <div className="mt-2 flex justify-between font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
         <span>{prop.scaleStart}</span>
         <span>{prop.scaleEnd}</span>
       </div>
@@ -259,7 +259,7 @@ function MiniStandings() {
     // the allocation card's own: this column sizes to its widest child, so
     // anything wider here would silently stretch the card above.
     <div className="mt-14 hidden rotate-[1.4deg] rounded-2xl border-2 border-ink bg-surface p-5 text-ink shadow-lift lg:-ml-16 lg:block lg:w-[15.5rem] xl:-ml-40">
-      <div className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+      <div className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
         {s.wealthLabel}
       </div>
       <div className="font-mono text-3xl font-black leading-none">{s.wealth}</div>
@@ -292,7 +292,7 @@ function MiniStandings() {
               <span className="font-mono text-xs text-ink-subtle">{r.rank}</span>
               <span className="truncate">{r.name}</span>
               {r.me ? (
-                <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-play">
+                <span className="font-display text-[10px] font-extrabold uppercase tracking-label text-play">
                   you
                 </span>
               ) : null}

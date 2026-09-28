@@ -23,7 +23,7 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   return (
     <span
       className={clsx(
-        "flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.28em]",
+        "flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-kicker",
         className,
       )}
     >

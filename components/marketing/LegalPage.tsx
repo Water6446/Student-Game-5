@@ -31,7 +31,7 @@ export function LegalPage({
             <h1 className="mt-5 font-display text-[clamp(1.9rem,4vw,3rem)] font-black uppercase leading-[0.95] tracking-tight text-ink">
               {title}
             </h1>
-            <p className="mt-3 font-mono text-xs uppercase tracking-[0.18em] text-ink-muted">
+            <p className="mt-3 font-mono text-xs uppercase tracking-label text-ink-muted">
               Last updated {updated}
             </p>
             <div className="mt-6 space-y-3 text-lg leading-relaxed text-ink">{intro}</div>

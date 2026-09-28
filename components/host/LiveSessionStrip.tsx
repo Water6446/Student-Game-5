@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { ArrowRight, Monitor, Trash, Users } from "@/components/icons";
 import { gameLabel, sessionTitle } from "@/lib/game/session-format";
+import { ON_INK_OFFSET, buttonClasses } from "@/components/button-classes";
 
 /**
  * "What am I doing right now?", answered before anything else on the page.
@@ -71,13 +72,13 @@ export function LiveSessionStrip({
   return (
     <section
       aria-label="Session in progress"
-      className="relative overflow-hidden rounded-2xl bg-ink text-paper-inverse"
+      className="relative overflow-hidden bg-ink text-paper-inverse"
     >
       <DotField tone="cream" className="absolute right-0 top-0 h-24 w-1/3 opacity-20" />
 
       <div className="relative flex flex-wrap items-end justify-between gap-6 p-5 sm:p-6">
         <div className="min-w-0">
-          <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-brand">
+          <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-kicker text-brand">
             <span
               aria-hidden="true"
               className={
@@ -121,13 +122,16 @@ export function LiveSessionStrip({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-3">
+          {/* The app's own buttons, with the amber offset they carry on an
+              ink panel — not a set of one-off pills. */}
           <button
             type="button"
             onClick={remove}
             disabled={deleting}
             aria-label={`Delete ${title}`}
             title="Delete this session"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-paper-inverse/40 text-paper-inverse/80 transition hover:border-loss hover:bg-loss hover:text-white disabled:opacity-50"
+            // `!`: the variant's own padding and colours would win on stylesheet order
+            className={buttonClasses("secondary", "md", `w-12 !px-0 !text-loss hover:!bg-loss-soft disabled:opacity-50 ${ON_INK_OFFSET}`)}
           >
             <Trash aria-hidden="true" />
           </button>
@@ -136,14 +140,11 @@ export function LiveSessionStrip({
             aria-label="Projector"
             // Icon-only below sm: with the delete button beside it, three
             // labelled controls overflow a 375px strip and clip Resume.
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-full border-2 border-paper-inverse/40 font-display text-sm font-extrabold text-paper-inverse transition hover:border-paper-inverse sm:px-4"
+            className={buttonClasses("secondary", "md", `min-w-12 px-3 sm:px-5 ${ON_INK_OFFSET}`)}
           >
             <Monitor aria-hidden="true" /> <span className="hidden sm:inline">Projector</span>
           </Link>
-          <Link
-            href={`/host/${session.id}`}
-            className="group inline-flex min-h-[48px] items-center gap-2 rounded-full border-2 border-ink bg-brand px-6 font-display text-base font-extrabold text-ink transition hover:bg-brand-strong active:translate-x-[2px] active:translate-y-[2px]"
-          >
+          <Link href={`/host/${session.id}`} className={buttonClasses("gold", "md", `group px-6 ${ON_INK_OFFSET}`)}>
             {inProgress ? "Resume" : "Open lobby"}
             <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
               <ArrowRight />

@@ -11,8 +11,8 @@ import {
   luckStats,
   type PlayerResult,
 } from "@/lib/game/results";
-import { edgeFraction } from "@/lib/game/counterfactual";
-import { assetName } from "@/lib/game/portfolio";
+import { edgeFraction, strategyText } from "@/lib/game/counterfactual";
+import { assetName, portfolioStrategyText } from "@/lib/game/portfolio";
 import { isManager, isPortfolio } from "@/lib/game/types";
 import { indexSeries } from "@/lib/game/manager";
 import { sumFees } from "@/components/FeeCounter";
@@ -108,6 +108,8 @@ export function StudentFinished({
   const cf = result?.counterfactual;
   const pfCf = result?.portfolioCounterfactual;
   const edgePct = Math.round(edgeFraction(session.config.good_prob ?? 0.6) * 100);
+  const basicText = strategyText(edgePct);
+  const pfText = portfolioStrategyText(assetName(session.config, 0));
 
   const topThree = rank ? rank.rank <= 3 : false;
 
@@ -144,7 +146,7 @@ export function StudentFinished({
               me.current_wealth >= session.config.starting_wealth ? "bg-gain" : "bg-loss"
             }`}
           >
-            <div className="font-display text-xs font-extrabold uppercase tracking-[0.12em] text-white/85">
+            <div className="font-display text-xs font-extrabold uppercase tracking-label text-white/85">
               Final wealth
             </div>
             <CountUp
@@ -172,7 +174,8 @@ export function StudentFinished({
                 {rank ? (
                   <>
                     {ordinal(rank.rank)}
-                    <span className="text-xs font-bold text-ink-muted"> /{rank.total}</span>
+                    {/* "of 8", as the reveal's standings strip says it */}
+                    <span className="text-xs font-bold text-ink-muted"> of {rank.total}</span>
                   </>
                 ) : (
                   "—"
@@ -238,26 +241,26 @@ export function StudentFinished({
           {portfolio && pfCf ? (
             <StrategiesPanel outcomes="asset outcomes">
               <CfRow
-                label="All safe"
-                desc="nothing invested, ever"
+                label={pfText.all_safe.label}
+                desc={pfText.all_safe.desc}
                 value={pfCf.all_safe}
                 actual={me.current_wealth}
               />
               <CfRow
-                label="One basket"
-                desc={`everything on ${assetName(session.config, 0)} each round`}
+                label={pfText.concentrated.label}
+                desc={pfText.concentrated.desc}
                 value={pfCf.concentrated}
                 actual={me.current_wealth}
               />
               <CfRow
-                label="Half & half"
-                desc="half safe, half split evenly across assets"
+                label={pfText.half_diversified.label}
+                desc={pfText.half_diversified.desc}
                 value={pfCf.half_diversified}
                 actual={me.current_wealth}
               />
               <CfRow
-                label="Diversified"
-                desc="everything invested, split evenly"
+                label={pfText.diversified.label}
+                desc={pfText.diversified.desc}
                 value={pfCf.diversified}
                 actual={me.current_wealth}
               />
@@ -267,21 +270,26 @@ export function StudentFinished({
           {!portfolio && cf ? (
             <StrategiesPanel outcomes="market outcomes">
               <CfRow
-                label="All safe"
-                desc="0% at risk each round"
+                label={basicText.all_safe.label}
+                desc={basicText.all_safe.desc}
                 value={cf.all_safe}
                 actual={me.current_wealth}
               />
-              <CfRow label={`${edgePct}%`} value={cf.edge} actual={me.current_wealth} />
               <CfRow
-                label="50 / 50"
-                desc="half at risk each round"
+                label={basicText.edge.label}
+                desc={basicText.edge.desc}
+                value={cf.edge}
+                actual={me.current_wealth}
+              />
+              <CfRow
+                label={basicText.fifty_fifty.label}
+                desc={basicText.fifty_fifty.desc}
                 value={cf.fifty_fifty}
                 actual={me.current_wealth}
               />
               <CfRow
-                label="All risky"
-                desc="everything at risk each round"
+                label={basicText.all_risky.label}
+                desc={basicText.all_risky.desc}
                 value={cf.all_risky}
                 actual={me.current_wealth}
               />
@@ -409,7 +417,7 @@ function StatTile({
     <div
       className={`flex flex-col items-center justify-center px-2 py-3 ${tone === "brand" ? "bg-brand-soft" : "bg-surface"}`}
     >
-      <dt className="flex items-center gap-1 font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+      <dt className="flex items-center gap-1 font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
         {label}
         {info ? <InfoTip label={`About ${label.toLowerCase()}`}>{info}</InfoTip> : null}
       </dt>

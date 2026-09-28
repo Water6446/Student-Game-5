@@ -23,7 +23,9 @@ export function PanelGrid({ children, className }: { children: ReactNode; classN
   return (
     <div
       className={clsx(
-        "grid gap-[2px] overflow-hidden rounded-xl border-2 border-ink bg-ink",
+        // clip, not hidden: it rounds the corners without becoming a scroll
+        // container, so a sticky column-head row inside still sticks
+        "grid gap-[2px] overflow-clip rounded-xl border-2 border-ink bg-ink",
         className,
       )}
     >
@@ -77,7 +79,7 @@ export function Panel({
           <h2
             className={clsx(
               "truncate font-display font-extrabold uppercase text-ink",
-              lg ? "text-base tracking-[0.14em]" : "text-[0.75rem] tracking-[0.12em]",
+              lg ? "text-base tracking-label" : "text-[0.75rem] tracking-label",
             )}
           >
             {title}
@@ -154,7 +156,7 @@ export function StatStrip({
     >
       {items.map((s) => (
         <div key={s.label} className="min-w-0 bg-surface px-4 py-3">
-          <dt className="truncate font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+          <dt className="truncate font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
             {s.label}
           </dt>
           <dd className="mt-1 flex min-w-0 items-end justify-between gap-2">
@@ -297,7 +299,7 @@ export function Ticker({
   );
   const labelCls = (onAmber = false) =>
     clsx(
-      "font-display font-extrabold uppercase tracking-[0.12em]",
+      "font-display font-extrabold uppercase tracking-label",
       onAmber ? "text-ink/70" : "text-paper-inverse/60",
       lg ? "text-base" : "text-[10px]",
     );

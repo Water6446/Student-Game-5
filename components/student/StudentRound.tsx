@@ -374,7 +374,7 @@ function SharpeFigure({ sharpe }: { sharpe: number }) {
       className="inline-flex items-baseline gap-2"
       title="Sharpe ratio: return per unit of risk taken, across the years so far"
     >
-      <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+      <span className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
         Sharpe
       </span>
       <span className="font-mono text-sm font-bold text-ink">{sharpeText(sharpe)}</span>
@@ -452,7 +452,7 @@ function Shell({
       <div className="mx-auto flex max-w-lg items-center justify-between px-5 py-3">
         <RoundPill session={session} roundNumber={roundNumber} />
         <span className="text-right">
-          <span className="block font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+          <span className="block font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
             Your wealth
           </span>
           {/* Rolls to the new balance when the next round opens after a reveal. */}
@@ -476,7 +476,7 @@ function Shell({
                 className="flex items-center gap-2 font-mono text-sm font-semibold"
                 aria-label={`${isPortfolio(session.config) ? "Each asset" : "The market"}: ${goodPct}% up, ${100 - goodPct}% down`}
               >
-                <span className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+                <span className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
                   Odds
                 </span>
                 <span className="inline-flex items-center gap-0.5 text-gain">
@@ -666,7 +666,7 @@ function Reveal({
         ) : null}
 
         <div>
-          <div className="font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
+          <div className="font-display text-xs font-extrabold uppercase tracking-label text-ink-muted">
             New wealth
           </div>
           {/* Rolls from the balance going into the round to the new one — the
@@ -766,7 +766,7 @@ function StudentBoard({ board }: { board: LeaderboardRow[] }) {
               <span className="w-5 shrink-0 text-right font-mono text-xs text-ink-subtle">{r.rank}</span>
               <span className="truncate">{r.display_name}</span>
               {r.is_me ? (
-                <span className="shrink-0 font-display text-[11px] font-extrabold uppercase tracking-wide text-play">
+                <span className="shrink-0 font-display text-[11px] font-extrabold uppercase tracking-label text-play">
                   you
                 </span>
               ) : null}

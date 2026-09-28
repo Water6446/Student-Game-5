@@ -132,7 +132,7 @@ export function ManagerReveal({
       {/* The tip is derived from THIS line-up and THIS many years — the
           numbers were once hardcoded to the default preset and a 25-year game,
           and quietly lied whenever the host changed either. */}
-      <div className="mb-1.5 hidden gap-3 px-2 font-display text-[11px] font-extrabold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
+      <div className="mb-1.5 hidden gap-3 px-2 font-display text-[11px] font-extrabold uppercase tracking-label text-ink-muted sm:grid sm:grid-cols-[1fr_5rem_5rem_4rem_4rem]">
         <span>Manager</span>
         <span className="text-right">True alpha</span>
         <span className="text-right">Delivered</span>
@@ -201,7 +201,7 @@ function Cell({
             : "text-ink-muted";
   return (
     <span className="flex items-baseline justify-between gap-1 sm:justify-end">
-      <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-subtle sm:hidden">
+      <span className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink-subtle sm:hidden">
         {label}
       </span>
       <span

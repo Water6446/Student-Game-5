@@ -42,7 +42,7 @@ export function StatusPage({
         <div className="mx-auto w-full max-w-md px-5 py-16 sm:py-24">
           <Card className="animate-pop-in">
             {eyebrow ? (
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.22em] text-ink-muted">
+              <p className="font-mono text-xs font-bold uppercase tracking-kicker text-ink-muted">
                 {eyebrow}
               </p>
             ) : null}

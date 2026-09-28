@@ -148,7 +148,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 // The press affordance and button classes live in a plain module so server
 // components (StatusPage) can call buttonClasses() too; re-exported here.
-export { PRESSABLE, buttonClasses } from "./button-classes";
+export { ON_INK_OFFSET, PRESSABLE, buttonClasses } from "./button-classes";
 
 // forwardRef so a dialog can put focus on a specific button.
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -223,7 +223,7 @@ export function SectionTitle({
         {icon ? <span className="shrink-0 text-base text-ink">{icon}</span> : null}
         {/* A label, not a headline: small, tracked caps. The page title in the
             masthead is the one big heading; sections just name themselves. */}
-        <Tag className="font-display text-[0.8125rem] font-extrabold uppercase leading-tight tracking-[0.1em] text-ink">
+        <Tag className="font-display text-[0.8125rem] font-extrabold uppercase leading-tight tracking-label text-ink">
           {children}
         </Tag>
         {info ? (

@@ -162,6 +162,13 @@ fontFamily: {
 
 - Headings default to `font-display` (Archivo) via a base rule; weight `800–900`
   for big titles, tight tracking (`leading-[.92]` on heroes).
+- **Uppercase type has three spacings, no more** (tokens in `tailwind.config.ts`):
+  display headlines `tracking-tight`; small caps labels — column heads, stat and
+  panel labels, statuses, the SAFE/RISKY blocks — `tracking-label` (0.12em);
+  the widely spaced overlines ("GAME CODE", "IN THE ROOM", the eyebrow)
+  `tracking-kicker` (0.24em). Never an arbitrary `tracking-[…em]` or
+  `tracking-wide` on a label. A code (the join code) may keep its own
+  `tracking-widest`: it is a code, not a label.
 - Use `font-editorial italic` in `text-ink-muted` for instructional/helper copy.
 - `.font-mono { font-variant-numeric: tabular-nums; }` globally so money columns
   never jitter. Apply `tabular-nums` to any numeric input too.
@@ -177,9 +184,8 @@ fontFamily: {
 - **Full height:** use `min-h-dvh` (not `100vh`) so mobile browser chrome doesn't
   clip content.
 - **Radius:** the scale is tightened in `tailwind.config.ts` — printed-ticket
-  corners, not soft bubbles: cards `rounded-2xl` (12px), controls/inputs/panels
-  `rounded-xl` (8px), small blocks `rounded-lg` (6px), present-mode panels
-  `rounded-3xl` (16px). `rounded-full` is for true tags and round things only
+  corners, not soft bubbles: cards `rounded-2xl` (12px), controls/inputs and
+  every tiled frame (`PanelGrid`, `StatStrip`) `rounded-xl` (8px), small blocks and the line score `rounded-lg` (6px). `rounded-full` is for true tags and round things only
   (a dot, the round pill, a switch) — never a number, a delta or a status.
 - **Borders:** **ink**, `border-2` on cards/buttons/inputs, `border-[2.5px]`/`border-[3px]`
   on hero elements, the phone shell, and the projector stage. Prefer explicit
@@ -516,7 +522,13 @@ state machine so sequential actions are clickable in place. On every game
 screen that spot is the **masthead's top right**: `Start the game` in the
 lobby, then `Lock & reveal` / `Next round` / `Finish game` on the control
 screen, all in one place, so the host never hunts for the button. It is the
-only raised (`shadow-pop`) control on the page; the body below is data.
+only raised (`shadow-pop`) control on the page; the body below is data. Once
+the title band scrolls out of view, the masthead's **condensed bar** drops in
+at the top of the screen — title, status and the same action at bar size
+(`shortTitle` when the full title carries a medallion) — so a host reading the
+standings far down the page never scrolls back up to advance the round. It
+appears only while the band is fully off screen, so the action is never shown
+twice at once.
 
 **Tables line up.** Standings and allocations are grids, not flex rows: small
 tracked column heads (`#`, Player, Luck, Last 5, Wealth) over rows whose
@@ -588,6 +600,22 @@ the card's heading. Keep on screen: instructions for the current step ("Choose
 how much to put at risk, then lock it in"), why a button is disabled, validation
 rules and warnings. On the projector a tip opens only when the host hovers it,
 so the room sees the tip only when the host chooses to show it.
+
+**Say it once.** When every row of a list would read the same — luck in a game
+with one shared market — the panel says it in one line instead of repeating it
+per player. When two screens describe the same thing — the fixed strategies on
+the host's results and the student's end screen — the words come from one
+place (`strategyText()` in `lib/game/counterfactual.ts`,
+`portfolioStrategyText()` in `lib/game/portfolio.ts`).
+
+**Whole rows only.** A collapsed list shows its first N rows whole and counts
+the rest ("+ 2 earlier rounds"); it is never a scroll box that slices the last
+visible row in half. Rows past the limit stay in the print stylesheet.
+
+**One control per kind.** A one-of-few choice is the `Segmented` control
+wherever it appears (the $/% switch, the dashboard's All / Live / Finished).
+A button on an ink panel is a normal `Button`/`buttonClasses` with
+`ON_INK_OFFSET` (the amber offset), not a one-off pill.
 
 **Collapse the rarely-used.** Tuck infrequent controls behind a styled native
 `<details>` disclosure — summary `min-h-[44px] rounded-xl border-2 border-ink

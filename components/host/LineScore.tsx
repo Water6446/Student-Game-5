@@ -57,7 +57,7 @@ export function LineScore({
   const numRow = lg ? "h-7 text-sm" : "h-5 text-[10px]";
   const bodyRow = lg ? "h-11 text-base" : "h-8 text-[11px]";
   const labelCls = clsx(
-    "flex items-center bg-paper-2 font-display font-extrabold uppercase tracking-[0.12em] text-ink-muted",
+    "flex items-center bg-paper-2 font-display font-extrabold uppercase tracking-label text-ink-muted",
     lg ? "px-4 text-sm" : "px-2.5 text-[10px]",
   );
 

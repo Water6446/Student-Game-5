@@ -98,7 +98,7 @@ export function DangerZone({ supabase }: { supabase: SupabaseClient }) {
       </div>
 
       <div className="mt-6 border-t-2 border-loss/30 pt-5">
-        <h3 className="font-display text-sm font-extrabold uppercase tracking-wide text-loss">
+        <h3 className="font-display text-sm font-extrabold uppercase tracking-label text-loss">
           Delete account
         </h3>
 

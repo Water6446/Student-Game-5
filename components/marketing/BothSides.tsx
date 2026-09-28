@@ -31,19 +31,19 @@ export function BothSides() {
 
               <div className="mt-6 space-y-4">
                 <div className="rounded-2xl border-2 border-ink bg-ink px-4 py-8 text-center text-paper-inverse">
-                  <p className="font-display text-xs font-extrabold uppercase tracking-[0.28em] text-paper-inverse/70">
+                  <p className="font-display text-xs font-extrabold uppercase tracking-kicker text-paper-inverse/70">
                     {BOTH_SIDES.class.codeLabel}
                   </p>
                   <p className="mt-2 font-mono text-5xl font-black tracking-[0.3em] text-paper-inverse sm:text-6xl">
                     {BOTH_SIDES.class.code}
                   </p>
-                  <p className="mt-4 flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-paper-inverse/70">
+                  <p className="mt-4 flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-kicker text-paper-inverse/70">
                     <Users className="text-sm" />
                     {BOTH_SIDES.class.joined}
                   </p>
                 </div>
                 <div className="rounded-2xl border-2 border-ink bg-gain px-4 py-6 text-center text-white">
-                  <p className="font-display text-xs font-extrabold uppercase tracking-[0.3em] text-white">
+                  <p className="font-display text-xs font-extrabold uppercase tracking-kicker text-white">
                     {BOTH_SIDES.class.bannerRound}
                   </p>
                   <p className="mt-1 flex items-center justify-center gap-3 font-display text-3xl font-black uppercase leading-none tracking-tight sm:text-4xl">
@@ -89,7 +89,7 @@ export function BothSides() {
                       }}
                     />
                   </span>
-                  <span className="mt-1.5 block font-display text-xs font-extrabold uppercase tracking-wide text-ink-muted">
+                  <span className="mt-1.5 block font-display text-xs font-extrabold uppercase tracking-label text-ink-muted">
                     {BOTH_SIDES.host.submittedLabel}
                   </span>
                 </p>

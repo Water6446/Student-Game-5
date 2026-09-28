@@ -72,3 +72,17 @@ export function allStrategyOutcomes(
     ]),
   ) as Record<StrategyKey, number>;
 }
+
+/**
+ * What each fixed strategy is called, and the one line under it — shared by
+ * the host's "If everyone had picked one strategy" cards and the student's
+ * "Other strategies" panel, so the two screens never word them differently.
+ */
+export function strategyText(edgePct: number): Record<StrategyKey, { label: string; desc: string }> {
+  return {
+    all_safe: { label: "All safe", desc: "nothing at risk, ever" },
+    edge: { label: `${edgePct}% edge`, desc: `${edgePct}% at risk every round` },
+    fifty_fifty: { label: "50 / 50", desc: "half your wealth at risk every round" },
+    all_risky: { label: "All risky", desc: "everything at risk every round" },
+  };
+}

@@ -60,14 +60,14 @@ function TierColumn({ tier, index }: { tier: PricingTier; index: number }) {
       <div className="flex items-center justify-between gap-3">
         <h3
           className={clsx(
-            "font-display text-sm font-extrabold uppercase tracking-[0.22em]",
+            "font-display text-sm font-extrabold uppercase tracking-kicker",
             dark ? "text-paper-inverse/80" : "text-ink-muted",
           )}
         >
           {tier.name}
         </h3>
         {tier.chip ? (
-          <span className="rounded-full bg-brand px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink">
+          <span className="rounded-full bg-brand px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-label text-ink">
             {tier.chip}
           </span>
         ) : null}

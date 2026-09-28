@@ -63,7 +63,7 @@ export function PortfolioAllocationInput({
       {/* Safe vs invested totals — same read as the basic game's split boxes */}
       <div className="flex items-stretch gap-3">
         <div className="flex-1 rounded-xl border-2 border-ink bg-gain p-3 text-center text-white">
-          <div className="flex items-center justify-center gap-1 font-display text-xs font-extrabold uppercase tracking-wide">
+          <div className="flex items-center justify-center gap-1 font-display text-xs font-extrabold uppercase tracking-label">
             Safe
             <InfoTip label="About the safe pot" className="text-white/80 hover:text-white">
               Anything you don&apos;t invest stays in the safe pot
@@ -81,7 +81,7 @@ export function PortfolioAllocationInput({
           </div>
         </div>
         <div className="flex-1 rounded-xl border-2 border-ink bg-loss p-3 text-center text-white">
-          <div className="font-display text-xs font-extrabold uppercase tracking-wide">
+          <div className="font-display text-xs font-extrabold uppercase tracking-label">
             Invested
           </div>
           <div className="font-mono text-xl font-bold leading-tight sm:text-2xl">

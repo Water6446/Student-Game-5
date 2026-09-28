@@ -25,7 +25,7 @@ export function FeeCounter({
     <span
       className={`inline-flex items-baseline gap-2 rounded-xl border-2 border-ink bg-loss-soft px-3 py-1.5 shadow-card ${className ?? ""}`}
     >
-      <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-loss">
+      <span className="font-display text-[10px] font-extrabold uppercase tracking-label text-loss">
         {label}
       </span>
       <span className="font-mono text-sm font-bold text-loss">{money(total)}</span>

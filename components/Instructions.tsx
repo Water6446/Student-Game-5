@@ -104,7 +104,7 @@ export function Instructions({
 
       {showMore ? (
         <div className="mt-3 animate-rise border-t-2 border-ink/10 pt-4">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-ink-subtle">
+          <h3 className="text-xs font-bold uppercase tracking-label text-ink-subtle">
             Detailed instructions
           </h3>
           <ul className="mt-3 space-y-2.5">

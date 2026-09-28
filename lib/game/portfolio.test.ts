@@ -6,6 +6,8 @@ import {
   allPortfolioStrategyOutcomes,
   equalSplitAmounts,
   portfolioStrategyAmounts,
+  portfolioStrategyText,
+  PORTFOLIO_STRATEGY_KEYS,
   portfolioStrategyFinalWealth,
   resolvePortfolio,
   validatePortfolioAmounts,
@@ -149,5 +151,13 @@ describe("asset config helpers", () => {
     expect(assetGoodProb(c, 0)).toBe(0.4);
     expect(assetGoodProb(c, 1)).toBe(0.7);
     expect(assetPayoffMode(c, 0)).toBe("extreme");
+  });
+});
+
+describe("portfolioStrategyText", () => {
+  it("names every strategy, with the first asset in One basket", () => {
+    const t = portfolioStrategyText("Tech");
+    expect(Object.keys(t).sort()).toEqual([...PORTFOLIO_STRATEGY_KEYS].sort());
+    expect(t.concentrated.desc).toContain("Tech");
   });
 });

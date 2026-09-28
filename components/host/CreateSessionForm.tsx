@@ -571,7 +571,7 @@ export function CreateSessionForm({
                 <div className="space-y-2 border-y-[1.5px] border-ink/15 py-3">
                   {/* Three columns need ~450px; below sm the fields stack and
                       carry their own labels instead. */}
-                  <div className="hidden gap-2 text-xs font-bold uppercase tracking-wide text-ink-subtle sm:grid sm:grid-cols-[1fr_110px_150px]">
+                  <div className="hidden gap-2 text-xs font-bold uppercase tracking-label text-ink-subtle sm:grid sm:grid-cols-[1fr_110px_150px]">
                     <span>Name</span>
                     <span>Good prob</span>
                     <span>Payoff</span>

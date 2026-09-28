@@ -96,7 +96,7 @@ export function ProspectusCard({
       </dl>
       {/* "Net of fees" stays visible: the year result shows GROSS returns, and
           without the label the two look like a contradiction. */}
-      <div className="mt-1 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide text-ink-subtle">
+      <div className="mt-1 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-label text-ink-subtle">
         net of fees
         <InfoTip label="About this track record" className="text-ink-subtle hover:text-ink">
           <p>
@@ -117,7 +117,7 @@ export function ProspectusCard({
           strategy lines of different lengths still lines up. */}
       <div className="mt-auto pt-2">
         <div className="flex items-baseline justify-between border-t-2 border-ink/10 pt-2">
-          <span className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+          <span className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
             Volatility
           </span>
           <span className="font-mono text-sm font-bold text-ink">{manager.vol_label}</span>
@@ -138,7 +138,7 @@ function Figure({
 }) {
   return (
     <div>
-      <dt className="font-display text-[10px] font-extrabold uppercase tracking-wide text-ink-muted">
+      <dt className="font-display text-[10px] font-extrabold uppercase tracking-label text-ink-muted">
         {label}
         {annualized ? <span className="sr-only"> annualized</span> : null}
       </dt>
