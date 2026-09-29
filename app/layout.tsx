@@ -44,6 +44,15 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
+/** The Supabase API origin, or null when the env var is unset or malformed. */
+const SUPABASE_ORIGIN = (() => {
+  try {
+    return new URL((process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim()).origin;
+  } catch {
+    return null;
+  }
+})();
+
 const DESCRIPTION =
   "A classroom simulation of investment risk, for finance and economics courses. " +
   "Students divide their wealth between a safe and a risky asset from their phones, " +
@@ -87,6 +96,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             header draws the right buttons from frame one (lib/auth/auth-hint.ts).
             A fixed string: nothing from the request is interpolated into it. */}
         <script dangerouslySetInnerHTML={{ __html: AUTH_HINT_SCRIPT }} />
+        {/* Every game screen's first move is a request to Supabase. Opening the
+            connection now overlaps its DNS + TLS setup with the JS download.
+            crossOrigin matches supabase-js's credential-less CORS fetches, so
+            they can reuse this connection. */}
+        {SUPABASE_ORIGIN ? (
+          <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />
+        ) : null}
       </head>
       <body className="min-h-dvh font-sans">
         <SkipLink />

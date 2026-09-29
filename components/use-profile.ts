@@ -28,6 +28,34 @@ import type { ProfileRow } from "@/lib/auth/account";
 const memory = new Map<string, ProfileRow>();
 const STORAGE_PREFIX = "profile:";
 
+/** undefined = the request failed, which says nothing about the profile. */
+type ProfileAnswer = ProfileRow | null | undefined;
+
+/**
+ * Requests in flight, by user id. The header and the page (/host, /account)
+ * both mount this hook at once; they share one request instead of sending two.
+ */
+const inflight = new Map<string, Promise<ProfileAnswer>>();
+
+/** `fresh` skips a shared request that may predate a save (see `reload`). */
+function fetchProfile(supabase: SupabaseClient, id: string, fresh: boolean): Promise<ProfileAnswer> {
+  const shared = fresh ? undefined : inflight.get(id);
+  if (shared) return shared;
+  const request: Promise<ProfileAnswer> = Promise.resolve(
+    supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
+  ).then(
+    // A failed request says nothing about the profile, so it must not wipe
+    // a good cached copy. undefined = "no answer".
+    ({ data, error }) => (error ? undefined : ((data as ProfileRow | null) ?? null)),
+    () => undefined,
+  );
+  inflight.set(id, request);
+  void request.then(() => {
+    if (inflight.get(id) === request) inflight.delete(id);
+  });
+  return request;
+}
+
 /**
  * `useStorage` is false until the component has mounted. The server has no
  * sessionStorage, so reading it during hydration would render text the server
@@ -67,6 +95,7 @@ function writeCache(userId: string, profile: ProfileRow | null) {
  */
 export function forgetCachedProfiles() {
   memory.clear();
+  inflight.clear();
   try {
     const doomed: string[] = [];
     for (let i = 0; i < window.sessionStorage.length; i++) {
@@ -88,17 +117,7 @@ export function useProfile(supabase: SupabaseClient, userId: string | null) {
   useEffect(() => setMounted(true), []);
 
   const fetchFor = useCallback(
-    async (id: string) => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      // A failed request says nothing about the profile, so it must not wipe
-      // a good cached copy. undefined = "no answer".
-      if (error) return undefined;
-      return (data as ProfileRow | null) ?? null;
-    },
+    (id: string, fresh = false) => fetchProfile(supabase, id, fresh),
     [supabase],
   );
 
@@ -107,7 +126,8 @@ export function useProfile(supabase: SupabaseClient, userId: string | null) {
       setState({ for: null, profile: null });
       return;
     }
-    const profile = await fetchFor(userId);
+    // Called right after a save: a request already in flight could predate it.
+    const profile = await fetchFor(userId, true);
     if (profile === undefined) return;
     writeCache(userId, profile);
     setState({ for: userId, profile });

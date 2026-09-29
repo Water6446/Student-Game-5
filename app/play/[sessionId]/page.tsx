@@ -7,18 +7,25 @@ import { usePlayers } from "@/components/use-players";
 import { useRound } from "@/components/use-round";
 import { useDocumentTitle } from "@/components/use-document-title";
 import { StudentWaiting } from "@/components/student/StudentWaiting";
-import { StudentRound } from "@/components/student/StudentRound";
-import { StudentFinished } from "@/components/student/StudentFinished";
+import { lazyModule, useLazyModule } from "@/components/use-lazy-module";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { StatusPage } from "@/components/StatusPage";
 import { PageSkeleton } from "@/components/ui";
 import { sessionTabTitle } from "@/lib/game/session-format";
+
+// A student arrives in the lobby, so only its screen ships with the page. The
+// round and results screens download in the background from the moment the
+// page mounts — well before the host starts (or ends) the game.
+const ROUND_SCREEN = lazyModule(() => import("@/components/student/StudentRound"));
+const FINISHED_SCREEN = lazyModule(() => import("@/components/student/StudentFinished"));
 
 export default function PlayPage({ params }: { params: { sessionId: string } }) {
   const { supabase, user, loading: authLoading } = useSupabaseUser();
   const { session, loading } = useSession(supabase, params.sessionId);
   const players = usePlayers(supabase, params.sessionId);
   const round = useRound(supabase, params.sessionId, session?.current_round ?? 0);
+  const roundScreen = useLazyModule(ROUND_SCREEN);
+  const finishedScreen = useLazyModule(FINISHED_SCREEN);
 
   // Which row is mine? The list carries no auth_uid (0028), so ask the server
   // once. undefined = still asking; null = not a player here.
@@ -101,12 +108,16 @@ export default function PlayPage({ params }: { params: { sessionId: string } }) 
   if (session.status === "lobby") {
     screen = <StudentWaiting supabase={supabase} session={session} me={me} />;
   } else if (session.status === "finished") {
-    screen = <StudentFinished supabase={supabase} session={session} me={me} user={user} />;
-  } else if (!round) {
-    // active — wait for the current round row to load
+    screen = finishedScreen ? (
+      <finishedScreen.StudentFinished supabase={supabase} session={session} me={me} user={user} />
+    ) : (
+      <PageSkeleton label="Loading your results" width="max-w-lg" />
+    );
+  } else if (!round || !roundScreen) {
+    // active — wait for the current round row (and its screen) to load
     screen = <PageSkeleton label="Getting the round ready" width="max-w-lg" />;
   } else {
-    screen = <StudentRound supabase={supabase} session={session} me={me} round={round} />;
+    screen = <roundScreen.StudentRound supabase={supabase} session={session} me={me} round={round} />;
   }
 
   return (

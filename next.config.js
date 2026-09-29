@@ -22,6 +22,8 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // No `X-Powered-By: Next.js` on every response: bytes, and a free hint to scanners.
+  poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

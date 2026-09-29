@@ -139,7 +139,9 @@ alpha 0 and collapse the lesson.
 
 **Auth.** Students sign in anonymously; hosts need a real identity. `middleware.ts`
 → `lib/supabase/middleware.ts` refreshes the session on every request via
-`getUser()` (not `getSession()`). `lib/auth/can-host.ts` holds `canHost()` and
+`getUser()` (not `getSession()`), except link prefetches, static/metadata files,
+and requests with no `sb-*-auth-token` cookie — each of those would be an auth
+round trip for nothing. `lib/auth/can-host.ts` holds `canHost()` and
 `hasAccount()` as exact complements, because `/host` and `/login` redirect to
 each other and drifting conditions would ping-pong. The one server route is
 `app/api/auth/sign-in` — username→email needs `USERNAME_LOOKUP_SECRET`, which

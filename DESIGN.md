@@ -440,6 +440,14 @@ bar with a `border-b-2 border-ink` edge, sticky, 64px. Rules that keep it still:
 line (`text-ink-subtle`) and, for data, a helpful empty state ("appears after the
 first round"). Prefer skeletons for >300ms loads.
 
+**Code splitting on the game screens.** A later game phase (round controls,
+results) and heavy libraries (Recharts) load through `useLazyModule`
+(`components/use-lazy-module.ts`): the download starts when the page mounts, a
+same-size skeleton covers the rare case it is not there yet, and a failed chunk
+retries. Prefer it to `next/dynamic` there — it renders an arrived module on the
+first frame, so a phase change never flashes a placeholder. Each dynamic game
+route has a `loading.tsx` matching the page's own `PageSkeleton`.
+
 ---
 
 ## 9. Present / projector mode

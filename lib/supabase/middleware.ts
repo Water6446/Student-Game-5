@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasAuthCookie } from "@/lib/auth/auth-hint";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -10,6 +11,11 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // No Supabase auth cookie means no session to refresh — getUser() below would
+  // find nothing and write nothing. Skip building a client for every signed-out
+  // visitor and crawler.
+  if (!hasAuthCookie(request.headers.get("cookie") ?? "")) return response;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
