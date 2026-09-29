@@ -5,7 +5,7 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlayerRow, SessionRow } from "@/lib/game/db";
-import { joinUrl } from "@/lib/game/db";
+import { joinDisplayUrl, joinUrl } from "@/lib/game/db";
 import { usePlayers } from "@/components/use-players";
 import { useRound } from "@/components/use-round";
 import { useRoundPhase } from "@/components/use-round-phase";
@@ -145,7 +145,7 @@ function PresentLobby({ session, supabase }: { session: SessionRow; supabase: Su
           <QRCodeSVG value={link} size={220} fgColor={COLOR.ink} />
         </div>
         <p className="mt-6 break-all font-editorial text-2xl italic text-paper-inverse/80">
-          join from your phone — {link}
+          join from your phone — {joinDisplayUrl()}
         </p>
       </div>
 

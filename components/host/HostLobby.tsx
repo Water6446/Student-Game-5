@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionRow } from "@/lib/game/db";
-import { joinUrl } from "@/lib/game/db";
+import { joinDisplayUrl, joinUrl } from "@/lib/game/db";
 import Link from "next/link";
 import { usePlayers } from "@/components/use-players";
 import { Banner, Button, Card, SectionTitle, buttonClasses } from "@/components/ui";
@@ -114,7 +114,7 @@ export function HostLobby({ supabase, session }: { supabase: SupabaseClient; ses
             </div>
           </div>
 
-          <p className="break-all font-editorial italic text-paper-inverse/75">join at {link}</p>
+          <p className="break-all font-editorial italic text-paper-inverse/75">join at {joinDisplayUrl()}</p>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             {/* On the ink panel an ink offset would vanish, so these two

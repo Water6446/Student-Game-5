@@ -95,21 +95,39 @@ export interface LeaderboardRow {
   is_me: boolean;
 }
 
-/** Base site URL for building join links / QR codes / magic-link redirects. */
+/**
+ * The site's base URL (no trailing slash) — the one source for join links, QR
+ * codes, auth redirects, metadata, sitemap and robots.
+ *
+ * NEXT_PUBLIC_SITE_URL wins where it is set, which on Vercel is Production only
+ * (https://www.sharpesim.com). Unset — previews and local dev — the browser uses
+ * the origin it is actually served from, and the server falls back to Vercel's
+ * deployment URL, then localhost. A localhost value is ignored in the browser
+ * so a dev leftover can't put an unreachable address in a phone-tested QR.
+ */
 export function siteUrl(): string {
-  // In the browser, ALWAYS use the real current origin so links and the
-  // magic-link redirect match wherever the app is actually served (production,
-  // a preview deployment, or localhost). This makes a stale NEXT_PUBLIC_SITE_URL
-  // (e.g. left as http://localhost:3000) harmless instead of breaking auth.
-  if (typeof window !== "undefined") return window.location.origin;
-  // Server-side / build-time only (no window): prefer the explicit env var,
-  // then Vercel's deployment URL, then localhost for dev.
-  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL;
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (typeof window !== "undefined" && (!fromEnv || isLocalUrl(fromEnv))) {
+    return window.location.origin;
+  }
+  if (fromEnv) return fromEnv;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
 
+function isLocalUrl(url: string): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(url);
+}
+
+/** Full join link with the code prefilled — what the QR encodes and "Copy link" copies. */
 export function joinUrl(code: string): string {
   return `${siteUrl()}/join?code=${encodeURIComponent(code)}`;
+}
+
+/**
+ * The join address as text for students to type: "sharpesim.com/join" — no
+ * scheme, no www (the apex redirects to www), no code (it is shown beside it).
+ */
+export function joinDisplayUrl(): string {
+  return `${siteUrl().replace(/^https?:\/\//, "").replace(/^www\./, "")}/join`;
 }

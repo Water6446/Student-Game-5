@@ -69,7 +69,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "The Risk Game",
     description: DESCRIPTION,
-    url: process.env.NEXT_PUBLIC_SITE_URL,
+    url: siteUrl(),
     siteName: "The Risk Game",
     type: "website",
   },
