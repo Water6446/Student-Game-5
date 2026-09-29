@@ -52,8 +52,8 @@ project these are dashboard settings:
 2. **Redirect / Site URLs** for every sign-in that leaves the site (Google,
    email links) — see Part B § 0b for the details:
    Dashboard → Authentication → **URL Configuration**
-   - Site URL: `http://localhost:3000` (dev) and your Vercel URL in prod
-   - Redirect URLs: add `http://localhost:3000/**` (and the Vercel `/**`)
+   - Site URL: `http://localhost:3000` (dev) and `https://www.sharpesim.com` in prod
+   - Redirect URLs: add `http://localhost:3000/**` (and `https://www.sharpesim.com/**`)
 
 > **"permission denied for …"** (Postgres 42501) from the app almost always means
 > a migration is pending on the remote: `npm run db:status`, then
@@ -106,7 +106,7 @@ sign-in appears to work and then dumps you somewhere blank.
   - **Site URL**: `http://localhost:3000` while developing, your production URL
     once deployed.
   - **Redirect URLs**: add `http://localhost:3000/**`, plus the production
-    `https://<your-app>.vercel.app/**`. Keep both — they can coexist.
+    `https://www.sharpesim.com/**`. Keep both — they can coexist.
   - Using a different dev port (`next dev -p 3100`)? Add that one too; the app
     returns to whatever origin it is served from.
 
@@ -275,9 +275,10 @@ migration `0008` relaxed the **server** independently:
 ### 2. Supabase dashboard — Auth
 
 - [ ] **Authentication → URL Configuration**
-  - **Site URL** = your production URL (e.g. `https://<your-app>.vercel.app`)
-  - **Redirect URLs** include `https://<your-app>.vercel.app/**`
-        (keep `http://localhost:3000/**` for local dev)
+  - **Site URL** = `https://www.sharpesim.com`
+  - **Redirect URLs** include `https://www.sharpesim.com/**`
+        (keep `http://localhost:3000/**` for local dev; add
+        `https://*-<your-team>.vercel.app/**` if you sign in on preview deploys)
 - [ ] **Enable CAPTCHA / Bot Protection for anonymous sign-ins**
       (Authentication → Settings/Attack Protection). Without it a bot could
       mass-create anonymous users.
@@ -299,7 +300,10 @@ migration `0008` relaxed the **server** independently:
   - `NEXT_PUBLIC_SUPABASE_URL` = `https://mftrhnwnvidxjdzenmip.supabase.co`
         (no trailing slash, no spaces)
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your `sb_publishable_...` key
-  - `NEXT_PUBLIC_SITE_URL` = `https://<your-app>.vercel.app`
+  - `NEXT_PUBLIC_SITE_URL` = `https://www.sharpesim.com` — **Production only**;
+        leave it unset for Preview/Development so previews use their own URL.
+        The old `student-game-5.vercel.app` alias 308-redirects to it
+        (`next.config.js` → `redirects()`).
 - [ ] **Redeploy after any env var change** (`NEXT_PUBLIC_*` are baked in at build time).
 - [ ] Production branch is `main`.
 

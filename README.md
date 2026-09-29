@@ -106,7 +106,7 @@ each one.
 |-----|----------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | publishable key (safe; protected by RLS) |
-| `NEXT_PUBLIC_SITE_URL` | public | base URL for the join link/QR |
+| `NEXT_PUBLIC_SITE_URL` | public | canonical URL for join link/QR, auth redirects, metadata; Production only (`https://www.sharpesim.com`) |
 | `NEXT_PUBLIC_ALLOW_ANON_HOST` | public | the testing bypass; **on** until launch |
 | `NEXT_PUBLIC_EMAIL_DELIVERY` | public | show email-dependent flows; off until custom SMTP |
 | `USERNAME_LOOKUP_SECRET` | **server only** | enables username sign-in; unset = email only |
@@ -170,8 +170,10 @@ guest can host — a reminder, not a failure.
 2. Set the `NEXT_PUBLIC_*` variables above (and `USERNAME_LOOKUP_SECRET` if you
    want username sign-in) as Vercel env vars. Do **not** set the service_role
    key in Vercel.
-3. Deploy. Add the Vercel URL to Supabase **Auth → URL Configuration** (Site URL
-   + redirect URLs) so Google and email sign-in return to your app.
+3. Deploy. Production lives at **https://www.sharpesim.com** (the apex and the
+   old `student-game-5.vercel.app` both redirect there). Set it as the Supabase
+   **Auth → URL Configuration** Site URL, with `https://www.sharpesim.com/**` in
+   the redirect URLs, so Google and email sign-in return to your app.
 
 The full pre-class launch checklist — including closing the testing bypass —
 dashboard steps, smoke test and rollback plan live in
