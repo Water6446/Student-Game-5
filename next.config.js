@@ -27,6 +27,19 @@ const nextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // The old production alias moved to the custom domain. Matched on the EXACT
+  // host, so branch/preview URLs (student-game-5-git-*.vercel.app) are untouched.
+  // Path and query string carry over; permanent = 308.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "student-game-5.vercel.app" }],
+        destination: "https://www.sharpesim.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
