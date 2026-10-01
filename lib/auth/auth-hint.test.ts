@@ -3,7 +3,8 @@ import { AUTH_HINT_SCRIPT, hasAuthCookie } from "./auth-hint";
 
 describe("hasAuthCookie", () => {
   it("spots a Supabase session cookie, whole or chunked", () => {
-    expect(hasAuthCookie("sb-mftrhnwnvidxjdzenmip-auth-token=base64-abc")).toBe(true);
+    // A fake project ref: a real-looking one trips secret scanners for nothing.
+    expect(hasAuthCookie("sb-testproject-auth-token=value")).toBe(true);
     expect(hasAuthCookie("theme=x; sb-abc-auth-token.0=part1; sb-abc-auth-token.1=part2")).toBe(true);
   });
 
