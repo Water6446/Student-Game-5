@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { joinDisplayUrl, joinUrl, siteUrl } from "./db";
+import { PRODUCTION_SITE_URL, joinDisplayUrl, joinUrl, siteUrl } from "./db";
 
 function inBrowser(origin: string) {
   vi.stubGlobal("window", { location: { origin } });
@@ -30,8 +30,28 @@ describe("siteUrl", () => {
     expect(siteUrl()).toBe("http://192.168.1.20:3000");
   });
 
+  it("ignores a value that is not a bare origin (a pasted Vercel dashboard link)", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://vercel.com/water6446s-projects/student-game-5");
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(siteUrl()).toBe(PRODUCTION_SITE_URL);
+    expect(joinUrl("ABCD")).toBe("https://www.sharpesim.com/join?code=ABCD");
+    inBrowser("https://www.sharpesim.com");
+    expect(siteUrl()).toBe("https://www.sharpesim.com");
+    expect(joinDisplayUrl()).toBe("sharpesim.com/join");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "www.sharpesim.com");
+    expect(siteUrl()).toBe("https://www.sharpesim.com");
+  });
+
+  it("falls back to the production address on a production build when unset", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("VERCEL_URL", "student-game-5-abc123.vercel.app");
+    expect(siteUrl()).toBe("https://www.sharpesim.com");
+  });
+
   it("falls back to VERCEL_URL, then localhost, on the server", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
+    vi.stubEnv("VERCEL_ENV", "preview");
     vi.stubEnv("VERCEL_URL", "student-game-5-abc123.vercel.app");
     expect(siteUrl()).toBe("https://student-game-5-abc123.vercel.app");
     vi.stubEnv("VERCEL_URL", "");

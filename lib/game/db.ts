@@ -101,18 +101,40 @@ export interface LeaderboardRow {
  *
  * NEXT_PUBLIC_SITE_URL wins where it is set, which on Vercel is Production only
  * (https://www.sharpesim.com). Unset — previews and local dev — the browser uses
- * the origin it is actually served from, and the server falls back to Vercel's
- * deployment URL, then localhost. A localhost value is ignored in the browser
- * so a dev leftover can't put an unreachable address in a phone-tested QR.
+ * the origin it is actually served from, and the server falls back to the
+ * production address on a production build, then Vercel's deployment URL, then
+ * localhost. A localhost value is ignored in the browser so a dev leftover
+ * can't put an unreachable address in a phone-tested QR.
  */
 export function siteUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  const fromEnv = envSiteUrl();
   if (typeof window !== "undefined" && (!fromEnv || isLocalUrl(fromEnv))) {
     return window.location.origin;
   }
   if (fromEnv) return fromEnv;
+  if (process.env.VERCEL_ENV === "production") return PRODUCTION_SITE_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
+}
+
+export const PRODUCTION_SITE_URL = "https://www.sharpesim.com";
+
+/**
+ * NEXT_PUBLIC_SITE_URL, but only when it is a bare http(s) origin. Anything with
+ * a path (e.g. the Vercel dashboard link pasted by mistake, which once put
+ * vercel.com/<team>/<project>/join in every QR code) is ignored.
+ */
+function envSiteUrl(): string | undefined {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw);
+    const bare = url.pathname === "/" && !url.search && !url.hash && !url.username;
+    if (bare && (url.protocol === "https:" || url.protocol === "http:")) return url.origin;
+  } catch {
+    // not a URL at all — fall through
+  }
+  return undefined;
 }
 
 function isLocalUrl(url: string): boolean {

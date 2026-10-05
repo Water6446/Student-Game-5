@@ -302,6 +302,9 @@ migration `0008` relaxed the **server** independently:
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your `sb_publishable_...` key
   - `NEXT_PUBLIC_SITE_URL` = `https://www.sharpesim.com` — **Production only**;
         leave it unset for Preview/Development so previews use their own URL.
+        It must be the bare site origin — **not** the Vercel dashboard link
+        (`vercel.com/<team>/<project>`), which once ended up in every QR code.
+        A value with a path is now ignored, but check `/robots.txt` after deploy.
         The old `student-game-5.vercel.app` alias 308-redirects to it
         (`next.config.js` → `redirects()`).
 - [ ] **Redeploy after any env var change** (`NEXT_PUBLIC_*` are baked in at build time).
