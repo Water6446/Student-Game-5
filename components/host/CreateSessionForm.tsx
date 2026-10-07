@@ -29,16 +29,16 @@ import { ManagerSetup } from "@/components/host/ManagerSetup";
 import { INDEX_FUND, MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
 import { createSession } from "@/lib/game/create-session";
 
-// "Base setup": the recommended one-click default per game. The professor's
-// basic game is the extreme 2×/0× payoff with an INDEPENDENT outcome per
-// student. The portfolio game defaults to 4 identical independent assets with
-// ONE class-wide outcome per asset each round (a shared "market moment") and a
-// flat 0% safe pot. Advanced mode lets the host change any of it.
+// "Base setup": the recommended one-click default per game. Every game defaults
+// to a SHARED market scope — one class-wide outcome (per asset) each round. The
+// basic game is the extreme 2×/0× payoff; the portfolio game is 4 identical
+// independent assets and a flat 0% safe pot. Advanced mode lets the host change
+// any of it.
 const BASE_SETUP: SessionConfig = {
   ...DEFAULT_CONFIG,
   game_type: "basic",
   payoff_mode: "extreme",
-  market_scope: "independent",
+  market_scope: "shared",
   // The 4 fixed-strategy benchmark students ship on by default so every game
   // has baselines to compare against.
   add_benchmark_bots: true,
