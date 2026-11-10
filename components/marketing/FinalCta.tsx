@@ -22,7 +22,7 @@ export function FinalCta() {
               >
                 {FINAL_CTA.headline}
               </h2>
-              <p className="mt-5 max-w-[48ch] font-editorial text-lg italic leading-relaxed text-ink/85 sm:text-xl">
+              <p className="mt-5 max-w-[48ch] text-lg leading-relaxed text-ink/85 sm:text-xl">
                 {FINAL_CTA.sub}
               </p>
             </div>

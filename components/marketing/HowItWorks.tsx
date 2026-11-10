@@ -49,7 +49,7 @@ export function HowItWorks() {
               secondary to the three steps above it. */}
           <p className="mt-14 flex items-start gap-4 rounded-2xl border border-dashed border-ink/40 p-6">
             <Download className="mt-0.5 shrink-0 text-xl text-ink" />
-            <span className="font-editorial text-lg italic leading-relaxed text-ink">
+            <span className="text-lg leading-relaxed text-ink">
               {HOW_IT_WORKS.strip}
             </span>
           </p>

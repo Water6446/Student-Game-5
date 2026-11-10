@@ -58,7 +58,7 @@ export function GameModes() {
                         </h3>
                         <p
                           className={clsx(
-                            "mt-1.5 font-editorial text-base italic",
+                            "mt-1.5 text-base",
                             game.featured ? "text-ink/80" : "text-paper-inverse/70",
                           )}
                         >
@@ -88,7 +88,7 @@ export function GameModes() {
                   </div>
 
                   {game.featured ? (
-                    <p className="mt-7 max-w-[62ch] font-editorial text-lg italic leading-relaxed text-ink sm:text-xl">
+                    <p className="mt-7 max-w-[62ch] text-lg leading-relaxed text-ink sm:text-xl">
                       {GAMES.featuredNote}
                     </p>
                   ) : null}

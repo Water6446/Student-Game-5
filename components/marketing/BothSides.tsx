@@ -24,7 +24,7 @@ export function BothSides() {
           <div className="grid lg:grid-cols-2">
             <Reveal className="py-10 lg:pr-12">
               <Eyebrow className="text-ink-muted">{BOTH_SIDES.class.title}</Eyebrow>
-              <p className="mt-3 font-editorial text-lg italic text-ink-muted">
+              <p className="mt-3 text-lg text-ink-muted">
                 {BOTH_SIDES.class.caption}
               </p>
 
@@ -49,7 +49,7 @@ export function BothSides() {
                     <ArrowUp />
                     {BOTH_SIDES.class.bannerHeadline}
                   </p>
-                  <p className="mt-2 font-editorial text-lg italic text-white">
+                  <p className="mt-2 text-lg text-white">
                     {BOTH_SIDES.class.bannerNote}
                   </p>
                 </div>
@@ -61,7 +61,7 @@ export function BothSides() {
               className="border-t border-ink/15 py-10 lg:border-l lg:border-t-0 lg:pl-12"
             >
               <Eyebrow className="text-ink-muted">{BOTH_SIDES.host.title}</Eyebrow>
-              <p className="mt-3 font-editorial text-lg italic text-ink-muted">
+              <p className="mt-3 text-lg text-ink-muted">
                 {BOTH_SIDES.host.caption}
               </p>
 

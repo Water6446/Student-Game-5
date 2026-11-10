@@ -6,8 +6,8 @@ import { HERO, isTodo } from "@/lib/marketing/content";
 
 /**
  * The stage: a full-bleed image inside a rounded frame, with the headline set
- * over it and the product floating at its edge. Two typefaces carry the
- * headline — Archivo black for the claim, Fraunces italic for the turn — and
+ * over it and the product floating at its edge. One typeface carries the
+ * headline — Archivo black throughout, the second line picked out in amber — and
  * each line slides up from behind its own mask on load.
  *
  * Until a real photograph exists, the same composition runs on a designed ink
@@ -43,7 +43,7 @@ export function Hero() {
                     accessible name runs together as "simulationof". */}
                 <span className="sr-only"> </span>
                 <MaskedLine delay={240}>
-                  <span className="block font-editorial text-[0.92em] italic tracking-[-0.01em] text-brand">
+                  <span className="block font-display font-black uppercase tracking-[-0.02em] text-brand">
                     {HERO.headlineEmphasis}
                   </span>
                 </MaskedLine>
@@ -93,7 +93,7 @@ export function Hero() {
           </div>
 
           <div className="mt-12 flex flex-wrap items-end justify-end gap-6 border-t border-paper-inverse/20 pt-6 lg:mt-16">
-            <p className="max-w-sm font-editorial text-sm italic leading-relaxed text-paper-inverse/75 sm:text-base">
+            <p className="max-w-sm text-sm leading-relaxed text-paper-inverse/75 sm:text-base">
               {HERO.aside}
             </p>
           </div>

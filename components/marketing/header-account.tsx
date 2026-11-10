@@ -78,7 +78,7 @@ function useAuthAttribute(user: User | null, loading: boolean) {
 /** A guest cannot sign back in: their session, once dropped, is gone for good. */
 function GuestWarning() {
   return (
-    <p className="px-3 pb-1 pt-0.5 font-editorial text-xs italic text-ink-muted">
+    <p className="px-3 pb-1 pt-0.5 text-xs text-ink-muted">
       Guests can&apos;t sign back in. You&apos;ll lose your games.
     </p>
   );
@@ -222,7 +222,7 @@ export function AvatarMenu() {
             {guest ? (
               <>
                 <p className="font-display text-sm font-extrabold text-ink">Playing as a guest</p>
-                <p className="mt-0.5 font-editorial text-xs italic text-ink-muted">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   Your results are not saved to an account yet.
                 </p>
               </>

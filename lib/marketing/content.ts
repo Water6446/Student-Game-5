@@ -4,7 +4,7 @@
  * never inline their own text.
  *
  * Voice: measured and academic. Short declarative sentences, concrete nouns, no
- * salesmanship and no swagger. The Fraunces italic lines are the only place the
+ * salesmanship and no swagger. The plain sub-lines are the only place the
  * register warms up, and even there it stays plain.
  *
  * Unresolved values are left as literal `TODO(max) …` strings and rendered as
@@ -92,7 +92,7 @@ export const JOIN = {
 
 export const HERO = {
   eyebrow: "In-class market simulation",
-  /** The headline is set in two faces: Archivo black, then Fraunces italic. */
+  /** The headline is two lines of Archivo black; the second is set in amber. */
   headlineLead: "A classroom simulation",
   headlineEmphasis: "of investment risk.",
   sub: "A hands-on way to learn how investment risk really works. Each round you divide your wealth between a safe and a risky asset, the market turns, and you see how your choices stack up against every other strategy in the room. For classrooms, client workshops, and anyone curious about the tradeoff between playing it safe and reaching for more.",
@@ -108,7 +108,7 @@ export const HERO = {
     src: "TODO(max) hero photo",
     alt: "A lecture hall mid-session, the projector showing the market reveal.",
   },
-  /** The quiet italic line in the lower corner of the stage. */
+  /** The quiet line in the lower corner of the stage. */
   aside:
     "In each round a student holds a balance, decides how much of it to put at risk, and the market outcome is drawn from the odds the instructor has set.",
   /** Numbers row under the stage. Product facts, not usage statistics. */

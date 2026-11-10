@@ -82,7 +82,7 @@ export function SectionHead({
         {sub ? (
           <p
             className={clsx(
-              "font-editorial text-lg italic leading-relaxed lg:col-span-5",
+              "text-lg leading-relaxed lg:col-span-5",
               inverse ? "text-paper-inverse/80" : "text-ink-muted",
             )}
           >

@@ -151,6 +151,8 @@ fontFamily: {
 - Headings default to `font-display` (Archivo) via a base rule; weight `800–900`
   for big titles, tight tracking (`leading-[.92]` on heroes).
 - Use `font-editorial italic` in `text-ink-muted` for instructional/helper copy.
+  The marketing homepage (`components/marketing/*`) is the exception: it uses no
+  italics at all — sub-lines and helper copy there are plain Hanken Grotesk.
 - `.font-mono { font-variant-numeric: tabular-nums; }` globally so money columns
   never jitter. Apply `tabular-nums` to any numeric input too.
 - Body min 16px on mobile. Line-height 1.5 for prose.
