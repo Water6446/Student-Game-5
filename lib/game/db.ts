@@ -50,6 +50,8 @@ export interface RoundRow {
   /** manager game: [r0..rn-1] GROSS manager returns (written at reveal) */
   manager_returns?: number[] | null;
   revealed_at: string | null;
+  /** paper trading: when trading closes for this round (0032); null elsewhere */
+  closes_at?: string | null;
 }
 
 export interface AllocationRow {

@@ -1,0 +1,9 @@
+symbol,ex_date,child_symbol,ratio,note
+MO,2008-03-31,PM,1,"spin-off of Philip Morris International: 1 PM share per MO share"
+ABT,2013-01-02,ABBV,1,"spin-off of AbbVie: 1 ABBV share per ABT share"
+MRK,2021-06-03,OGN,0.1,"spin-off of Organon: 1 OGN share per 10 MRK shares"
+IBM,2021-11-04,KD,0.2,"spin-off of Kyndryl: 1 KD share per 5 IBM shares"
+T,2022-04-11,WBD,0.241917,"spin-off of WarnerMedia, merged into Warner Bros. Discovery: 0.241917 WBD per T share"
+GE,2023-01-04,GEHC,0.333333333,"spin-off of GE HealthCare: 1 GEHC share per 3 GE shares"
+MMM,2024-04-01,SOLV,0.25,"spin-off of Solventum: 1 SOLV share per 4 MMM shares"
+GE,2024-04-02,GEV,0.25,"spin-off of GE Vernova: 1 GEV share per 4 GE shares"

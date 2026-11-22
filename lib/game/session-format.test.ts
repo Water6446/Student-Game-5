@@ -3,6 +3,8 @@ import {
   filterSessions,
   gameLabel,
   liveSession,
+  roundNoun,
+  roundsNoun,
   sessionTabTitle,
   sessionTitle,
   whenText,
@@ -28,6 +30,7 @@ describe("gameLabel", () => {
   it("names each game type, defaulting to basic", () => {
     expect(gameLabel(cfg({ game_type: "portfolio" }))).toBe("Portfolio");
     expect(gameLabel(cfg({ game_type: "manager" }))).toBe("Manager");
+    expect(gameLabel(cfg({ game_type: "trading" }))).toBe("Paper trading");
     expect(gameLabel(cfg({ game_type: "basic" }))).toBe("Basic");
     // pre-portfolio sessions have no game_type at all
     expect(gameLabel(cfg())).toBe("Basic");
@@ -111,6 +114,13 @@ describe("sessionTabTitle", () => {
       sessionTabTitle(row({ status: "active", current_round: 7, config: cfg({ game_type: "manager" }) }), "student"),
     ).toBe("Year 7/25");
   });
+
+  it("counts the session's period in paper trading", () => {
+    const trading = (period?: "quarter" | "month") =>
+      row({ status: "active", current_round: 4, config: cfg({ game_type: "trading", period }) });
+    expect(sessionTabTitle(trading("month"), "student")).toBe("Month 4/25");
+    expect(sessionTabTitle(trading(), "host")).toBe("Quarter 4/25 · ABC123");
+  });
 });
 
 describe("filterSessions", () => {
@@ -132,5 +142,22 @@ describe("filterSessions", () => {
     expect(ids(filterSessions(rows, "bbb2", "all"))).toEqual(["b"]);
     expect(ids(filterSessions(rows, "MANAGER", "all"))).toEqual(["b"]);
     expect(ids(filterSessions(rows, "econ", "finished"))).toEqual([]);
+  });
+});
+
+describe("roundNoun / roundsNoun", () => {
+  it("names a round by game type", () => {
+    expect(roundNoun(cfg())).toBe("Round");
+    expect(roundNoun(cfg({ game_type: "portfolio" }))).toBe("Round");
+    expect(roundNoun(cfg({ game_type: "manager" }))).toBe("Year");
+    expect(roundNoun(cfg({ game_type: "trading", period: "month" }))).toBe("Month");
+    expect(roundNoun(cfg({ game_type: "trading" }))).toBe("Quarter");
+  });
+
+  it("has a plural for running text, halves included", () => {
+    expect(roundsNoun(cfg())).toBe("rounds");
+    expect(roundsNoun(cfg({ game_type: "manager" }))).toBe("years");
+    expect(roundsNoun(cfg({ game_type: "trading", period: "half" }))).toBe("halves");
+    expect(roundsNoun(cfg({ game_type: "trading" }))).toBe("quarters");
   });
 });

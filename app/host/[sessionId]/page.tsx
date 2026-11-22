@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useSession } from "@/components/use-session";
 import { useDocumentTitle } from "@/components/use-document-title";
@@ -9,6 +11,8 @@ import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { StatusPage } from "@/components/StatusPage";
 import { PageSkeleton } from "@/components/ui";
 import { sessionTabTitle } from "@/lib/game/session-format";
+import { isTrading } from "@/lib/game/types";
+import { tradeHostPath } from "@/lib/markets/routes";
 
 // A new session opens on its lobby, so only that screen ships with the page. The
 // round controls and the summary download in the background from the moment the
@@ -23,7 +27,15 @@ export default function HostSessionPage({ params }: { params: { sessionId: strin
   const summaryScreen = useLazyModule(SUMMARY_SCREEN);
   useDocumentTitle(session ? sessionTabTitle(session, "host") : null);
 
+  // A paper trading session is hosted from /markets; dashboard links land here.
+  const router = useRouter();
+  const trading = session ? isTrading(session.config) : false;
+  useEffect(() => {
+    if (trading) router.replace(tradeHostPath(params.sessionId));
+  }, [trading, router, params.sessionId]);
+
   if (
+    trading ||
     authLoading ||
     loading ||
     (session?.status === "active" && !roundScreen) ||

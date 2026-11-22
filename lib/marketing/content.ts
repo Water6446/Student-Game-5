@@ -12,8 +12,11 @@
  * `isTodo()` to branch on them.
  */
 
+import { marketsEnabled } from "../markets/flags";
+
 /** Names of icons from `components/icons.tsx`, resolved in `icon-map.tsx`. */
 export type IconName =
+  | "chart"
   | "coins"
   | "trendUp"
   | "users"
@@ -47,11 +50,18 @@ export const SITE = {
 // Absolute, not bare fragments: the header now rides on /login, /host and
 // /account too, where "#how" would scroll nowhere. On the homepage itself the
 // path is unchanged, so the browser still treats it as an in-page scroll.
-export const NAV_LINKS = [
+//
+// "Markets" is a page, not a homepage section: the header marks it current on
+// /markets and everything under it (isInSection). It is listed only while the
+// section is switched on (NEXT_PUBLIC_ENABLE_MARKETS, inlined at build time).
+export const MARKETS_NAV = { label: "Markets", href: "/markets" } as const;
+
+export const NAV_LINKS: readonly { label: string; href: string }[] = [
   { label: "How it works", href: "/#how" },
   { label: "The games", href: "/#games" },
+  ...(marketsEnabled() ? [MARKETS_NAV] : []),
   // { label: "Pricing", href: "/#pricing" },  ← restore with the Pricing section
-] as const;
+];
 
 export const HEADER = {
   /** a text link on wide screens; the phone header's one button (short label) */
@@ -62,7 +72,11 @@ export const HEADER = {
    * not. A button that renamed itself resized itself, and moved everything
    * beside it.
    */
-  hostCta: { label: "Host a session", href: "/host", signedOutHref: "/login?next=%2Fhost" },
+  hostCta: {
+    label: "Host a session",
+    href: "/host",
+    signedOutHref: "/login?next=%2Fhost",
+  },
   loginCta: { label: "Log in", href: "/login" },
   menuLabel: { open: "Open menu", close: "Close menu" },
 } as const;
@@ -230,6 +244,97 @@ export const GAMES = {
   ],
   featuredNote:
     "On the market-neutral preset, the best available strategy still ends behind its own fee structure, which is the point the game is built to demonstrate.",
+} as const;
+
+/**
+ * The homepage band for the Markets section. Its own band, after the three
+ * classroom games and deliberately not one of them: a different kind of game,
+ * in a different part of the site. Unnumbered, so the sections around it keep
+ * their eyebrows whether or not the section is switched on.
+ *
+ * The site plays a simulated market until real price histories are licensed
+ * (supabase/migrations/0037), so nothing here may promise real stocks or a
+ * reveal of real companies; say so only once the licensed data is live.
+ */
+export const MARKETS_BAND = {
+  id: "markets",
+  eyebrow: "New section / Markets",
+  heading: "Paper trading in a market that moves.",
+  sub: "A separate game for the same room. Students trade stocks from their phones through a brokerage-style app, one period at a time, in a simulated market with booms, crashes, dividends and delistings.",
+  points: [
+    "Daily prices for 25 companies and an index fund",
+    "Market, limit and stop orders; shorting and margin optional",
+    "Each result set against simply holding the index fund",
+  ],
+  cta: { label: "See the Markets section", href: MARKETS_NAV.href },
+} as const;
+
+/**
+ * The Markets hub at /markets. One game today; later games join the list, and
+ * nothing is shown for them until they exist.
+ */
+export const MARKETS_PAGE = {
+  eyebrow: "Markets",
+  heading: "Games on a moving market.",
+  sub: "The classroom games draw each market from odds you set. The games here play out a market day by day instead: a simulated stock market with booms, crashes, dividends and delistings. Students join with a code, as they do for every game on the site.",
+  games: [
+    {
+      name: "Paper trading",
+      icon: "chart" as IconName,
+      hook: "Trade stocks, one period at a time",
+      bullets: [
+        "Twenty-five companies, an index fund and cash",
+        "Market, limit and stop orders",
+        "Each round moves the market a week to a year",
+      ],
+      body: "The class trades against a clock, then the market moves on by the period you chose. When the last round resolves, every student sees their result beside what holding the index fund would have earned, and whether trading more paid.",
+      hostCta: { label: "Set up a session", href: "/markets/trade/new" },
+    },
+  ],
+  joinPrompt: "Here to play rather than host?",
+  joinCta: { label: "Join with a code", href: "/join" },
+  /**
+   * The illustration beside the game: a static replica of the student's market
+   * list (components/markets/student/MarketList.tsx). Invented companies from
+   * data/names/name_pool.json, as the game itself shows them; each row's
+   * direction matches its change.
+   */
+  preview: {
+    clock: "Year 3 · Mar 14",
+    title: "Market",
+    index: {
+      ticker: "TMIX",
+      name: "Total Market Index Fund",
+      about: "The whole market in one fund",
+      price: "$84.12",
+      change: 0.0213,
+      spark: [71, 73, 72, 75, 74, 77, 79, 78, 81, 80, 82, 84],
+    },
+    rows: [
+      {
+        ticker: "CRVN",
+        name: "Corvane Systems",
+        price: "$142.50",
+        change: 0.0587,
+        spark: [98, 104, 101, 110, 116, 112, 121, 127, 124, 133, 135, 142],
+      },
+      {
+        ticker: "RDGM",
+        name: "Ridgeline Motors",
+        price: "$37.08",
+        change: -0.0342,
+        spark: [52, 50, 51, 47, 48, 44, 45, 41, 42, 39, 38, 37],
+      },
+      {
+        ticker: "GLFD",
+        name: "Goldleaf Foods",
+        price: "$61.94",
+        change: 0.0041,
+        spark: [58, 59, 58, 60, 59, 60, 61, 60, 61, 61, 62, 62],
+      },
+    ],
+    caption: "The student's market list: invented company names, in game time.",
+  },
 } as const;
 
 export const FEATURES = {

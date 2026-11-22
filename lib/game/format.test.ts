@@ -9,6 +9,7 @@ describe("sharpeText", () => {
   it("uses U+2212 minus, like signedMoney/signedPct", () => {
     expect(sharpeText(-0.33)).toBe("−0.33");
     expect(sharpeText(-0.33)).not.toContain("-"); // never a hyphen-minus
+    expect(sharpeText(-0.004)).toBe("0.00"); // no sign on a rounded zero
   });
 
   it("renders an em dash when undefined (all-safe, or fewer than 2 rounds)", () => {

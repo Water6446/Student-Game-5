@@ -9,7 +9,7 @@ UI copy stays short on purpose; the detail lives here.
 [Luck](#luck) · [Luck dispersion](#luck-dispersion-why-the-spread-is-so-big) ·
 [Returns](#returns) · [Sharpe ratio](#sharpe-ratio) · [Correlation ρ](#correlation-ρ-portfolio) ·
 [Counterfactuals & benchmark bots](#counterfactuals--benchmark-bots) ·
-[Manager game](#manager-game) ·
+[Manager game](#manager-game) · [Paper trading](#paper-trading) ·
 [Standings](#standings) · [Writing the numbers](#writing-the-numbers) ·
 [CSV export](#csv-export)
 
@@ -398,6 +398,392 @@ Code: [lib/game/manager.ts](lib/game/manager.ts), mirrored by `resolve_round`
 (written in `supabase/migrations/0015_manager_resolve.sql`; its current
 definition is in `0029_hidden_odds.sql`, which changed only the odds merge and a
 row lock).
+
+## Paper trading
+
+The Markets section's game (`game_type: 'trading'`; spec in
+[docs/PAPER_TRADING.md](docs/PAPER_TRADING.md)). Students trade real historical
+US stocks with the names, tickers and dates hidden until the end, or, until real
+prices are licensed, a simulated market (below). The engine is
+`_resolve_trading` (`supabase/migrations/0034_trading_engine.sql`), mirrored by
+[lib/markets/trading/engine.ts](lib/markets/trading/engine.ts); a "golden"
+session in both test suites pins the two to the same numbers.
+
+### Which market: real history or simulated (0037)
+
+`config.market_data` is `'historical'` or `'simulated'`. The host picks it on
+the setup form when the database holds both (`get_market_data_options`);
+absent, the server plays real history when any is loaded, else the simulated
+market, and writes the choice into `config`. A simulated game has no era to
+pick. Both run through the same engine, clock and screens.
+
+The **simulated market** is generated once by migration 0037 into the same
+reference tables, in the calendar years 2100–2134 so it never meets real
+history (a real-history game cannot start there, and the loader replaces only
+the years before 2100). Every draw is `md5(seed, what, where)`, not `random()`,
+so every database holds the same market whatever its query plans.
+
+- **Days.** Weekdays, closed Jan 1 and Dec 25.
+- **The market factor** (the index fund's daily log return): calm spells drift
+  11% a year with 13% volatility; stressed spells drift −45% with 35%. A stressed
+  spell starts with probability 0.0012 a day (about once every 3 years) and ends
+  with 0.03 (about 33 trading days). The seed (`sharpesim-137`) was picked for a
+  plausible run: the index averages 9.6% a year (sd 15.8%), 9 down years in 34,
+  worst −38%.
+- **30 companies**, round-robin over the name pool's 11 sectors. Each day:
+  `alpha/252 + beta × market − idio²/504 + idio/√252 × z`, plus an earnings jump
+  (probability 1/63 a day, sd 5%). Beta 0.6–1.4, own volatility 15–35%, alpha
+  −2% to +3% a year, start price $10–$100. Half pay a 1.5–4% yield in quarterly
+  dividends (Feb, May, Aug, Nov), which come off the price on the ex-day.
+- **Delistings.** One cash acquisition at a 25% premium (2116) and one
+  bankruptcy worth nothing (2125), after a year-long slide.
+- **Bars.** Open = previous close × a small gap; high and low spread from
+  open/close by the company's own volatility.
+- **T-bill rate.** Starts at 4% and mean-reverts toward 4.5% (0.2% of the gap
+  a day, 0.06% daily noise), held within 0.1%–12%.
+- **Universe and headlines.** A universe anchor every 5 years ranks the living
+  companies by size; one headline a month is worded from the index's move that
+  month (the bands of `generatedHeadline`).
+
+At the end a simulated game reveals no era or companies: the student sees how
+each company did under its game name, and their trades in game time ("Year 3 ·
+Mar 14", `gameCalendar` in reveal.ts); the projector's second finale screen is
+"The companies"; the host's real-dates panel is hidden.
+
+### The window and the clock
+
+- **Era.** A session starts on the first trading day of a January (Year 1) and
+  shows 5 years of real history before it, so the earliest start is 1967. The
+  host picks the year or the server draws one at random from the years with
+  enough data for the session's length and size. The year is stored only in
+  `market_session_secrets`.
+- **Rounds.** Round k covers 12, 6, 3 or 1 calendar months, or 7 days, counted
+  from Jan 1 of Year 1 (`_trading_period_range`, mirrored by `periodRange` in
+  [lib/markets/clock.ts](lib/markets/clock.ts)). 25 quarterly rounds = 6.25 years.
+- **Game dates.** Every date leaves the server as `[game_day, year, month, day]`:
+  `game_day` counts calendar days from Jan 1 of Year 1, and `year` is "Year N"
+  with no Year 0 (the year before Year 1 is Year −1). Students read "Year 3 ·
+  Mar 14". Two small deliberate leaks: Feb 29 and the weekday pattern of trading
+  days narrow the year a little. Neither gives a future price.
+- **Visibility.** Every read (`get_market_snapshot`, `get_price_history`,
+  `get_period_replay`) stops at the last revealed day: the end of the latest
+  revealed round, or the last trading day before Year 1 in the lobby. The host
+  is held to the same line.
+- **Trading window.** A round opens with `rounds.closes_at` = now + 90 s (host
+  sets 30–600 s; `extend_round` adds time). Orders and cancels are refused after
+  it; the host then locks and reveals.
+
+### What students see
+
+- **Companies.** The ~25 largest by market cap at the session's 5-year anchor
+  (`data/universe/top_by_year.csv`), skipping any without 5 years of history or
+  data through the window (a delisting inside the window is fine). Each gets a
+  fake name and ticker from its sector's pool and a random slot number, so slot
+  order does not leak size. Slot 0 is the index fund.
+- **Prices** are split-adjusted, not dividend-adjusted, and rescaled per session
+  so each start price lands between $15 and $250 (the index fund $40–$160).
+  Dividends and spin-off distributions are scaled the same way.
+
+### Placing an order (place_order; mirrored by [lib/markets/trading/orders.ts](lib/markets/trading/orders.ts))
+
+Marks are the last revealed close p. Equity `E = cash + LMV − SMV`, where cash is
+one signed balance (negative = margin loan; short-sale proceeds sit in it).
+
+```
+im   = initial_margin (0.5) when margin is on, else 1 (fully cash-backed)
+IR   = im × (LMV + SMV)                       requirement of what is held
+free = E − IR − (reserves of open orders)
+
+an order that ADDS exposure (buy, sell short) reserves
+     qty × ref × (im + spread/2) + commission
+ref  = p (market), the limit (limit buy), max(stop, p) (stop buy),
+       max(limit, p) (limit or stop-limit short)
+accepted only if free ≥ that reserve
+```
+
+- **Buying power** shown to students is `free / (im + spread/2)`, minus the
+  commission: about 2× equity with margin, 1× without. An open order keeps its
+  reserve until it fills, is cancelled or expires, so the same buying power
+  cannot be spent twice.
+- **Closing orders** (sell a long, buy to cover a short) reserve nothing. They
+  are capped at the shares held minus shares already in open closing orders, so
+  a protective stop can only be placed once the position exists (the round
+  after the opening order fills). A buy on a short position, or a short on a
+  long one, is refused: close first.
+- **Dollar orders** are market orders only, converted to shares at
+  `p × (1 ± spread/2)`. Fractional shares to 6 decimals.
+- **Time in force:** "this round only" or "good till cancelled"; market orders
+  are always this round.
+- **Frozen accounts** (value at or below zero) may only close positions.
+- Every fill is re-checked against the account when the engine runs it.
+
+Defaults: $100,000, 0.10% spread, $0 commission, margin on (50% initial, 25%
+long / 30% short maintenance), shorting on (0.3%/yr borrow fee), margin loans
+at T-bill + 5%. All host-adjustable (`_trading_config_defaults`, mirrored by
+[lib/markets/trading/config.ts](lib/markets/trading/config.ts)).
+
+### The student's screens (display only; [lib/markets/trading/view.ts](lib/markets/trading/view.ts))
+
+- **Change** on the market board is over the last revealed period, or over the
+  past year before Year 1. **52-week range** is the high and low of the past
+  365 days; **dividend yield** is the past year's dividends over the last price.
+- **The ticket's estimate** fills at `p × (1 ± spread/2)` for a market order,
+  `stop × (1 ± spread/2)` for a stop and the limit for a limit or stop-limit:
+  what the order would cost if it filled at once. "Buying power after" is the
+  place_order mirror with this order's reserve added, so the ticket refuses
+  exactly what the server would, in the server's words.
+- **Positions** show value and unrealized gain at the last close; a short's value
+  is negative. The account value shown is always the server's, never summed in
+  the browser.
+- **Friction knobs** decide how much each order costs in taps, time and
+  attention; see "Friction and research" below.
+- **The behaviour log** (research): screen and stock views, chart ranges and
+  scrubs, every ticket step (open, changes, review, back, submit, abandon), order
+  results, the round phases each student saw, reveal views, tab visibility.
+  Batches of at most 50 go to `log_behavior_events` every 10 s and when the tab
+  hides; the server caps each payload at 2 KB and each player at 30 calls and
+  600 events a minute, and stamps its own time and round. Each placed order also
+  carries its decision context (what the student could see: value, buying power,
+  position, last price and change, rank, seconds left, time spent in the ticket).
+  With research mode on and no consent, nothing is logged.
+
+### Friction and research (0035; [lib/research/](lib/research/))
+
+Friction is the experiment's independent variable, so every knob is a named
+switch (`lib/research/friction.ts`, mirrored by `_friction_preset` and
+`_friction_knobs`), never an ad-hoc condition in a screen.
+
+| knob | low | standard | high | what it does |
+|---|---|---|---|---|
+| `one_tap_buy` | on | off | off | a Buy button on every market row (and the index fund) places a market buy for 1%, 5% or 10% of the starting cash, with no ticket |
+| `amount_chips` | on | on | off | 25% / 50% / Max (All when closing) in the ticket |
+| `review_step` | off | on | on | a review screen between the ticket and Place order |
+| `typed_confirmation` | off | off | on | the amount typed again on the review screen; it brings the review screen even when `review_step` is off |
+| `risk_disclosure` | off | off | on | a warning to accept before a short sale, or a buy whose estimated cost is more than the cash (a margin buy) |
+| `cooldown_seconds` | 0 | 0 | 30 | seconds between orders, counted from the last placed order |
+| `celebrate_fills` | on | off | off | confetti on a winning period with fills |
+| `show_movers` | on | on | off | the biggest risers and fallers on the market board |
+| `show_class_popular` | on | off | off | what the class is buying this round, live |
+
+- **Overrides.** `config.friction_overrides` sets single knobs on top of the
+  preset (the setup form's "Customize each setting"; it stores only the knobs
+  that differ). Cooldown is a whole number of seconds, 0–300.
+- **Fixed at creation.** A trigger refuses any change to the friction or
+  research settings once the session exists; a changed treatment mid-game would
+  break the comparison.
+- **Per-player arms** (`friction_assignment: 'per_player'`, built and tested, not
+  offered in the form yet): each student is assigned one of `friction_arms`
+  (default low and high) when they join, to the arm with the fewest students so
+  far, ties broken at random (permuted blocks). The assignment lives in
+  `player_conditions`, which no client can read; a student gets only the
+  resolved knobs (`get_my_conditions`), never the arm's name. The host sees
+  students per arm. The projector then follows the standard preset, so no arm
+  sees another's treatment on the shared screen. Overrides apply to every arm.
+- **The cooldown is a rule:** `place_order` refuses an order sooner than
+  `cooldown_seconds` after the last one ("wait N more seconds"), except a retry
+  of the same order (same `client_ref`). The ticket and the one-tap Buy only
+  count it down.
+- **The other steps are screens,** each logged: `confirm_shown` /
+  `confirm_accepted` / `confirm_declined`, `risk_shown` / `risk_accepted` /
+  `risk_declined`, `cooldown_blocked`, `quick_buy`, `celebration_shown`. The
+  order's decision context adds `confirm_ms`, `risk` and `risk_ms`, and a
+  one-tap order says `from: "quick_buy"`.
+
+**Research mode** (`config.research_mode`): each student sees a consent screen
+before play (both answers look the same and both lead into the game; wording in
+`lib/research/consent.ts`, a draft until the study's approval). Until they agree,
+`log_behavior_events` stores nothing and `place_order` drops the decision
+context. Changing the answer to no deletes their behaviour log and every
+order's context. Outside research mode every student is logged.
+
+**The export** (`export_research_data`, host only): one call for the tables and
+pages of 5,000 behaviour events. Students appear only as `P` + 8 hex characters
+(md5 of session and player), with their arm, knobs, final value, drawdown and
+Sharpe; no names, accounts or the host's label. In research mode only students
+who agreed are in it at all. Rounds carry their phase times (opened, closes,
+locked, revealed) and every instrument's close at the end of each revealed
+period, so the metrics below are computed from the export alone.
+
+**Metrics** ([lib/research/metrics.ts](lib/research/metrics.ts)), per student:
+
+- **Activity:** orders and fills per round played; annualized turnover (as on
+  the student's finished screen); final return.
+- **The ticket:** median time from opening the ticket to Place (`ticket_ms`) and
+  on the review screen (`review_ms`); abandonment = tickets closed without an
+  order ÷ tickets opened.
+- **Holdings at each round's end**, rebuilt from fills at average cost and
+  valued at the export's closes: concentration as the Herfindahl index of the
+  companies' absolute values (the index fund excluded), the index fund's share of
+  gross holdings, leverage = gross holdings ÷ account value, and the share of
+  rounds ending with a short.
+- **Selling after a loss / a gain:** of the rounds after one where the account
+  lost (did not lose) value, the share in which the student placed a sell order.
+- **Chasing:** the share of buying (dollars) that went into the previous
+  round's three biggest risers.
+- **Disposition (Odean):** on each round with a sale, every company held at the
+  start is a gain or a loss against its average cost at the previous close;
+  PGR = gains sold ÷ gains held, PLR = losses sold ÷ losses held, disposition =
+  PGR − PLR (positive: winners sold sooner).
+- **Doubling down:** of the companies bought more of while held at a gain or
+  a loss (against average cost at the previous close), the share held at a loss.
+
+A ratio with no cases is left empty, not zero. The "By friction condition" file
+averages each metric over the students it is defined for.
+
+### The host and the projector (display only; [lib/markets/trading/host.ts](lib/markets/trading/host.ts))
+
+- **Standings** are the server's (`get_trading_standings`): rank by account
+  value, ties share a place.
+- **Change last period** is `resulting_wealth − (risky_amount + safe_amount)`
+  from the latest revealed period's `allocations` rows: the account's value at
+  the period's end minus its value at the start. The projector shows it as a
+  percentage of the start value.
+- **Places moved** compares each player's rank by value at the end of the
+  latest period with their rank at its start, among the players who played it
+  (a late joiner starts at the starting cash). Nothing is shown for the first
+  period, where everyone started level.
+- **"N / M have placed an order"** is `get_class_activity`: students with at
+  least one order this round (open, filled or cancelled), out of the active
+  students. The host's screen polls it every 3 s while trading is open.
+- **The index fund line** on the class wealth chart compounds each period's
+  `index_return` from the starting cash.
+- **What the projector never shows:** any student's orders or names on the
+  turnover chart, the real era or companies before the game ends (the host's
+  "Show real dates" is on the control screen only), or "most bought" unless
+  the students' own friction knob shows it to them. Its finale, once the game
+  is over, steps through the podium, the real era and companies, and the
+  class's turnover against return. Confetti on
+  the projector's reveal follows the same knob as the students' confetti. With
+  per-player arms both follow the standard preset (off).
+- **The clock:** when it runs out the server refuses new orders; nothing
+  reveals until the host presses the button. Adding 30 s after it ran out
+  reopens trading from now.
+- **Run again** (dashboard) creates a new session with the same settings and a
+  new hidden era: the era lives only in the server's secrets, so even a
+  host-picked Year 1 is not carried over. The universe size asked for is the
+  one the old game actually got.
+
+### Resolving a period (the engine)
+
+Each account resolves alone: there is no order book, so no student's trade
+moves a price another student sees. In this order:
+
+1. **Market orders** fill before day 1 at the close students saw, `p × (1 ±
+   spread/2)` (buys and covers pay up, sells and shorts receive less), in the
+   order they were placed. A dollar order becomes `dollars ÷ fill price` shares.
+2. **Each trading day:**
+   - **At the open:** dividends and distributions (a spin-off's value, paid as
+     cash) go to whoever held the shares overnight: `shares × amount`, so a
+     short pays it. An ex-date on a closed day counts at the next open.
+   - **Intraday,** resting orders in the order they were placed, against the
+     day's bar (a close-only bar has open = high = low = close):
+
+     | order | fills when | at |
+     |---|---|---|
+     | limit buy / cover | low ≤ limit | min(open, limit) |
+     | limit sell / short | high ≥ limit | max(open, limit) |
+     | stop buy / cover | high ≥ stop | max(open, stop) × (1 + spread/2) |
+     | stop sell / short | low ≤ stop | min(open, stop) × (1 − spread/2) |
+     | stop-limit | the stop is hit; then as a limit | the trigger price if inside the limit, else the limit if reached |
+
+     A gap through a stop fills at the **open**, the way a real stop behaves in a
+     crash. A stop-limit that triggers but cannot fill stays open as a limit
+     (`triggered`). No partial fills.
+   - **Every fill is re-checked** when it happens: shares still held, long and
+     short kept apart, a frozen account opens nothing, and an opening fill must
+     leave `equity ≥ im × (long + short value)` at the previous close.
+     Otherwise the order is **rejected** with a reason.
+   - **At the close,** in this order:
+     1. **delistings** settle: bankruptcy at the recovery value (usually $0; a
+        short keeps the whole fall), a cash acquisition at the deal price, a
+        stock merger at the final price (cashed out in v1); open orders on the
+        company are cancelled;
+     2. **interest**, per calendar day since the last trading day, at the T-bill
+        rate in force: positive interest on `cash − short value` (cash that backs
+        a short earns nothing), margin interest at T-bill + `borrow_spread` on a
+        negative cash balance, and `borrow_fee` a year on the value of shorts;
+     3. **maintenance:** if `equity < 25% × long value + 30% × short value`, the
+        largest position (by value) is closed at the close ± half the spread, and
+        the check repeats until the account complies or holds nothing; the
+        ledger notes each forced sale;
+     4. the day's **account value** is recorded (the student's chart), with the
+        running peak and the largest drop from it.
+3. Orders for "this round only" that are still open **expire**; good-till-
+   cancelled ones carry into the next round with their reserve.
+
+Rounding is Postgres's numeric rounding throughout: prices to 4 decimals,
+shares and dollars to 6. **An account at or below $0** (a gap past the margin
+call, or a short that runs away) is shown negative and **frozen**: it can
+only close positions.
+
+### The score and its companions
+
+- **Account value** (net liquidation value) = cash + long value − short value at
+  the last revealed close. It ranks the class and is written to
+  `players.current_wealth` by `resolve_round` alone. Each round also writes an
+  `allocations` row (exposure after the market orders, and the resulting value)
+  so the existing wealth charts work unchanged.
+- **Sharpe (annualized):** per-round returns `V_k / V_(k−1) − 1` (floored at
+  −100%, and stopping once an account is wiped out), minus that period's T-bill
+  return compounded daily the way cash accrues (`rf_return`), averaged and
+  divided by their population standard deviation, times √(rounds per year):
+  1, 2, 4, 12 or 52. Undefined ("—") with fewer than two rounds or a standard
+  deviation under 0.0001% (an all-cash account takes no risk). Mirrored by
+  `annualizedSharpe` in [lib/markets/trading/stats.ts](lib/markets/trading/stats.ts).
+  Unlike the classroom games' Sharpe this one is annualized, because rounds
+  here are real calendar time.
+- **Max drawdown:** the largest fall from a running peak of the daily account
+  value, capped at 100%.
+- **Turnover** (for the end-of-game reveal): half the dollars traded, over the
+  average account value, per year of market time. 1.0 means the whole
+  portfolio was replaced once a year. Exactly: `Σ traded ÷ 2 ÷ mean(start
+  value of each round, where > 0) ÷ (rounds ÷ rounds per year)`, where `traded`
+  is the round's filled dollars, buys and sells both (`_trading_turnover` in
+  0036, mirrored by `annualTurnover`). 0 with no rounds.
+
+### The end-of-game reveal (0036; [lib/markets/trading/reveal.ts](lib/markets/trading/reveal.ts))
+
+`get_trading_reveal` opens only once the session is `finished`, to its host and
+its students (an outsider, or anyone mid-game, is refused). It returns:
+
+- **The era:** Year 1, the window's first and last real dates, and the last
+  date actually played (a game finished early names the years it played).
+- **The companies:** each fake name and ticker beside the real ones (and the
+  company's name today if it changed), and its price change over the game:
+  the last close before Year 1 to the last close played.
+- **The periods:** each played round's real first and last trading days, the
+  index fund's return, and the top two headlines of each of its months (the
+  timeline shows the top one per month).
+- **Your fills** (students only; the host gets none): each one's real date,
+  which is Jan 1 of Year 1 plus its `game_day`. The timeline writes them by
+  dollar amount ("Bought $5,000 of …"), not shares, because per-share prices
+  were rescaled for the game and would mislead beside a real name.
+- **The class:** account value, return, turnover, Sharpe, drawdown and fill
+  count for every student, ordered by value. A **student sees no names and no
+  ids**, only their own row marked (`is_me`) and named; the host sees every
+  name. The projector draws dots only.
+
+**Against the index fund.** "Buy and hold" is the index fund's period returns
+compounded over the rounds played, the return a student would have had by
+putting everything in the index fund on day one and never trading. The
+student's line is "You beat / trailed buying and holding the index fund by X
+points" (or "matched" within 0.05 points).
+
+**The Barber & Odean takeaway.** Barber and Odean (2000) found the fifth of
+households that traded most earned 11.4% a year against the market's 17.9%.
+The class version sorts students by turnover and compares the mean return of
+the busiest group with the quietest: a **fifth** each with 10 or more students
+(n/5 rounded, at least 1), a **half** each (⌊n/2⌋) with 4 to 9. The verdict is "Like
+Barber and Odean's households, the busiest traders earned less" when the
+busiest group trails by more than 0.05 points, "Unlike …" when it leads by more,
+and "made no difference" between. Fewer than 4 students, or everyone on the
+same turnover, says there is nothing to compare. One class is a small sample;
+the line says what happened this time, not that it always will.
+
+**The host's CSV** (`revealCsv`): one row per student by final value (ties
+share a rank) with name, final value, return, turnover, Sharpe, drawdown and
+trades, through `toCsv`, which defuses names a spreadsheet would read as a
+formula.
 
 ## Standings
 

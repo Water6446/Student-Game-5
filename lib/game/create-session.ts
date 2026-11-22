@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SessionConfig } from "./types";
+import { isTrading, type SessionConfig } from "./types";
 
 /** What create_session accepts: the config, minus the fields the server owns. */
 export type CreateSessionResult =
@@ -64,6 +64,19 @@ export async function createSession(
  * not share an answer key.
  */
 export function configForRerun(config: SessionConfig): Record<string, unknown> {
+  if (isTrading(config)) {
+    // Paper trading keeps its era in market_session_secrets, never in config,
+    // so a rerun is the same settings on a NEW hidden era (the server picks one
+    // at random). The keys below are the server's to write; it strips them on
+    // the way in anyway (create_trading_session, 0033), so they go here too.
+    const {
+      data_source: _source,
+      data_license: _license,
+      history_years: _history,
+      ...trading
+    } = config;
+    return trading as Record<string, unknown>;
+  }
   const { managers: _managers, ...rest } = config;
   return rest as Record<string, unknown>;
 }

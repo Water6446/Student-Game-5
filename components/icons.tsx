@@ -49,6 +49,87 @@ export function TrendUp(props: IconProps) {
   );
 }
 
+export function TrendDown(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 7l6 6 4-4 8 8" />
+      <path d="M17 17h4v-4" />
+    </Base>
+  );
+}
+
+/** A line chart on axes: the market, a price history. */
+export function ChartLine(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 3v18h18" />
+      <path d="M7 15l4-5 3 3 5-6" />
+    </Base>
+  );
+}
+
+export function Clock(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </Base>
+  );
+}
+
+/** Home: the student's account screen. */
+export function Home(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9v11h14V9" />
+      <path d="M10 20v-6h4v6" />
+    </Base>
+  );
+}
+
+/** A list with ticks: orders and their outcomes. */
+export function ListChecks(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 6l1.5 1.5L7 5" />
+      <path d="M3 13l1.5 1.5L7 12" />
+      <path d="M3 20l1.5 1.5L7 19" />
+      <path d="M11 6h10M11 13h10M11 20h10" />
+    </Base>
+  );
+}
+
+/** News: the period's headlines. */
+export function Newspaper(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 5h13v14a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z" />
+      <path d="M17 9h3v10a2 2 0 0 1-2 2" />
+      <path d="M7.5 9h6M7.5 13h6M7.5 17h4" />
+    </Base>
+  );
+}
+
+/** Wallet: cash and buying power. */
+export function Wallet(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 7a2 2 0 0 1 2-2h11v4" />
+      <path d="M4 7v11a2 2 0 0 0 2 2h14V9H6a2 2 0 0 1-2-2Z" />
+      <path d="M16 14.5h.01" />
+    </Base>
+  );
+}
+
+export function Plus(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Base>
+  );
+}
+
 export function Info(props: IconProps) {
   return (
     <Base {...props}>
@@ -190,6 +271,35 @@ export function Flag(props: IconProps) {
   return (
     <Base {...props}>
       <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+    </Base>
+  );
+}
+
+/** A page with lines: forms and documents (the research consent screen). */
+export function FileText(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" />
+      <path d="M14 3v5h5M8.5 13h7M8.5 17h5" />
+    </Base>
+  );
+}
+
+/** A wait before the next action (the friction cooldown between orders). */
+export function Hourglass(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M5 22h14M5 2h14" />
+      <path d="M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2" />
+    </Base>
+  );
+}
+
+/** Instant: the one-tap Buy (low friction). */
+export function Lightning(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
     </Base>
   );
 }
@@ -381,5 +491,23 @@ export function GoogleMark(props: SVGProps<SVGSVGElement>) {
         d="M24 9.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 3.2 30 1 24 1 15.3 1 7.8 6 4.2 13.9l7.2 5.6C13.3 14.2 18.2 9.5 24 9.5Z"
       />
     </svg>
+  );
+}
+
+export function Eye(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Base>
+  );
+}
+
+export function EyeOff(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
+    </Base>
   );
 }

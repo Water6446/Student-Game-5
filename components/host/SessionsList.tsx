@@ -6,13 +6,17 @@ import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionOverviewRow } from "@/lib/game/db";
 import { configForRerun, createSession } from "@/lib/game/create-session";
+import { isTrading } from "@/lib/game/types";
+import { hostPath } from "@/lib/markets/routes";
+import { createTradingSession } from "@/lib/markets/trading/create-session";
 import { clsx } from "@/components/clsx";
 import { Banner, Button, Skeleton, TextInput } from "@/components/ui";
 import { useToast } from "@/components/Toast";
-import { Pencil, Search, Shuffle, Trash, Users } from "@/components/icons";
+import { ChartLine, Pencil, Search, Shuffle, Trash, Users } from "@/components/icons";
 import {
   filterSessions,
   gameLabel,
+  roundsNoun,
   sessionTitle,
   whenText,
   type SessionStatusFilter,
@@ -104,15 +108,20 @@ export function SessionsList({
     setBusyId(s.id);
     setError(null);
     // configForRerun strips the manager line-up: the stored copy is public-only,
-    // so resubmitting it would build a game with no real alpha. See its comment.
-    const result = await createSession(supabase, configForRerun(s.config));
+    // so resubmitting it would build a game with no real alpha. A paper trading
+    // rerun keeps its settings and gets a new hidden era. See its comment.
+    const config = configForRerun(s.config);
+    const result = isTrading(s.config)
+      ? await createTradingSession(supabase, config)
+      : await createSession(supabase, config);
     if (!result.ok) {
       setError(result.error);
       setBusyId(null);
       return;
     }
-    if (result.warning) setError(result.warning);
-    router.push(`/host/${result.id}`);
+    // A toast, not the banner: the banner would go with this page.
+    if (result.warning) toast(result.warning, { tone: "error" });
+    router.push(hostPath(result.id, s));
   }
 
   if (loading) {
@@ -200,6 +209,7 @@ export function SessionsList({
             const editing = renaming === s.id;
             const busy = busyId === s.id;
             const rounds = s.config.num_rounds ?? 0;
+            const trading = isTrading(s.config);
 
             return (
               <li
@@ -236,7 +246,7 @@ export function SessionsList({
                       </Button>
                     </form>
                   ) : (
-                    <Link href={`/host/${s.id}`} className="min-w-0 flex-1">
+                    <Link href={hostPath(s.id, s)} className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <span className="truncate font-display text-base font-extrabold text-ink">
                           {sessionTitle(s)}
@@ -249,6 +259,13 @@ export function SessionsList({
                         >
                           {s.status}
                         </span>
+                        {/* The Markets game is a different kind of game from
+                            the three classroom ones; say so before the meta line. */}
+                        {trading ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border-2 border-ink bg-play-soft px-2.5 py-0.5 font-display text-[11px] font-extrabold uppercase tracking-wide text-ink">
+                            <ChartLine aria-hidden="true" /> Markets
+                          </span>
+                        ) : null}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-subtle">
                         <span className="font-bold tracking-widest text-ink-muted">{s.join_code}</span>
@@ -258,7 +275,7 @@ export function SessionsList({
                         </span>
                         {rounds > 0 ? (
                           <span>
-                            {Math.min(s.current_round, rounds)}/{rounds} rounds
+                            {Math.min(s.current_round, rounds)}/{rounds} {roundsNoun(s.config)}
                           </span>
                         ) : null}
                         <span>{whenText(s.created_at)}</span>
@@ -296,7 +313,11 @@ export function SessionsList({
                         type="button"
                         onClick={() => runAgain(s)}
                         disabled={busy}
-                        title="Create a new session with these settings"
+                        title={
+                          trading
+                            ? "Create a new session with these settings, on a new hidden era"
+                            : "Create a new session with these settings"
+                        }
                         className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-paper-2 hover:text-ink disabled:opacity-50"
                       >
                         <Shuffle />
@@ -321,7 +342,8 @@ export function SessionsList({
 
                 {confirming ? (
                   <p className="border-t-2 border-ink px-4 py-2 text-xs font-semibold text-loss">
-                    This permanently removes its students, rounds and allocations. It cannot be undone.
+                    This permanently removes its students, {trading ? "orders and trades" : "rounds and allocations"}.
+                    It cannot be undone.
                   </p>
                 ) : null}
               </li>

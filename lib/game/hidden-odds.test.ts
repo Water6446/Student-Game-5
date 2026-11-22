@@ -23,6 +23,10 @@ describe("oddsHidden", () => {
   it("never applies to the manager game", () => {
     expect(oddsHidden({ ...base, game_type: "manager", show_odds_to_students: false }, "active")).toBe(false);
   });
+
+  it("never applies to paper trading (no good/bad odds; mirrors _odds_hidden in 0032)", () => {
+    expect(oddsHidden({ ...base, game_type: "trading", show_odds_to_students: false }, "active")).toBe(false);
+  });
 });
 
 describe("applyHiddenOdds", () => {

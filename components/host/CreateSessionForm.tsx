@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -24,7 +25,9 @@ import {
   TextInput,
   Toggle,
 } from "@/components/ui";
-import { ArrowLeft, ArrowRight, Check, Coins, TrendUp, Trophy } from "@/components/icons";
+import { ArrowLeft, ArrowRight, ChartLine, Check, Coins, TrendUp, Trophy } from "@/components/icons";
+import { marketsEnabled } from "@/lib/markets/flags";
+import { TRADE_NEW } from "@/lib/markets/routes";
 import { ManagerSetup } from "@/components/host/ManagerSetup";
 import { INDEX_FUND, MANAGER_PRESETS, type ManagerDraft } from "@/lib/game/manager";
 import { createSession } from "@/lib/game/create-session";
@@ -90,8 +93,11 @@ const PORTFOLIO_BASE_SETUP: SessionConfig = {
  */
 type CreateSessionPayload = Omit<SessionConfig, "managers"> & { managers?: ManagerDraft[] };
 
+/** The games this form builds. Paper trading has its own setup, under /markets. */
+type ClassroomGame = Exclude<GameType, "trading">;
+
 export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
-  const [gameType, setGameType] = useState<GameType | null>(null);
+  const [gameType, setGameType] = useState<ClassroomGame | null>(null);
 
   if (gameType === null) {
     return (
@@ -139,12 +145,44 @@ export function NewSessionPanel({ supabase }: { supabase: SupabaseClient }) {
             onClick={() => setGameType("manager")}
           />
         </div>
+        {marketsEnabled() ? <MarketsEntry /> : null}
       </Card>
     );
   }
 
   return (
     <CreateSessionForm supabase={supabase} gameType={gameType} onBack={() => setGameType(null)} />
+  );
+}
+
+/**
+ * The way into the Markets section's game. Its own full-width row under the
+ * three classroom games, on the blue tint, because it is a different kind of
+ * game with its own setup page rather than a fourth option of this form.
+ */
+function MarketsEntry() {
+  return (
+    <Link
+      href={TRADE_NEW}
+      className={`group mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border-2 border-ink bg-play-soft p-5 shadow-card hover:bg-brand-soft ${PRESSABLE}`}
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-ink bg-ink text-xl text-paper-inverse transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-105">
+        <ChartLine aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-play">Markets</span>
+        <span className="block font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+          Paper trading
+        </span>
+        <span className="block font-editorial text-sm italic text-ink-muted">
+          Real US stocks, names and dates hidden until the end
+        </span>
+      </span>
+      <span className="inline-flex items-center gap-1 font-display text-sm font-extrabold text-ink">
+        Set it up
+        <ArrowRight className="transition-transform duration-200 group-hover:translate-x-1" />
+      </span>
+    </Link>
   );
 }
 
@@ -196,7 +234,7 @@ export function CreateSessionForm({
   onBack,
 }: {
   supabase: SupabaseClient;
-  gameType: GameType;
+  gameType: ClassroomGame;
   onBack?: () => void;
 }) {
   const router = useRouter();

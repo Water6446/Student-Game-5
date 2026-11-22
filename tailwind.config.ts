@@ -119,6 +119,17 @@ const config: Config = {
         },
         // The takeover's backdrop: rays that turn slowly behind the verdict.
         spin: { to: { transform: "rotate(360deg)" } },
+        // A bottom sheet (the trade ticket) arriving from the bottom edge.
+        "sheet-up": {
+          "0%": { transform: "translateY(100%)" },
+          "100%": { transform: "translateY(0)" },
+        },
+        // A line chart drawing itself left to right: the period replay. The
+        // path sets pathLength="1" and stroke-dasharray="1".
+        draw: {
+          "0%": { strokeDashoffset: "1" },
+          "100%": { strokeDashoffset: "0" },
+        },
       },
       animation: {
         "pop-in": "pop-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
@@ -134,6 +145,8 @@ const config: Config = {
         bob: "bob 2.6s ease-in-out infinite",
         "fade-in": "fade-in 0.2s ease-out both",
         "spin-slow": "spin 40s linear infinite",
+        "sheet-up": "sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both",
+        draw: "draw 1.8s cubic-bezier(0.45, 0, 0.25, 1) both",
       },
     },
   },

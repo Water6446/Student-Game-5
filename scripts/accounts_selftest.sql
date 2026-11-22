@@ -832,7 +832,24 @@ begin
     'public._gen_track_record(numeric,numeric,numeric,numeric,numeric,numeric,numeric)',
     'public._clean_display_name(text)', 'public._odds_hidden(jsonb,text)',
     'public._odds_of(jsonb)', 'public._strip_odds(jsonb)',
-    'public._apply_odds(jsonb,jsonb)'] loop
+    'public._apply_odds(jsonb,jsonb)',
+    -- paper trading (0031-0033)
+    'public._mkt_day(date)', 'public._mkt_date(integer)', 'public._is_trading_session(uuid)',
+    'public._trading_config_defaults()', 'public._trading_history_years()',
+    'public._trading_period_range(integer,text,integer)', 'public._trading_label(integer,integer)',
+    'public._trading_eligible(integer,integer,integer)',
+    'public._trading_index_for(integer,integer,integer)',
+    'public._instrument_close(integer,integer)',
+    'public._session_bars(uuid,integer,integer,smallint)',
+    'public._trading_last_revealed_day(uuid)', 'public._trading_last_prices(uuid,integer)',
+    'public._try_timestamptz(text)', 'public._resolve_trading(uuid,uuid)',
+    'public.rounds_trading_deadline()', 'public.players_trading_no_bots()',
+    'public.players_trading_account()',
+    -- the trading engine (0034)
+    'public._trading_round(double precision,integer)',
+    'public._trading_trigger(text,text,boolean,double precision,double precision,double precision,double precision,double precision,double precision)',
+    'public._trading_apply(double precision,double precision,double precision,text,double precision,double precision)',
+    'public._trading_margin_ok(double precision,double precision[],double precision[],double precision)'] loop
     if has_function_privilege('authenticated', v_fn, 'EXECUTE') then
       raise exception 'SECURITY FAIL: clients can call internal helper %', v_fn;
     end if;
@@ -857,7 +874,17 @@ declare
     'round_is_open', 'session_show_leaderboard', 'set_good_prob', 'set_my_display_name',
     'set_my_username', 'set_session_label', 'set_show_odds', 'start_round',
     'submit_allocation', 'submit_manager_allocation', 'submit_portfolio_allocation',
-    'username_available'];
+    'username_available',
+    -- paper trading (0033)
+    'cancel_order', 'create_trading_session', 'extend_round', 'get_class_activity',
+    'get_market_snapshot', 'get_period_replay', 'get_price_history', 'get_trading_standings',
+    'get_trading_truth', 'log_behavior_events', 'place_order',
+    -- the end-of-game reveal (0036)
+    'get_trading_reveal',
+    -- the simulated market (0037)
+    'get_market_data_options',
+    -- research: friction conditions, consent, export (0035)
+    'export_research_data', 'get_my_conditions', 'get_session_conditions', 'record_consent'];
   v_got        text[];
   v_unexpected text;
   v_missing    text;

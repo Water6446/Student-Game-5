@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import {
+  ChartLine,
   Check,
   Coins,
   Download,
@@ -23,6 +24,7 @@ import type { IconName } from "@/lib/marketing/content";
  * only place those names become components.
  */
 export const ICONS: Record<IconName, ComponentType<SVGProps<SVGSVGElement>>> = {
+  chart: ChartLine,
   coins: Coins,
   trendUp: TrendUp,
   users: Users,

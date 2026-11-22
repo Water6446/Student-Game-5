@@ -1,6 +1,7 @@
 import { Hero } from "@/components/marketing/Hero";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { GameModes } from "@/components/marketing/GameModes";
+import { MarketsBand } from "@/components/marketing/MarketsBand";
 import { FeatureGrid } from "@/components/marketing/FeatureGrid";
 import { BothSides } from "@/components/marketing/BothSides";
 import { WhoItsFor } from "@/components/marketing/WhoItsFor";
@@ -8,6 +9,7 @@ import { Faq } from "@/components/marketing/Faq";
 import { FinalCta } from "@/components/marketing/FinalCta";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { HomeResumeSlot } from "@/components/marketing/HomeResumeSlot";
+import { marketsEnabled } from "@/lib/markets/flags";
 
 /**
  * The public landing page. Still a static Server Component; the only client JS
@@ -25,6 +27,9 @@ export default function Home() {
         <Hero />
         <HowItWorks />
         <GameModes />
+        {/* The Markets section, while it is switched on: its own band, never
+            one of the three game types. */}
+        {marketsEnabled() ? <MarketsBand /> : null}
         <FeatureGrid />
         <BothSides />
         <WhoItsFor />

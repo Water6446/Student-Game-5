@@ -11,7 +11,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/host", "/play/", "/account", "/auth/", "/api/"],
+      // /markets itself is public; the paper trading game's screens are not.
+      disallow: ["/host", "/play/", "/markets/trade/", "/account", "/auth/", "/api/"],
     },
     sitemap: `${siteUrl()}/sitemap.xml`,
   };

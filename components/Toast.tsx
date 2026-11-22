@@ -44,9 +44,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={toast}>
       {children}
+      {/* --toast-offset: a screen with a pinned bottom bar (the trading app's
+          tabs and Buy/Sell) lifts the stack above it rather than covering it. */}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-[70] flex flex-col items-center gap-2 px-4 sm:inset-x-auto sm:right-6 sm:items-end"
+        style={{ bottom: "calc(1rem + var(--toast-offset, 0px))" }}
+        className="pointer-events-none fixed inset-x-0 z-[70] flex flex-col items-center gap-2 px-4 sm:inset-x-auto sm:right-6 sm:items-end"
       >
         {items.map((t) => (
           <ToastCard key={t.id} item={t} onDismiss={dismiss} />

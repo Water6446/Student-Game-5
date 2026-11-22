@@ -1,16 +1,33 @@
 import type { SessionConfig } from "./types";
 import type { SessionOverviewRow } from "./db";
+import { periodNoun, periodPlural } from "../markets/clock";
 
-/** "Basic" / "Portfolio" / "Manager" from a stored config. */
+/** "Basic" / "Portfolio" / "Manager" / "Paper trading" from a stored config. */
 export function gameLabel(config: SessionConfig): string {
   switch (config.game_type) {
     case "portfolio":
       return "Portfolio";
     case "manager":
       return "Manager";
+    case "trading":
+      return "Paper trading";
     default:
       return "Basic";
   }
+}
+
+/** What one round of this game is called: "Round", "Year" (manager), "Quarter" … */
+export function roundNoun(config: SessionConfig): string {
+  if (config.game_type === "manager") return "Year";
+  if (config.game_type === "trading") return periodNoun(config.period ?? "quarter");
+  return "Round";
+}
+
+/** Several of them, in running text: "rounds", "years", "quarters", "halves". */
+export function roundsNoun(config: SessionConfig): string {
+  if (config.game_type === "manager") return "years";
+  if (config.game_type === "trading") return periodPlural(config.period ?? "quarter");
+  return "rounds";
 }
 
 /**
@@ -69,7 +86,7 @@ export function sessionTabTitle(
   s: { status: string; current_round: number; join_code: string; config: SessionConfig },
   audience: "host" | "student",
 ): string {
-  const unit = s.config.game_type === "manager" ? "Year" : "Round";
+  const unit = roundNoun(s.config);
   const total = s.config.num_rounds ?? 0;
   const phase =
     s.status === "lobby"

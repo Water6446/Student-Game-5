@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { clsx } from "@/components/clsx";
 import { Coins, Menu, X } from "@/components/icons";
 import { HEADER, NAV_LINKS, SITE } from "@/lib/marketing/content";
-import { isCurrentPath, sectionIdOf } from "@/lib/site-chrome";
+import { isCurrentPath, isInSection, sectionIdOf } from "@/lib/site-chrome";
 import {
   AvatarSkeleton,
   SheetAccountSkeleton,
@@ -46,6 +46,22 @@ const SheetAccount = dynamic(
 );
 
 const SECTION_IDS = NAV_LINKS.map((l) => sectionIdOf(l.href)).filter((id): id is string => Boolean(id));
+
+/**
+ * A section link's state. "/#how" links point at a band of the homepage and are
+ * current while it is under the bar; a link to a page ("/markets") is current
+ * on that page and every page under it.
+ */
+function navState(
+  href: string,
+  pathname: string | null,
+  activeSection: string | null,
+): { current: boolean; kind: "page" | "location" } {
+  const id = sectionIdOf(href);
+  return id
+    ? { current: activeSection !== null && activeSection === id, kind: "location" }
+    : { current: isInSection(pathname, href), kind: "page" };
+}
 
 /** The homepage section under the header right now, for the section links' state. */
 function useActiveSection(enabled: boolean): string | null {
@@ -129,16 +145,14 @@ export function SiteHeader() {
         </Link>
 
         <nav aria-label="Sections" className="hidden items-center gap-8 lg:col-start-2 lg:flex">
-          {NAV_LINKS.map((link) => (
-            <TextLink
-              key={link.href}
-              href={link.href}
-              current={activeSection !== null && activeSection === sectionIdOf(link.href)}
-              currentKind="location"
-            >
-              {link.label}
-            </TextLink>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const nav = navState(link.href, pathname, activeSection);
+            return (
+              <TextLink key={link.href} href={link.href} current={nav.current} currentKind={nav.kind}>
+                {link.label}
+              </TextLink>
+            );
+          })}
         </nav>
 
         <div className="flex shrink-0 items-center lg:col-start-3 lg:justify-self-end">
@@ -334,17 +348,20 @@ function MenuSheet({
         className="absolute inset-x-0 top-[calc(100%+2px)] z-10 max-h-[calc(100dvh-4rem-4px)] overflow-y-auto border-b-2 border-ink bg-surface lg:hidden"
       >
         <div className="mx-auto flex max-w-6xl flex-col px-2 py-3 sm:px-6">
-          {NAV_LINKS.map((link) => (
-            <SheetLink
-              key={link.href}
-              href={link.href}
-              current={activeSection !== null && activeSection === sectionIdOf(link.href)}
-              currentKind="location"
-              onGo={() => onClose()}
-            >
-              {link.label}
-            </SheetLink>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const nav = navState(link.href, pathname, activeSection);
+            return (
+              <SheetLink
+                key={link.href}
+                href={link.href}
+                current={nav.current}
+                currentKind={nav.kind}
+                onGo={() => onClose()}
+              >
+                {link.label}
+              </SheetLink>
+            );
+          })}
 
           <div className="my-2 border-t-2 border-ink/10" />
 

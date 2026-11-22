@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { PlayerRow } from "@/lib/game/db";
+import type { SessionConfig } from "@/lib/game/types";
+import { playPath } from "@/lib/markets/routes";
 import { friendlyJoinError } from "@/lib/game/join-errors";
 import { Banner, Button, Card, Field, TextInput } from "@/components/ui";
 import { StudentResumeStrip } from "@/components/StudentResumeStrip";
@@ -83,7 +85,15 @@ export function JoinForm() {
       } catch {
         /* not worth failing a join over */
       }
-      router.push(`/play/${player.session_id}`);
+      // Each game has its own screens: ask which one this is and go straight
+      // there. A failed read is harmless; /play/<id> redirects trading too.
+      const { data: sess } = await supabase
+        .from("sessions")
+        .select("config")
+        .eq("id", player.session_id)
+        .maybeSingle();
+      const config = (sess as { config: SessionConfig } | null)?.config;
+      router.push(playPath(player.session_id, { config }));
     } catch (e) {
       setError(friendlyJoinError((e as Error).message));
       setBusy(false);

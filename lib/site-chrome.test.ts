@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCurrentPath, sectionIdOf, showsSiteHeader } from "./site-chrome";
+import { isCurrentPath, isInSection, sectionIdOf, showsSiteHeader } from "./site-chrome";
 
 describe("showsSiteHeader", () => {
   it("shows the header on the site's pages", () => {
@@ -12,6 +12,15 @@ describe("showsSiteHeader", () => {
     expect(showsSiteHeader("/play/abc")).toBe(false);
     expect(showsSiteHeader("/host/abc")).toBe(false);
     expect(showsSiteHeader("/host/abc/present")).toBe(false);
+  });
+
+  it("hides it on the paper trading screens, not on the section's other pages", () => {
+    expect(showsSiteHeader("/markets/trade/play/abc")).toBe(false);
+    expect(showsSiteHeader("/markets/trade/host/abc")).toBe(false);
+    expect(showsSiteHeader("/markets/trade/host/abc/present")).toBe(false);
+    expect(showsSiteHeader("/markets/trade/preview")).toBe(false);
+    expect(showsSiteHeader("/markets")).toBe(true);
+    expect(showsSiteHeader("/markets/trade/new")).toBe(true);
   });
 
   it("treats a missing pathname as the homepage", () => {
@@ -29,6 +38,23 @@ describe("isCurrentPath", () => {
   it("does not treat a child route as current", () => {
     expect(isCurrentPath("/host/abc", "/host")).toBe(false);
     expect(isCurrentPath("/join", "/login")).toBe(false);
+  });
+});
+
+describe("isInSection", () => {
+  it("is current on the section's page and every page under it", () => {
+    expect(isInSection("/markets", "/markets")).toBe(true);
+    expect(isInSection("/markets/trade/new", "/markets")).toBe(true);
+  });
+
+  it("does not match a path that only shares a prefix", () => {
+    expect(isInSection("/marketsx", "/markets")).toBe(false);
+    expect(isInSection("/", "/markets")).toBe(false);
+  });
+
+  it("never treats the homepage or an anchor on it as a section", () => {
+    expect(isInSection("/", "/")).toBe(false);
+    expect(isInSection("/join", "/#how")).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
 import type { SessionConfig, SessionStatus } from "./types";
-import { isManager } from "./types";
+import { isManager, isTrading } from "./types";
 
 /**
  * Hidden market odds (supabase/migrations/0029_hidden_odds.sql).
@@ -23,7 +23,8 @@ export interface HiddenOdds {
  * only a literal `true` shows them.
  */
 export function oddsHidden(config: SessionConfig, status: SessionStatus): boolean {
-  return !isManager(config) && status !== "finished" && config.show_odds_to_students !== true;
+  // manager and trading games have no good/bad odds to hide (0032 mirrors this)
+  return !isManager(config) && !isTrading(config) && status !== "finished" && config.show_odds_to_students !== true;
 }
 
 /**

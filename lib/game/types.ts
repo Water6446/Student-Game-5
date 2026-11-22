@@ -7,7 +7,12 @@ export type MarketMode = "auto" | "manual";
 export type MarketScope = "shared" | "independent";
 export type SessionStatus = "lobby" | "active" | "finished";
 export type RoundStatus = "open" | "locked" | "revealed";
-export type GameType = "basic" | "portfolio" | "manager";
+/** "trading" is the Markets section's paper trading game (docs/PAPER_TRADING.md);
+ *  its sessions live under /markets/trade/… and never render as a basic game. */
+export type GameType = "basic" | "portfolio" | "manager" | "trading";
+/** paper trading: the length of one round */
+export type TradingPeriod = "year" | "half" | "quarter" | "month" | "week";
+export type FrictionProfile = "low" | "standard" | "high";
 export type FeeType = "flat" | "performance";
 export type ManagerPreset = "default" | "hedge_fund" | "market_neutral";
 
@@ -111,6 +116,40 @@ export interface SessionConfig {
   /** permute which slot holds the real alpha, default true */
   shuffle_skill?: boolean;
   manager_preset?: ManagerPreset;
+
+  // ── paper trading only (defaults: TRADING_DEFAULTS in lib/markets/trading/config.ts,
+  //    mirrored by _trading_config_defaults in 0033) ─────────────────────────
+  period?: TradingPeriod;
+  /** the trading window each round, seconds */
+  round_seconds?: number;
+  /** companies traded (the index fund comes on top); the server writes what it found */
+  universe_size?: number;
+  /** years of real history shown before Year 1; set by the server */
+  history_years?: number;
+  margin_enabled?: boolean;
+  initial_margin?: number;
+  maint_long?: number;
+  maint_short?: number;
+  shorting_enabled?: boolean;
+  /** annual fee on the value of short positions */
+  borrow_fee?: number;
+  /** bid-ask spread as a fraction of price; half is paid on each side */
+  spread?: number;
+  /** dollars per trade */
+  commission?: number;
+  headlines?: boolean;
+  friction_profile?: FrictionProfile;
+  /** "per_player": each student gets one of friction_arms on joining (0035) */
+  friction_assignment?: "session" | "per_player";
+  friction_arms?: FrictionProfile[];
+  /** single friction knobs set on top of the profile (lib/research/friction.ts) */
+  friction_overrides?: Record<string, boolean | number>;
+  research_mode?: boolean;
+  /** real history, or the simulated market (0037); the server writes the one it played */
+  market_data?: "historical" | "simulated";
+  /** set by the server: which vendor's data, and what its licence allows */
+  data_source?: string;
+  data_license?: "dev-only" | "display-licensed";
 }
 
 export function isPortfolio(config: SessionConfig): boolean {
@@ -119,6 +158,10 @@ export function isPortfolio(config: SessionConfig): boolean {
 
 export function isManager(config: SessionConfig): boolean {
   return config.game_type === "manager";
+}
+
+export function isTrading(config: SessionConfig): boolean {
+  return config.game_type === "trading";
 }
 
 export const DEFAULT_CONFIG: SessionConfig = {

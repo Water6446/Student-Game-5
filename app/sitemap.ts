@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { siteUrl } from "@/lib/game/db";
+import { marketsEnabled } from "@/lib/markets/flags";
 
 /** The public, indexable pages. Keep in step with robots.ts. */
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -7,6 +8,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${base}/`, changeFrequency: "monthly", priority: 1 },
     { url: `${base}/join`, changeFrequency: "yearly", priority: 0.8 },
+    // listed only while the section exists; switched off, /markets is a 404
+    ...(marketsEnabled() ? [{ url: `${base}/markets`, changeFrequency: "monthly" as const, priority: 0.7 }] : []),
     { url: `${base}/login`, changeFrequency: "yearly", priority: 0.5 },
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.3 },

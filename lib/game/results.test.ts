@@ -3,6 +3,7 @@ import {
   buildPlayerResults,
   buildResultsCsv,
   bustRoundByPlayer,
+  classCounterfactual,
   classLuckSoFar,
   compareStandings,
   expectedGoodRate,
@@ -650,5 +651,21 @@ describe("managerRunningStats", () => {
   it("has nothing to say before the first year", () => {
     const s = managerRunningStats(100, 0.03, [], [], null);
     expect(s).toEqual({ sharpe: null, market: null, player: null });
+  });
+});
+
+describe("paper trading is never read as the basic game", () => {
+  const trading = (): SessionRow => ({ ...session(), config: { ...DEFAULT_CONFIG, game_type: "trading" } });
+
+  it("refuses at every entry point that takes a session or config", () => {
+    const s = trading();
+    expect(() => buildPlayerResults(s, [], [], [])).toThrow(/paper trading/);
+    expect(() => classCounterfactual(s, [])).toThrow(/paper trading/);
+    expect(() => classLuckSoFar(s.config, [])).toThrow(/paper trading/);
+    expect(() => expectedGoodRate(s.config)).toThrow(/paper trading/);
+  });
+
+  it("still serves the classroom games", () => {
+    expect(() => buildPlayerResults(session(), [], [], [])).not.toThrow();
   });
 });

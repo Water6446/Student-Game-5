@@ -26,11 +26,17 @@ files listed in DESIGN.md §11 and build from the `ui.tsx` primitives.
 **[MECHANICS.md](./MECHANICS.md)** is the master reference for how every game
 number works (luck, Sharpe, returns, correlation ρ, counterfactuals, standings).
 
-There are **three game types**: `basic` (one risky bet), `portfolio` (N risky
-assets) and `manager` (active vs. passive — continuous normal returns, fees,
-leverage, and a secret alpha held in `session_secrets`; each round is a year).
-Keep in-UI explanations SHORT — one line max — and put the detailed workings in
-MECHANICS.md instead. Update it whenever a mechanic changes.
+There are **three classroom game types**: `basic` (one risky bet), `portfolio`
+(N risky assets) and `manager` (active vs. passive — continuous normal returns,
+fees, leverage, and a secret alpha held in `session_secrets`; each round is a
+year). A fourth, `trading`, is the **Markets** section's paper trading game on
+real historical stocks (being built in phases: spec and phase plan in
+[docs/PAPER_TRADING.md](./docs/PAPER_TRADING.md), data rules in
+[docs/PAPER_TRADING_DATA.md](./docs/PAPER_TRADING_DATA.md)). It reuses
+sessions/players/rounds but has its own tables, RPCs and routes (`/markets/…`),
+and every three-type branch must handle it explicitly, never fall through to
+basic. Keep in-UI explanations SHORT — one line max — and put the detailed
+workings in MECHANICS.md instead. Update it whenever a mechanic changes.
 
 ## Commands
 
@@ -51,10 +57,20 @@ config, so it drops into Next's interactive setup — use `tsc --noEmit` instead
 **Database proofs (no Docker, no Supabase project needed):**
 
 ```bash
-npm run test:db                   # both suites below, EVERY migration, in-process Postgres
+npm run test:db                   # all three suites below, EVERY migration, in-process Postgres
 npm run test:db -- game           # scripts/db_selftest.sql: game security + math + manager secrecy
 npm run test:db -- accounts       # scripts/accounts_selftest.sql: the account layer (0016–0030)
+npm run test:db -- markets        # scripts/markets_selftest.sql: paper trading secrecy + orders (0031+)
 npm run security-check            # optional: the same assertions through a LIVE project
+```
+
+**Market data (Markets section; dev only, never committed, never production):**
+
+```bash
+npx tsx scripts/market-data/import.ts --universe --rates --index   # vendor -> data/normalized (gitignored)
+npx tsx scripts/market-data/load.ts --pglite   # load into an in-process DB + smoke-test the RPCs
+npx tsx scripts/market-data/load.ts            # load into the DEV project (MARKET_DATABASE_URL)
+npx tsx scripts/market-data/measure.ts         # bar-table size under each storage layout
 ```
 
 `scripts/db-selftest.mjs` gives each suite a fresh PGlite database (real Postgres
@@ -95,14 +111,29 @@ in `session_secrets` while a game runs (0029; the host merges them back in
 `manager.ts` are 1:1 mirrors of the three branches of `resolve_round`
 (0003 / 0010 / 0015). `lib/game/db.ts` hand-mirrors the table row shapes (no
 generated types), `lib/game/hidden-odds.ts` mirrors `_apply_odds`, and
-`lib/design/colors.ts` mirrors the CSS tokens. A mechanic change is three edits:
-the migration, its TS mirror, and MECHANICS.md.
+`lib/design/colors.ts` mirrors the CSS tokens. For paper trading,
+`lib/markets/clock.ts` (periods, game dates), `lib/markets/trading/config.ts`
+(defaults, validation) and `lib/markets/trading/orders.ts` (buying power)
+mirror 0033, `lib/markets/trading/engine.ts` + `stats.ts` mirror the engine in
+0034 (the "golden" scenario in `__fixtures__/golden.ts` is asserted by both
+vitest and `markets_selftest.sql`), `lib/research/friction.ts` and
+`consent.ts` mirror 0035 (presets, overrides, balanced assignment, the cooldown
+and the consent gate; `place_order` and `log_behavior_events` now live there),
+`stats.ts`'s `annualTurnover` is also `_trading_turnover` in 0036 (the
+end-of-game reveal, `get_trading_reveal`), and `lib/markets/db.ts`
+hand-mirrors its rows. 0037 generates a simulated market (years 2100+, md5
+draws, so every database holds the same one) and moves `create_trading_session`
+there, adding `config.market_data` (`historical` | `simulated`, read with
+`isSimulatedMarket`) and `get_market_data_options`; production plays only the
+simulated market until real prices are licensed. A mechanic change
+is three edits: the migration, its TS mirror, and MECHANICS.md.
 
 **Migrations are append-only.** `supabase/migrations/NNNN_*.sql` applied in
 order, each opening with a header comment explaining *why* it exists. Never edit
 an applied migration — add the next number. Functions use `create or replace`,
 so the highest-numbered file mentioning a function holds its real definition
-(`resolve_round` lives in 0029, not 0003 or 0015). Supabase grants every new
+(`resolve_round` lives in 0033, not 0003, 0015 or 0029; its trading branch calls
+`_resolve_trading`, which lives in 0034). Supabase grants every new
 function to `anon` and `authenticated` directly, so each one needs `revoke all
 ... from public, anon` (and `authenticated`, for helpers). `accounts_selftest.sql`
 asserts the EXACT callable set for both roles — add a new client RPC there.
@@ -119,6 +150,43 @@ asserts the EXACT callable set for both roles — add a new client RPC there.
 3. Screens — `app/host/[sessionId]/page.tsx` and `app/play/[sessionId]/page.tsx`
    are thin dispatchers on `session.status` (`lobby` | `active` | `finished`)
    into `components/host/*` and `components/student/*`.
+
+Paper trading follows the same layers under its own names:
+`lib/markets/trading/view.ts` and `phase.ts` derive what the screens show;
+`components/markets/use-market.ts` holds the hooks (tables through
+`use-live-rows.ts`, computed reads through their RPCs, refetched when a period
+is revealed); `components/markets/student/TradingPlay.tsx` turns them into a
+`TradingModel` plus `TradingActions` (place/cancel/rename/log), and every
+student screen renders only that model. The host side is the same shape:
+`components/markets/host/use-trading-host.tsx` builds a `HostModel` plus
+`HostActions` for both the control screen (`/markets/trade/host/[id]`) and the
+projector (`…/present`), which only shows aggregates and standings from it;
+`lib/markets/trading/host.ts` derives places moved and period changes from the
+`allocations` rows the resolver writes. The dev-only
+`/markets/trade/preview?view=setup|student|host|present&phase=…` feeds the same
+screens a synthetic session played through the TS engine. Every `/markets` route 404s unless
+`NEXT_PUBLIC_ENABLE_MARKETS=true` (`.claude/launch.json` has a `dev-markets`
+server on :3001 that sets it); the same flag hides the hub's nav link, the
+homepage band and the dashboard entry. Links built from a session row use
+`playPath` / `hostPath` / `presentPath` (`lib/markets/routes.ts`), which pick
+the game's screens; `/play/<id>` and `/host/<id>` still redirect trading for
+links that only know an id. `lib/game/results.ts` throws on a trading session
+(`classroomOnly`) rather than read it as basic. The research behaviour log is
+`components/use-behavior-log.ts` (batches to `log_behavior_events`). Friction is
+read only through `components/markets/use-friction.ts`: a student's screens
+render nothing until `useMyConditions` returns their knobs (`get_my_conditions`:
+knobs only, never the arm, which lives in server-only `player_conditions`); the
+host reads the session's with `useFriction` and the arms and consent counts with
+`useSessionConditions`. In research mode (`config.research_mode`) the consent
+screen comes first and the server stores no log or order context until the
+student agrees; friction and research settings cannot change after creation.
+`export_research_data` is the host's pseudonymous download
+(`components/research/ResearchExport.tsx`, metrics in `lib/research/metrics.ts`).
+At the end `get_trading_reveal` (finished only) gives the real era, companies
+and each student's own fills on the real calendar; students get the class
+without names or ids. `lib/markets/trading/reveal.ts` words it (timeline, the
+index comparison, the Barber & Odean takeaway, the host's CSV) and
+`components/markets/RevealParts.tsx` loads it for all three finished screens.
 
 **The round loop, and why display phase ≠ row status.** `start_round` → `open` →
 students submit → `lock_round` → `resolve_round` (draws the market, writes the

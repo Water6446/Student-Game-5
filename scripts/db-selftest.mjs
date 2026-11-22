@@ -27,6 +27,7 @@ const MIGRATIONS = join(ROOT, "supabase", "migrations");
 const SUITES = {
   game: "db_selftest.sql",
   accounts: "accounts_selftest.sql",
+  markets: "markets_selftest.sql",
 };
 
 // PGlite ships without pgcrypto. The migrations only need gen_random_uuid(),

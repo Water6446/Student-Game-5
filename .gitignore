@@ -19,3 +19,9 @@ ui-ux-pro-max-skill/
 .claude/
 .agents/
 skills-lock.json
+
+# Market data from vendors (Yahoo, FRED, Ken French, later a licensed source).
+# Never committed: the repo is public and vendor terms forbid redistribution.
+# Curated files we write ourselves (data/universe, data/names, data/headlines) ARE committed.
+data/raw/
+data/normalized/

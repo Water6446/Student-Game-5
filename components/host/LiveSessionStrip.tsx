@@ -8,7 +8,9 @@ import { DotField } from "@/components/marketing/primitives";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { ArrowRight, Monitor, Trash, Users } from "@/components/icons";
-import { gameLabel, sessionTitle } from "@/lib/game/session-format";
+import { gameLabel, roundNoun, sessionTitle } from "@/lib/game/session-format";
+import { isTrading } from "@/lib/game/types";
+import { hostPath, presentPath } from "@/lib/markets/routes";
 
 /**
  * "What am I doing right now?", answered before anything else on the page.
@@ -51,7 +53,9 @@ export function LiveSessionStrip({
       body: inProgress
         ? `This game is still running. ${
             students === 1 ? "The 1 student in it loses" : `All ${students} students in it lose`
-          } their game, and every round and allocation is removed. It cannot be undone.`
+          } their game, and every ${
+            isTrading(session.config) ? "order and trade" : "round and allocation"
+          } is removed. It cannot be undone.`
         : "This closes the lobby and removes everyone who has joined it. It cannot be undone.",
       confirmLabel: "Delete session",
       tone: "danger",
@@ -108,7 +112,7 @@ export function LiveSessionStrip({
               <div className="flex items-center gap-1.5">
                 <dt className="sr-only">Progress</dt>
                 <dd>
-                  Round {round} of {rounds}
+                  {roundNoun(session.config)} {round} of {rounds}
                 </dd>
               </div>
             ) : (
@@ -132,7 +136,7 @@ export function LiveSessionStrip({
             <Trash aria-hidden="true" />
           </button>
           <Link
-            href={`/host/${session.id}/present`}
+            href={presentPath(session.id, session)}
             aria-label="Projector"
             // Icon-only below sm: with the delete button beside it, three
             // labelled controls overflow a 375px strip and clip Resume.
@@ -141,7 +145,7 @@ export function LiveSessionStrip({
             <Monitor aria-hidden="true" /> <span className="hidden sm:inline">Projector</span>
           </Link>
           <Link
-            href={`/host/${session.id}`}
+            href={hostPath(session.id, session)}
             className="group inline-flex min-h-[48px] items-center gap-2 rounded-full border-2 border-ink bg-brand px-6 font-display text-base font-extrabold text-ink transition hover:bg-brand-strong active:translate-x-[2px] active:translate-y-[2px]"
           >
             {inProgress ? "Resume" : "Open lobby"}

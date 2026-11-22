@@ -629,7 +629,7 @@ export function Toggle({
         className ? className : "w-full"
       )}
     >
-      <span className="text-sm font-semibold text-ink">{label}</span>
+      <span className="text-left text-sm font-semibold text-ink">{label}</span>
       <span
         className={clsx(
           "relative h-6 w-11 rounded-full border-2 border-ink transition-colors",

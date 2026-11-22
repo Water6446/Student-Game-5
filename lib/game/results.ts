@@ -3,7 +3,7 @@
 // finals. Also builds the CSV export. Pure given its inputs (no I/O).
 
 import type { AllocationRow, PlayerRow, RoundRow, SessionRow } from "./db";
-import { isManager, isPortfolio, type MarketOutcome, type MarketScope } from "./types";
+import { isManager, isPortfolio, isTrading, type MarketOutcome, type MarketScope } from "./types";
 import {
   allStrategyOutcomes,
   strategyFraction,
@@ -58,6 +58,20 @@ export interface PlayerResult {
   counterfactual?: Record<StrategyKey, number>;
   /** portfolio game only */
   portfolioCounterfactual?: Record<PortfolioStrategyKey, number>;
+}
+
+/**
+ * This file is the three classroom games' results. A paper trading session has
+ * no good/bad draws, no allocation split and no counterfactual strategies: read
+ * as the basic game (which is what an absent game_type means here), it would
+ * come back as a page of plausible, wrong numbers. So the entry points refuse
+ * it outright; its results live in lib/markets/trading, and its screens never
+ * mount these (the /play and /host pages redirect it first).
+ */
+export function classroomOnly(config: SessionConfig, where: string): void {
+  if (isTrading(config)) {
+    throw new Error(`${where}: paper trading sessions have their own results (lib/markets/trading)`);
+  }
 }
 
 export function revealedRounds(rounds: RoundRow[]): RoundRow[] {
@@ -304,6 +318,7 @@ export function returnSummaryByPlayer(
  * draw per asset, so this is exactly the expected rate of the draws faced).
  */
 export function expectedGoodRate(config: SessionConfig): number {
+  classroomOnly(config, "expectedGoodRate");
   if (!isPortfolio(config)) return config.good_prob ?? 0.6;
   const n = numAssets(config);
   let sum = 0;
@@ -344,6 +359,7 @@ export function luckStats(good: number, total: number, expected: number): LuckSt
  * no shared outcome there) or before any reveal.
  */
 export function classLuckSoFar(config: SessionConfig, rounds: RoundRow[]): LuckStats | null {
+  classroomOnly(config, "classLuckSoFar");
   let good = 0;
   let total = 0;
   for (const r of revealedRounds(rounds)) {
@@ -437,6 +453,7 @@ export function buildPlayerResults(
   rounds: RoundRow[],
   allocations: AllocationRow[],
 ): PlayerResult[] {
+  classroomOnly(session.config, "buildPlayerResults");
   const revealed = revealedRounds(rounds);
   const portfolio = isPortfolio(session.config);
   // The good/bad counterfactual REPLAYS market draws, and a manager game has
@@ -564,6 +581,7 @@ export function classCounterfactual(
   session: SessionRow,
   results: PlayerResult[],
 ): ClassCounterfactual {
+  classroomOnly(session.config, "classCounterfactual");
   const scope = session.config.market_scope;
   const startWealth = session.config.starting_wealth;
   const empty = Object.fromEntries(

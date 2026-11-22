@@ -234,7 +234,9 @@ Work top to bottom.
 While testing, a guest (anonymous) account may host, so the "Skip email — sign in
 for testing" button works. This must come out before launch, or any student
 could create sessions. Two coupled halves — the flag only hides the button, and
-migration `0008` relaxed the **server** independently:
+migration `0008` relaxed the **server** independently. (The trigger below also
+covers `create_trading_session` (0033), which inserts into `sessions` the same
+way and, like `create_session`, refuses only a signed-out caller.)
 
 - [ ] **Server — a new migration** (next free number) rejecting guest hosts:
 
@@ -341,3 +343,72 @@ If realtime needs a refresh: re-check the Vercel `NEXT_PUBLIC_SUPABASE_URL`
 - DB: restore from the backup/PITR snapshot taken before class.
 - The game is resumable — session/round/wealth state is all server-side, so a
   host refresh (or re-login) picks up exactly where it left off.
+
+---
+
+## Part D — Markets (paper trading): the dev project and market data
+
+The paper trading game ([PAPER_TRADING.md](./PAPER_TRADING.md)) trades real
+historical prices. Today's sources are **development-only**
+([PAPER_TRADING_DATA.md](./PAPER_TRADING_DATA.md) §1): that data must never be
+loaded into the production project (`mftrhnwnvidxjdzenmip`), which serves
+www.sharpesim.com. So development runs against a **second Supabase project**.
+
+### 1. Create the dev project (once)
+
+- [ ] Supabase → **New project** (the Free plan allows two active projects).
+      Turn on anonymous sign-ins (Part A) and add `http://localhost:3000/**` to its
+      Redirect URLs.
+- [ ] Push every migration to it: `npx supabase link --project-ref <dev-ref>`,
+      then `npm run db:push`. **Re-link the production ref afterwards**
+      (`npm run db:link`) so a later `db:push` goes where you expect.
+- [ ] In `.env.local`, point `NEXT_PUBLIC_SUPABASE_URL` and
+      `NEXT_PUBLIC_SUPABASE_ANON_KEY` at the **dev** project, and set
+      `NEXT_PUBLIC_ENABLE_MARKETS=true`.
+- [ ] Set `MARKET_DATABASE_URL` in `.env.local` to the dev project's Postgres
+      connection string (Dashboard → Connect). Server-side only; never
+      `NEXT_PUBLIC_`.
+
+### 2. Fetch and load the data
+
+```bash
+npx tsx scripts/market-data/import.ts --universe --rates --index        # ~2 min; Yahoo, FRED, Ken French
+npx tsx scripts/market-data/import.ts --symbols PM,ABBV,OGN,KD,GEHC,SOLV,GEV --from 2008-01-01   # spin-off children
+npx tsx scripts/market-data/load.ts --pglite   # optional: load into an in-process DB and smoke-test first
+npx tsx scripts/market-data/load.ts            # load into the dev project
+```
+
+- Vendor files land in `data/raw/` and `data/normalized/` (gitignored, ~230 MB).
+- The loader **refuses** a `MARKET_DATABASE_URL` that names the production
+  project while any row is dev-only.
+- Reloading is safe: instruments keep their ids (running sessions reference
+  them); everything else is replaced in one transaction.
+
+### 2b. Smoke-test a game on the dev project
+
+- [ ] Start the `dev-markets` server (`.claude/launch.json`, port 3001), create a
+      short game (4 monthly rounds), join from a second browser, trade, reveal
+      every round, then **Finish**.
+- [ ] Student finished screen: "It was …" names the era, the timeline shows
+      your trades on real dates, the turnover chart marks "You".
+- [ ] Host finished screen: the turnover chart (names on hover) and **Results
+      CSV**; projector: step through the three finale screens.
+- [ ] The migrations are 0031–0037. 0037 generates the simulated market
+      itself (about 8 MB, a few seconds), so a production `db:push` gives
+      production a playable game with no data load at all.
+
+### 3. Production: the simulated market only
+
+- [ ] `npm run db:push` against production (it asks for the DB password).
+      Production then holds the simulated market and nothing else; the setup
+      form shows no market choice and every game is simulated.
+- [ ] `NEXT_PUBLIC_ENABLE_MARKETS=true` in Vercel Production, then **redeploy**
+      (the flag is baked in at build time). Unset or `false` hides the Markets
+      routes, nav link and homepage band again.
+- [ ] **Never** run `load.ts` against production: the vendor data is dev-only
+      (the loader refuses that project while any row is dev-only).
+- [ ] When a licensed source exists: a new adapter in `scripts/market-data/sources/`,
+      a re-import and a load into production; the setup form then offers both
+      markets. Its requirements are in PAPER_TRADING_DATA.md §6. The homepage
+      and hub copy (`MARKETS_BAND`, `MARKETS_PAGE` in lib/marketing/content.ts)
+      say "simulated" until then.

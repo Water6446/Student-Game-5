@@ -46,6 +46,7 @@ export function signedPct(pctPoints: number | string, digits = 0): string {
 export function sharpeText(sharpe: number | null): string {
   if (sharpe == null) return "—";
   const s = sharpe.toFixed(2);
+  if (s === "-0.00") return "0.00"; // a tiny negative rounds to zero, unsigned
   return s.startsWith("-") ? `−${s.slice(1)}` : s;
 }
 

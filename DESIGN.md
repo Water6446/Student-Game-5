@@ -435,12 +435,130 @@ bar with a `border-b-2 border-ink` edge, sticky, 64px. Rules that keep it still:
 - **No link hides on its own page.** Text links show current with the amber
   underline hover uses; the amber pill shows current as the active-nav pattern
   above. Mark it with `aria-current`.
+- **Section links are anchors or pages.** "/#how"-style links are current while
+  their homepage band is under the bar (`aria-current="location"`); a page link
+  ("Markets", shown only while the section is switched on) is current on its
+  page and every page under it (`isInSection`, `aria-current="page"`).
 - Anything needing supabase-js loads as an async chunk behind a same-size
   skeleton (`header-account.tsx` / `header-account-skeletons.tsx`).
 
 **Loading / empty states.** Never ship a bare spinner only; use a short, on-brand
 line (`text-ink-subtle`) and, for data, a helpful empty state ("appears after the
 first round"). Prefer skeletons for >300ms loads.
+
+**Trading screens (Markets).** The paper trading game is an app, not a single
+card, so it adds a few patterns (`components/markets/*`):
+- **Shell:** a sticky `bg-surface` top bar (`border-b-2`) with the round pill and
+  the **clock chip** (surface while open, `bg-loss` + white in the last 10 s,
+  paper-2 "Closed"/"Results in" otherwise), and a fixed bottom **tab bar** of three
+  ink-bordered buttons (Account, Market, Orders) using the active-nav pattern; an
+  amber count badge on Orders. Content is `max-w-md`.
+- **Price chart** (`PriceChart.tsx`): inline SVG, no chart library. Line
+  `stroke-gain`/`stroke-loss` by where it ends against its baseline (dashed ink),
+  a 10% tint under it, hairline gridlines, mono ticks on the right, first and last
+  date under it. Drag, hover or arrow keys scrub: an ink crosshair and a cream
+  dot, and the screen's headline figure follows the finger. Fills show as small
+  green B / red S discs. Range tabs below it are a `Segmented`, offering only
+  ranges that show something new.
+- **Sparkline** (`Sparkline.tsx`): a year of weekly closes, green or red by
+  direction, with the row's change chip saying the same in words.
+- **Change chip** (`parts.tsx`): soft-tint pill + arrow + signed figure. Balances
+  and prices stay ink beside it (§8 "Balances are ink").
+- **Position row / order row** (`rows.tsx`): hairline-divided rows inside a card.
+  A position: ticker block, name, size and average cost, then value (ink) and the
+  unrealized chip; shorts carry a small red "Short" tag. An order: one-line
+  summary ("Buy 10 ACME · limit $48.00"), a status pill (blue open, green filled,
+  red rejected, paper cancelled/expired), and the reason when it did not fill.
+- **Stock page:** a full-screen layer over the tabs (a history entry, so a
+  phone's Back closes it) with Buy (gold) and Sell (secondary) pinned at the
+  bottom. When trading is closed they disable and one line above them says why.
+- **Trade ticket:** a bottom sheet (`rounded-t-3xl`, `shadow-lift`, slides up,
+  backdrop `bg-ink/45`), focus held inside, Escape closes. Side as a `Segmented`,
+  order type as four `ChipButton`s, amount in a `NumberField` with a $/shares
+  toggle, preset chips, then an estimate list and, when the order would be
+  refused, the server's reason in loss red with an alert icon. The gold action
+  reads "Review order" or "Place order". The friction knobs add steps in the
+  same sheet, never a second dialog: a **risk warning** stage (a `bg-loss-soft`
+  ink-bordered block with the alert icon, title and two sentences; "I
+  understand, continue" primary, "Go back" secondary), the **typed
+  confirmation** as a `NumberField` on the review screen (Place stays disabled
+  until it matches), and a **cooldown note** (`bg-paper-2` row, hourglass icon,
+  "Next order in 12 s" in mono) above a disabled action.
+- **One-tap Buy** (low friction): an amber-soft bar at the top of the market
+  ("One-tap Buy" with the lightning icon, amounts as a `Segmented`), and a gold
+  ink-bordered "Buy" button beside each row, never inside the row's own button.
+  On the index fund card it sits in the top-right corner. A toast confirms.
+- **Consent screen** (research mode): a centred `shadow-lift` card at
+  `max-w-md`, a `bg-play-soft` document icon block, the title in display caps,
+  plain paragraphs, then **two equal secondary buttons** (agree / no thanks):
+  neither is styled as the expected answer. A dashed mono note marks draft
+  wording. The account screen keeps one hairline row with the answer and a
+  ghost "Change".
+- **Period reveal:** a full-screen takeover: the stamp ("Quarter 3 is in"), the
+  account value rolling from the period's start while its daily line draws
+  itself (`animate-draw`), You vs. The market chips, then trades, cash in and
+  out, headlines and the rank. One blue button: "Back to the market".
+- **Toasts above pinned bars:** a screen with a fixed bottom bar sets
+  `--toast-offset` on `<html>` so confirmations stack above it.
+- **Game over (student):** the amber "Game over" stamp, the final value block
+  (green / red / ink by the outcome), then "You vs the index fund" as two tinted
+  tiles (`bg-brand-soft` for You, `bg-play-soft` for Buy and hold) with change
+  chips and the one-line verdict, a 2×2 of Rank / Sharpe / Drawdown / Turnover,
+  "It was 1987–1993" (fake ticker badge, real name, price-change chip per
+  company), the timeline, and the class chart. Each reveal card shows a
+  skeleton while loading and one error row with "Try again" if it fails.
+- **Real-calendar timeline:** an `<ol>` with a 2px `ink/15` rule on the left
+  and a dot per period (amber if the student traded in it, surface if not);
+  the period's real span in display type with the index's change chip on the
+  right; headlines with the newspaper icon and a mono month; fills as a mono
+  date column plus a sentence by dollar amount (forced sales in loss red). The
+  first six periods show, then a ghost "Show all N periods".
+- **Turnover scatter** (`TurnoverScatter.tsx`): inline SVG like the price chart.
+  Turnover across (`N×`), return up (ticks on the right), a dashed ink line
+  labelled "Index fund" at buy-and-hold, classmates as `fill-play` dots at 70%,
+  the viewer's own dot larger in `fill-brand` labelled "You". Names only as
+  hover titles, only on the host's control screen. The Barber & Odean verdict
+  sits under it in display type, the figures in mono below.
+- **Host control (Markets):** the same layout as the other games' control
+  screen: header with "Quarter 3 / 25", a status badge (Trading / Closed /
+  Revealed), the period's months ("Year 1 · Jul–Sep"), the round track coloured
+  by the index's move each period; one pinned action (Lock & reveal → Reveal
+  the market once time is up → Next quarter → Finish game, Space/Enter); under
+  it the clock (`bg-loss` in the last 10 s), "+30 seconds", the placed-an-order
+  counter and meter, then the period result after a reveal (the market's move,
+  risers and fallers, headlines). Standings rows put Sharpe and drawdown under
+  the name so a phone keeps the name; the period's $ change chip shows from
+  `sm`. Settings and the real dates sit in collapsed controls; the real dates
+  are fetched only when opened, every visit. The settings disclosure also holds
+  the experiment (students per friction arm, consent counts) and the research
+  download: a two-column grid of small secondary buttons, one per CSV. Once the
+  game is over the screen leads with "Did trading more pay?" (the scatter with
+  names on hover, a secondary "Results CSV" in the title row), then standings
+  beside the real market (open from the start: no longer a secret), the class
+  wealth chart, and the research data.
+- **Projector (Markets):** §9's stage with a giant clock while trading is open,
+  the index fund chart (`PriceChart size="lg"`: 22px ticks, a 5px line), and a
+  full-bleed green/red takeover after each period: the stamp, "The market
+  rose/fell", the period's line drawing itself, the movers as pills, and the
+  biggest climb. Sized in `vh` so it fits a 720p projector; click or X closes it.
+  The finale is three steps the host clicks or arrows through (pill buttons at
+  the bottom, the current one ink-filled): the podium, "It was 1987–1993" as a
+  stamped amber block over a grid of struck-through fake tickers beside real
+  names and change chips, and the turnover scatter at `size="lg"` (22px ticks)
+  with the verdict in 36px display type. Dots only: the projector never names
+  a student on it.
+- **Markets hub and homepage band:** `/markets` is built like the homepage
+  (editorial grid, no italics), one bordered game card per game with a static
+  replica of the student's market list beside it (`MarketsPreview`). The
+  homepage's `MarketsBand` sits on `bg-play-soft` after the three games, with an
+  unnumbered eyebrow so the numbered sections keep their numbers. On the host
+  dashboard the game is a full-width `bg-play-soft` row under the three game
+  cards, and its sessions carry a blue "Markets" chip. Hub, band, nav link and
+  dashboard row all render only while `NEXT_PUBLIC_ENABLE_MARKETS` is on.
+- **Dev preview:** `/markets/trade/preview?view=setup|student|host|present&phase=open&round=3`
+  renders every trading screen on synthetic data (development builds only,
+  client-rendered). On the host view the buttons move the preview on. The
+  student view also takes `&friction=low|standard|high` and `&research=1`.
 
 **Code splitting on the game screens.** A later game phase (round controls,
 results) and heavy libraries (Recharts) load through `useLazyModule`
@@ -529,6 +647,12 @@ components/use-synced-preference.ts  cross-tab preference pattern (localStorage 
 components/use-show-bots.ts       the bot toggle, built on use-synced-preference
 components/use-round-phase.ts     the round phase a screen should DISPLAY (gates stale rounds, swallows the auto-mode lock)
 components/use-hotkeys.ts         window keyboard shortcuts, guarded against typing and browser/OS keys (deliberately unadvertised — no legend UI)
+components/markets/PriceChart.tsx, Sparkline.tsx, parts.tsx, rows.tsx   the trading screens' chart, sparkline, change chip / ticker block / clock chip, position and order rows
+components/markets/TurnoverScatter.tsx, RevealParts.tsx   the class's turnover-vs-return chart and the end-of-game reveal loader, error row and takeaway shared by the student, host and projector
+components/markets/student/*      the student's paper trading app (TradingApp shell, home, market, stock page, ticket, orders, reveal, finished), fed a TradingModel by TradingPlay
+components/markets/host/*         the host's paper trading screens (setup form, lobby, round control, finished, projector), fed a HostModel by useTradingHost
+components/host/RoundTrack.tsx, present-parts.tsx   the round track and the projector's podium and sunburst, shared by every game
+components/marketing/MarketsBand.tsx, MarketsPreview.tsx   the homepage's Markets band and the static market-list replica it shares with the /markets hub
 ```
 
 **Starting a new game:** copy `globals.css`, `tailwind.config.ts`, the

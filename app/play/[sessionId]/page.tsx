@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useSession } from "@/components/use-session";
 import { usePlayers } from "@/components/use-players";
@@ -12,6 +13,8 @@ import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { StatusPage } from "@/components/StatusPage";
 import { PageSkeleton } from "@/components/ui";
 import { sessionTabTitle } from "@/lib/game/session-format";
+import { isTrading } from "@/lib/game/types";
+import { tradePlayPath } from "@/lib/markets/routes";
 
 // A student arrives in the lobby, so only its screen ships with the page. The
 // round and results screens download in the background from the moment the
@@ -26,6 +29,14 @@ export default function PlayPage({ params }: { params: { sessionId: string } }) 
   const round = useRound(supabase, params.sessionId, session?.current_round ?? 0);
   const roundScreen = useLazyModule(ROUND_SCREEN);
   const finishedScreen = useLazyModule(FINISHED_SCREEN);
+
+  // A paper trading session has its own screens under /markets. Resume strips,
+  // history and old links all point here, so send them on.
+  const router = useRouter();
+  const trading = session ? isTrading(session.config) : false;
+  useEffect(() => {
+    if (trading) router.replace(tradePlayPath(params.sessionId));
+  }, [trading, router, params.sessionId]);
 
   // Which row is mine? The list carries no auth_uid (0028), so ask the server
   // once. undefined = still asking; null = not a player here.
@@ -66,6 +77,7 @@ export default function PlayPage({ params }: { params: { sessionId: string } }) 
   }, []);
 
   if (
+    trading ||
     authLoading ||
     loading ||
     myId === undefined ||

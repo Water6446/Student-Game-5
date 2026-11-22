@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSupabaseUser } from "@/components/use-supabase-user";
 import { useSession } from "@/components/use-session";
 import { useDocumentTitle } from "@/components/use-document-title";
@@ -7,6 +9,8 @@ import { HostPresent } from "@/components/host/HostPresent";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { StatusPage } from "@/components/StatusPage";
 import { PageSkeleton } from "@/components/ui";
+import { isTrading } from "@/lib/game/types";
+import { tradePresentPath } from "@/lib/markets/routes";
 
 export default function HostPresentPage({ params }: { params: { sessionId: string } }) {
   const { supabase, loading: authLoading } = useSupabaseUser();
@@ -14,7 +18,14 @@ export default function HostPresentPage({ params }: { params: { sessionId: strin
   // "Projector" first: it is the word that tells this tab from the control tab.
   useDocumentTitle(session ? `Projector · ${session.join_code}` : null);
 
-  if (authLoading || loading) {
+  // A paper trading session has its own projector view under /markets.
+  const router = useRouter();
+  const trading = session ? isTrading(session.config) : false;
+  useEffect(() => {
+    if (trading) router.replace(tradePresentPath(params.sessionId));
+  }, [trading, router, params.sessionId]);
+
+  if (trading || authLoading || loading) {
     return <PageSkeleton label="Loading projector view" width="max-w-6xl" />;
   }
 
